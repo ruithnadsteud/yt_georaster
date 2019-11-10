@@ -1,0 +1,11 @@
+setup.py
+yt_geotiff/__init__.py
+yt_geotiff/data_structures.py
+yt_geotiff/fields.py
+yt_geotiff/io.py
+yt_geotiff/utilities.py
+yt_geotiff.egg-info/PKG-INFO
+yt_geotiff.egg-info/SOURCES.txt
+yt_geotiff.egg-info/dependency_links.txt
+yt_geotiff.egg-info/requires.txt
+yt_geotiff.egg-info/top_level.txt

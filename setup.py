@@ -14,7 +14,7 @@ def get_version(filename):
         "Could not get version from %s." % filename)
 
 
-VERSION = get_version("geotiff/__init__.py")
+VERSION = get_version("yt_geotiff/__init__.py")
 
 setup(name="yt_geotiff",
       version=VERSION,
@@ -41,4 +41,6 @@ setup(name="yt_geotiff",
           "Programming Language :: Python",
           "Topic :: Utilities",
           ],
+      test_suite='nose.collector',
+      tests_require=['nose']
       )
