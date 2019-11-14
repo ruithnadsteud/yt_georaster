@@ -33,15 +33,15 @@ class YTGTiffDataset(Dataset):
 
     def __init__(self, filename):
         super(Dataset, self).__init__(filename, self._dataset_type)
-        self.data = self.index.grids[0]
+        # self.data = self.index.grids[0]
 
     def _parse_parameter_file(self):
         self.refine_by = 2
         with rasterio.open(self.parameter_filename, "r") as f:
             for key in f.meta.keys():
-                v = parse_gtif_attr(f, key)
-                if key == "con_args":
-                    v = v.astype("str")
+                v = f[key]
+                # if key == "con_args":
+                #     v = v.astype("str")
                 self.parameters[key] = v
             self._with_parameter_file_open(f)
 
@@ -91,12 +91,12 @@ class YTGTiffDataset(Dataset):
         # self.unique_identifier = \
         #   int(os.stat(self.parameter_filename)[stat.ST_CTIME])
 
-    def set_units(self):
-        if "unit_registry_json" in self.parameters:
-            self._set_code_unit_attributes()
-            del self.parameters["unit_registry_json"]
-        else:
-            super(Dataset, self).set_units()
+    # def set_units(self):
+    #     if "unit_registry_json" in self.parameters:
+    #         self._set_code_unit_attributes()
+    #         del self.parameters["unit_registry_json"]
+    #     else:
+    #         super(Dataset, self).set_units()
 
     def _set_code_unit_attributes(self):
         attrs = ('length_unit', 'mass_unit', 'time_unit',
@@ -104,25 +104,26 @@ class YTGTiffDataset(Dataset):
         cgs_units = ('cm', 'g', 's', 'cm/s', 'gauss')
         base_units = np.ones(len(attrs))
         for unit, attr, cgs_unit in zip(base_units, attrs, cgs_units):
-            if attr in self.parameters and \
-              isinstance(self.parameters[attr], YTQuantity):
-                uq = self.parameters[attr]
-            elif attr in self.parameters and \
-              "%s_units" % attr in self.parameters:
-                uq = self.quan(self.parameters[attr],
-                               self.parameters["%s_units" % attr])
-                del self.parameters[attr]
-                del self.parameters["%s_units" % attr]
-            elif isinstance(unit, string_types):
-                uq = self.quan(1.0, unit)
-            elif isinstance(unit, numeric_type):
-                uq = self.quan(unit, cgs_unit)
-            elif isinstance(unit, YTQuantity):
-                uq = unit
-            elif isinstance(unit, tuple):
-                uq = self.quan(unit[0], unit[1])
-            else:
-                raise RuntimeError("%s (%s) is invalid." % (attr, unit))
+            uq = None
+            # if attr in self.parameters and \
+            #   isinstance(self.parameters[attr], YTQuantity):
+            #     uq = self.parameters[attr]
+            # elif attr in self.parameters and \
+            #   "%s_units" % attr in self.parameters:
+            #     uq = self.quan(self.parameters[attr],
+            #                    self.parameters["%s_units" % attr])
+            #     del self.parameters[attr]
+            #     del self.parameters["%s_units" % attr]
+            # elif isinstance(unit, string_types):
+            #     uq = self.quan(1.0, unit)
+            # elif isinstance(unit, numeric_type):
+            #     uq = self.quan(unit, cgs_unit)
+            # elif isinstance(unit, YTQuantity):
+            #     uq = unit
+            # elif isinstance(unit, tuple):
+            #     uq = self.quan(unit[0], unit[1])
+            # else:
+            #     raise RuntimeError("%s (%s) is invalid." % (attr, unit))
             setattr(self, attr, uq)
 
     def create_field_info(self):
@@ -172,3 +173,13 @@ class YTGTiffDataset(Dataset):
             if driver_type == "GTiff":
                 return True
         return False
+
+# class ChomboGrid(AMRGridPatch):
+#     _id_offset = 0
+#     __slots__ = ["_level_id"]
+#     def __init__(self, id, index, level=-1):
+#         AMRGridPatch.__init__(self, id, filename=index.index_filename,
+#                               index=index)
+#         self.Parent = None
+#         self.Children = []
+#         self.Level = level
