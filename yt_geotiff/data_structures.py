@@ -5,24 +5,25 @@ Data structures for yt_geotiff.
 
 """
 
-# from .fields import \
-#     YTDataContainerFieldInfo, \
-#     YTGridFieldInfo
+from .fields import \
+    YTGTiffFieldInfo
 from .utilities import \
     parse_gtif_attr
 
 
 from yt.data_objects.static_output import \
     Dataset
+from yt.frontends.ytdata.data_structures import \
+    YTGridHierarchy
 
-
+import numpy as np
 import rasterio
 
 
 class YTGTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
-    # _index_class = YTGridHierarchy
-    # _field_info_class = YTGridFieldInfo
+    _index_class = YTGridHierarchy
+    _field_info_class = YTGTiffFieldInfo
     _dataset_type = 'ytgeotiff'
     geometry = "cartesian"
     default_fluid_type = "grid"
@@ -32,18 +33,28 @@ class YTGTiffDataset(Dataset):
     _con_attrs = ()
 
     def __init__(self, filename):
-        super(Dataset, self).__init__(filename, self._dataset_type)
+        print 
+        super(YTGTiffDataset, self).__init__(filename, self._dataset_type)
         # self.data = self.index.grids[0]
+
+    def set_units(self):
+        """Overide the set_units function of Dataset: we don't have units in our GeoTiff"""
+        print "set_units overide"
+        self._override_code_units()
 
     def _parse_parameter_file(self):
         self.refine_by = 2
         with rasterio.open(self.parameter_filename, "r") as f:
             for key in f.meta.keys():
-                v = f[key]
+                v = f.meta[key]
                 # if key == "con_args":
                 #     v = v.astype("str")
                 self.parameters[key] = v
             self._with_parameter_file_open(f)
+        # # No time steps/snapshots
+        self.current_time = 0.
+        self.unique_identifier = 0
+        self.parameters["cosmological_simulation"] = False
 
         # if saved, restore unit registry from the json string
         # if "unit_registry_json" in self.parameters:
@@ -67,9 +78,11 @@ class YTGTiffDataset(Dataset):
             unit_system = self.parameters["unit_system_name"]
             del self.parameters["unit_system_name"]
         else:
-            unit_system = "cgs"
-        # reset unit system since we may have a new unit registry
-        self._assign_unit_system(unit_system)
+            unit_system = 'cgs'
+        # # reset unit system since we may have a new unit registry
+        # self._assign_unit_system(unit_system)
+        # Overide the code units as no units are provided
+        self._override_code_units()
 
         # assign units to parameters that have associated unit string
         # del_pars = []
