@@ -7,7 +7,7 @@ API for geotiff frontend.
 """
 
 from .utilities import \
-    parse_gtif_attr
+    coord_cal
 
 from .data_structures import \
     YTGTiffDataset
