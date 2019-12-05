@@ -11,8 +11,8 @@ from yt.fields.field_info_container import \
 
 
 class YTGTiffFieldInfo(FieldInfoContainer):
-    known_other_fields = (("intensity", ("", ["intensity", "counts", "value"], None))
-    )
+    known_other_fields = [("intensity", ("", ["intensity, value, counts"], "Intensity (Arbitrary Units)"))
+    ]
 
     known_particle_fields = (
     )

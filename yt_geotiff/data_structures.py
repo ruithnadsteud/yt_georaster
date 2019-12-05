@@ -5,24 +5,117 @@ Data structures for yt_geotiff.
 
 """
 
-from .fields import \
-    YTGTiffFieldInfo
-from .utilities import \
-    parse_gtif_attr
+
+import os
+import weakref
+import numpy as np
+import rasterio
 
 
 from yt.data_objects.static_output import \
     Dataset
 from yt.frontends.ytdata.data_structures import \
     YTGridHierarchy
+from yt.data_objects.grid_patch import \
+    AMRGridPatch
 
-import numpy as np
-import rasterio
+
+from .fields import \
+    YTGTiffFieldInfo
+from .utilities import \
+    coord_cal
+
+
+class YTGTiffGrid(AMRGridPatch):
+    _id_offset = 0
+    __slots__ = ["_level_id"]
+    def __init__(self, id, index, level=-1):
+        AMRGridPatch.__init__(self, id, filename=index.index_filename,
+                              index=index)
+        self.Parent = None
+        self.Children = []
+        self.Level = level
+
+class YTGTiffHierarchy(YTGridHierarchy):
+
+    grid = YTGTiffGrid
+    _data_file = None 
+
+    def __init__(self, ds, dataset_type = None):
+        self.dataset = weakref.proxy(ds)
+        self.index_filename = os.path.abspath(
+            self.dataset.parameter_filename)
+        super(YTGTiffHierarchy, self).__init__(ds, dataset_type)
+
+    # def __init__(self, ds, dataset_type = None):
+    def _detect_output_fields(self):
+        self.field_list = []
+        self.ds.field_units = self.ds.field_units or {}
+        with rasterio.open(self.ds.parameter_filename, "r") as f:
+            group = 'bands'
+            for _i in range(1, f.count + 1):
+                # group = f.read(_i)
+                field_name = (str(group), str(_i))
+                self.field_list.append(field_name)
+                self.ds.field_units[field_name] = ""
+
+            
+        #     for group in f:
+        #         for field in f[group]:
+        #             field_name = (str(group), str(field))
+        #             self.field_list.append(field_name)
+        #             self.ds.field_units[field_name] = \
+        #               parse_h5_attr(f[group][field], "units")
+
+    def _count_grids(self):
+        self.num_grids = 1
+
+    def _parse_index(self):
+        """
+        this must fill in grid_left_edge, grid_right_edge, grid_particle_count,
+        grid_dimensions and grid_levels with the appropriate information. Each
+        of these variables is an array, with an entry for each of the
+        self.num_grids grids. Additionally, grids must be an array of
+        AMRGridPatch objects that already know their IDs.
+        """
+        self.grid_dimensions[:] = self.ds.domain_dimensions
+        self.grid_left_edge[:] = self.ds.domain_left_edge
+        self.grid_right_edge[:] = self.ds.domain_right_edge
+        self.grid_levels[:] = np.zeros(self.num_grids)
+        self.grid_procs = np.zeros(self.num_grids)
+        self.grid_particle_count[:] = sum(self.ds.num_particles.values())
+        self.grids = []
+        for gid in range(self.num_grids):
+            self.grids.append(self.grid(gid, self))
+            self.grids[gid].Level = self.grid_levels[gid, 0]
+        self.max_level = self.grid_levels.max()
+        temp_grids = np.empty(self.num_grids, dtype='object')
+        for i, grid in enumerate(self.grids):
+            grid.filename = self.ds.parameter_filename
+            grid._prepare_grid()
+            grid.proc_num = self.grid_procs[i]
+            temp_grids[i] = grid
+        self.grids = temp_grids
+
+    def _populate_grid_objects(self):
+        """
+        this initializes the grids by calling _prepare_grid() and _setup_dx()
+        on all of them. Additionally, it should set up Children and Parent
+        lists on each grid object.
+        """
+        for g in self.grids:
+            g._setup_dx()
+            # # this is non-spatial, so remove the code_length units
+            # g.dds = self.ds.arr(g.dds.d, "")
+            # g.ActiveDimensions = self.ds.domain_dimensions
+        self.max_level = self.grid_levels.max()
+
+
 
 
 class YTGTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
-    _index_class = YTGridHierarchy
+    _index_class = YTGTiffHierarchy
     _field_info_class = YTGTiffFieldInfo
     _dataset_type = 'ytgeotiff'
     geometry = "cartesian"
@@ -51,10 +144,15 @@ class YTGTiffDataset(Dataset):
                 #     v = v.astype("str")
                 self.parameters[key] = v
             self._with_parameter_file_open(f)
+            self.parameters['transform'] = f.transform
         # # No time steps/snapshots
         self.current_time = 0.
         self.unique_identifier = 0
         self.parameters["cosmological_simulation"] = False
+        self.domain_dimensions = np.ones(3, "int32")
+        self.dimensionality = 3 # 2d as we are dealing with raster grid
+        self.domain_left_edge = np.zeros(3)
+        self.domain_right_edge = np.ones(3)
 
         # if saved, restore unit registry from the json string
         # if "unit_registry_json" in self.parameters:
@@ -151,13 +249,8 @@ class YTGTiffDataset(Dataset):
 
         self._setup_gas_alias()
         self.field_info.setup_fluid_index_fields()
-
-        if "all" not in self.particle_types:
-            mylog.debug("Creating Particle Union 'all'")
-            pu = ParticleUnion("all", list(self.particle_types_raw))
-            self.add_particle_union(pu)
         self.field_info.setup_extra_union_fields()
-        mylog.debug("Loading field plugins.")
+        # mylog.debug("Loading field plugins.")
         self.field_info.load_all_plugins()
         deps, unloaded = self.field_info.check_derived_fields()
         self.field_dependencies.update(deps)
@@ -166,7 +259,8 @@ class YTGTiffDataset(Dataset):
         pass
 
     def _with_parameter_file_open(self, f):
-        pass
+        self.num_particles = \
+          dict([('n', 0)])
 
     def _setup_gas_alias(self):
         "Alias the grid type to gas with a field alias."
@@ -180,19 +274,10 @@ class YTGTiffDataset(Dataset):
         if not (args[0].endswith(".tif") or args[0].endswith(".tiff")): return False
         with rasterio.open(args[0], "r") as f:
             # data_type = parse_gtif_attr(f, "dtype")
-            driver_type = parse_gtif_attr(f, "driver")
+            driver_type = f.meta["driver"]
             # if data_type == "uint16":
             #     return True
             if driver_type == "GTiff":
                 return True
         return False
 
-# class ChomboGrid(AMRGridPatch):
-#     _id_offset = 0
-#     __slots__ = ["_level_id"]
-#     def __init__(self, id, index, level=-1):
-#         AMRGridPatch.__init__(self, id, filename=index.index_filename,
-#                               index=index)
-#         self.Parent = None
-#         self.Children = []
-#         self.Level = level

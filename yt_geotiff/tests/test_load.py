@@ -10,4 +10,7 @@ import yt.extensions.geotiff
 filename = 'example.tif'
 
 ds = yt.load(filename)
-# print ds.field_list
+print ds.field_list
+print ds.parameters
+
+# print ds.r['1']
