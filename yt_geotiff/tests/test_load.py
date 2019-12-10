@@ -12,5 +12,6 @@ filename = 'example.tif'
 ds = yt.load(filename)
 print ds.field_list
 print ds.parameters
+ds.print_stats()
 
 # print ds.r['1']

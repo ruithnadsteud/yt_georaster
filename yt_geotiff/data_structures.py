@@ -141,10 +141,16 @@ class YTGTiffDataset(Dataset):
         self.current_time = 0.
         self.unique_identifier = 0
         self.parameters["cosmological_simulation"] = False
-        self.domain_dimensions = np.ones(3, "int32")
-        self.dimensionality = 3 # 2d as we are dealing with raster grid
-        self.domain_left_edge = np.zeros(3)
-        self.domain_right_edge = np.ones(3)
+        dim = 3 # 2d as we are dealing with raster grid
+                # make this 3d to avoid error
+        self.domain_dimensions = np.ones(dim, "int32")
+        self.domain_dimensions[0] = self.parameters['width']
+        self.domain_dimensions[1] = self.parameters['height']
+        self.dimensionality = dim 
+        self.domain_left_edge = np.zeros(dim)
+        self.domain_right_edge = np.ones(dim)
+        self.domain_right_edge[0] = self.parameters['width']
+        self.domain_right_edge[1] = self.parameters['height']
 
         # if saved, restore unit registry from the json string
         # if "unit_registry_json" in self.parameters:
