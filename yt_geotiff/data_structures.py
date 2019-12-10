@@ -59,14 +59,6 @@ class YTGTiffHierarchy(YTGridHierarchy):
                 self.field_list.append(field_name)
                 self.ds.field_units[field_name] = ""
 
-            
-        #     for group in f:
-        #         for field in f[group]:
-        #             field_name = (str(group), str(field))
-        #             self.field_list.append(field_name)
-        #             self.ds.field_units[field_name] = \
-        #               parse_h5_attr(f[group][field], "units")
-
     def _count_grids(self):
         self.num_grids = 1
 
