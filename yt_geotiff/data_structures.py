@@ -110,7 +110,7 @@ class YTGTiffDataset(Dataset):
     _index_class = YTGTiffHierarchy
     _field_info_class = YTGTiffFieldInfo
     _dataset_type = 'ytgeotiff'
-    geometry = "cartesian"
+    geometry = "geographic"
     default_fluid_type = "grid"
     # fluid_types = ("grid", "gas", "deposit", "index")
     fluid_types = ("grid", "index")
@@ -128,7 +128,7 @@ class YTGTiffDataset(Dataset):
         self._override_code_units()
 
     def _parse_parameter_file(self):
-        self.refine_by = 2
+        # self.refine_by = 2
         with rasterio.open(self.parameter_filename, "r") as f:
             for key in f.meta.keys():
                 v = f.meta[key]
@@ -143,14 +143,14 @@ class YTGTiffDataset(Dataset):
         self.parameters["cosmological_simulation"] = False
         dim = 3 # 2d as we are dealing with raster grid
                 # make this 3d to avoid error
-        self.domain_dimensions = np.ones(dim, "int32")
-        self.domain_dimensions[0] = self.parameters['width']
-        self.domain_dimensions[1] = self.parameters['height']
+        self.domain_dimensions = np.ones(dim, "int32") * 2 # 1 << 1
+        # self.domain_dimensions[0] = self.parameters['width']
+        # self.domain_dimensions[1] = self.parameters['height']
         self.dimensionality = dim 
-        self.domain_left_edge = np.zeros(dim)
-        self.domain_right_edge = np.ones(dim)
-        self.domain_right_edge[0] = self.parameters['width']
-        self.domain_right_edge[1] = self.parameters['height']
+        # self.domain_left_edge = np.zeros(dim)
+        # self.domain_right_edge = np.ones(dim)
+        # self.domain_right_edge[0] = self.parameters['width']
+        # self.domain_right_edge[1] = self.parameters['height']
 
         # if saved, restore unit registry from the json string
         # if "unit_registry_json" in self.parameters:
