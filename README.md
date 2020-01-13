@@ -14,4 +14,5 @@ Currently this package is still in its early development stage. Once this stage 
 - Read _geotiff_ files into **yt** using the yt.load function
 - Manage multiband files
 - Enable the selection of sub-regions for analysis
+
 The aim of this is to enable inspection and analysis of georeferenced data with **yt** to take advantage of its existing capabilities.
