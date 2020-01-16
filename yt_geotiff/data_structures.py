@@ -15,26 +15,26 @@ import rasterio
 from yt.data_objects.static_output import \
     Dataset
 from yt.frontends.ytdata.data_structures import \
-    YTGridHierarchy
-from yt.data_objects.grid_patch import \
-    AMRGridPatch
+    YTGridHierarchy, YTGrid
+# from yt.data_objects.grid_patch import \
+#     AMRGridPatch
 
 
 from .fields import \
     YTGTiffFieldInfo
 from .utilities import \
-    coord_cal
+    coord_cal, coord_arc_dist_cal
 
 
-class YTGTiffGrid(AMRGridPatch):
+class YTGTiffGrid(YTGrid):
     _id_offset = 0
-    __slots__ = ["_level_id"]
+    # __slots__ = ["_level_id"]
     def __init__(self, id, index, level=-1):
-        AMRGridPatch.__init__(self, id, filename=index.index_filename,
+        YTGrid.__init__(self, id, filename=index.index_filename,
                               index=index)
-        self.Parent = None
-        self.Children = []
-        self.Level = level
+        # self.Parent = None
+        # self.Children = []
+        # self.Level = level
 
 class YTGTiffHierarchy(YTGridHierarchy):
 
@@ -47,7 +47,6 @@ class YTGTiffHierarchy(YTGridHierarchy):
             self.dataset.parameter_filename)
         super(YTGTiffHierarchy, self).__init__(ds, dataset_type)
 
-    # def __init__(self, ds, dataset_type = None):
     def _detect_output_fields(self):
         self.field_list = []
         self.ds.field_units = self.ds.field_units or {}
@@ -110,10 +109,11 @@ class YTGTiffDataset(Dataset):
     _index_class = YTGTiffHierarchy
     _field_info_class = YTGTiffFieldInfo
     _dataset_type = 'ytgeotiff'
-    geometry = "geographic"
-    default_fluid_type = "grid"
+    geometry = "cartesian"
+    default_fluid_type = "bands"
     # fluid_types = ("grid", "gas", "deposit", "index")
-    fluid_types = ("grid", "index")
+    fluid_types = ("bands", "index") #"grid", "index")
+    periodicity = np.zeros(3, dtype=bool)
 
     _con_attrs = ()
 
@@ -141,77 +141,21 @@ class YTGTiffDataset(Dataset):
         self.current_time = 0.
         self.unique_identifier = 0
         self.parameters["cosmological_simulation"] = False
-        dim = 3 # 2d as we are dealing with raster grid
-                # make this 3d to avoid error
-        self.domain_dimensions = np.ones(dim, "int32") * 2 # 1 << 1
-        # self.domain_dimensions[0] = self.parameters['width']
-        # self.domain_dimensions[1] = self.parameters['height']
-        self.dimensionality = dim 
-        # self.domain_left_edge = np.zeros(dim)
-        # self.domain_right_edge = np.ones(dim)
-        # self.domain_right_edge[0] = self.parameters['width']
-        # self.domain_right_edge[1] = self.parameters['height']
+        self.domain_dimensions = np.array([self.parameters['width'],
+                                           self.parameters['height'],
+                                           1], dtype=np.int32)
+        self.dimensionality = 3
+        rightedge_xy = coord_arc_dist_cal(self.domain_dimensions[0], self.domain_dimensions[1], self.parameters['transform'], self.parameters['height'])
+        self.domain_left_edge = np.zeros(self.dimensionality, dtype=np.float64)
+        self.domain_right_edge = np.array([rightedge_xy[0], rightedge_xy[1], 1], dtype=np.float64)
 
-        # if saved, restore unit registry from the json string
-        # if "unit_registry_json" in self.parameters:
-        #     self.unit_registry = UnitRegistry.from_json(
-        #         self.parameters["unit_registry_json"])
-        #     # reset self.arr and self.quan to use new unit_registry
-        #     self._arr = None
-        #     self._quan = None
-        #     for dim in ["length", "mass", "pressure",
-        #                 "temperature", "time", "velocity"]:
-        #         cu = "code_" + dim
-        #         if cu not in self.unit_registry:
-        #             self.unit_registry.add(
-        #                 cu, 1.0, getattr(dimensions, dim))
-        #     if "code_magnetic" not in self.unit_registry:
-        #         self.unit_registry.add("code_magnetic", 1.0,
-        #                                dimensions.magnetic_field)
-
-        # if saved, set unit system
-        if "unit_system_name" in self.parameters:
-            unit_system = self.parameters["unit_system_name"]
-            del self.parameters["unit_system_name"]
-        else:
-            unit_system = 'cgs'
-        # # reset unit system since we may have a new unit registry
-        # self._assign_unit_system(unit_system)
         # Overide the code units as no units are provided
         self._override_code_units()
 
-        # assign units to parameters that have associated unit string
-        # del_pars = []
-        # for par in self.parameters:
-        #     ustr = "%s_units" % par
-        #     if ustr in self.parameters:
-        #         if isinstance(self.parameters[par], np.ndarray):
-        #             to_u = self.arr
-        #         else:
-        #             to_u = self.quan
-        #         self.parameters[par] = to_u(
-        #             self.parameters[par], self.parameters[ustr])
-        #         del_pars.append(ustr)
-        # for par in del_pars:
-        #     del self.parameters[par]
-
-        # for attr in self._con_attrs:
-        #     setattr(self, attr, self.parameters.get(attr))
-        # self.unique_identifier = \
-        #   int(os.stat(self.parameter_filename)[stat.ST_CTIME])
-
-    # def set_units(self):
-    #     if "unit_registry_json" in self.parameters:
-    #         self._set_code_unit_attributes()
-    #         del self.parameters["unit_registry_json"]
-    #     else:
-    #         super(Dataset, self).set_units()
-
     def _set_code_unit_attributes(self):
-        attrs = ('length_unit', 'mass_unit', 'time_unit',
-                 'velocity_unit', 'magnetic_unit')
-        cgs_units = ('cm', 'g', 's', 'cm/s', 'gauss')
-        base_units = np.ones(len(attrs))
+        attrs = ('length_unit', 'time_unit')
+        cgs_units = ('m', 's')
+        base_units = np.ones(len(attrs), dtype=np.float64)
         for unit, attr, cgs_unit in zip(base_units, attrs, cgs_units):
             uq = None
             # if attr in self.parameters and \

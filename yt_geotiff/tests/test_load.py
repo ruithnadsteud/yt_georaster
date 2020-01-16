@@ -14,4 +14,4 @@ print ds.field_list
 print ds.parameters
 ds.print_stats()
 
-print ds.r[:] 
+# print ds.r[:] 
