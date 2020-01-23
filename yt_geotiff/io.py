@@ -45,7 +45,7 @@ class IOHandlerYTGTiff(IOHandlerYTGridHDF5):
                     continue
                 self._misses += 1
                 ftype, fname = field
-                rv[(ftype, fname)] = src.read(int(fname)) # read in the band/field
+                rv[(ftype, fname)] = src.read(int(fname)).astype(self._field_dtype) # read in the band/field
             if self._cache_on:
                 for gid in rv:
                     self._cached_fields.setdefault(gid, {})
@@ -78,7 +78,7 @@ class IOHandlerYTGTiff(IOHandlerYTGridHDF5):
                     self._misses += 1
                     ftype, fname = field
                     # add extra dimensions to make data 3D
-                    data = src.read(int(fname))#.astype(self._field_dtype)
+                    data = src.read(int(fname)).astype(self._field_dtype)
                     for dim in range(len(data.shape), 3):
                         data = np.expand_dims(data, dim)
                     if self._cache_on:
