@@ -19,11 +19,12 @@ from yt.frontends.ytdata.data_structures import \
 # from yt.data_objects.grid_patch import \
 #     AMRGridPatch
 
+from yt import YTArray
 
 from .fields import \
     YTGTiffFieldInfo
 from .utilities import \
-    coord_cal, coord_arc_dist_cal
+    coord_cal, left_aligned_coord_cal
 
 
 class YTGTiffGrid(YTGrid):
@@ -38,7 +39,7 @@ class YTGTiffGrid(YTGrid):
 
 class YTGTiffHierarchy(YTGridHierarchy):
 
-    grid = YTGTiffGrid
+    grid = YTGrid
     _data_file = None 
 
     def __init__(self, ds, dataset_type = None):
@@ -114,18 +115,25 @@ class YTGTiffDataset(Dataset):
     # fluid_types = ("grid", "gas", "deposit", "index")
     fluid_types = ("bands", "index") #"grid", "index")
     periodicity = np.zeros(3, dtype=bool)
+    units_override = {'length': 'm', # geotiff projection units
+                      'time': 's'}
 
     _con_attrs = ()
 
     def __init__(self, filename):
         print 
-        super(YTGTiffDataset, self).__init__(filename, self._dataset_type)
-        # self.data = self.index.grids[0]
+        super(YTGTiffDataset, self).__init__(filename,
+                                             self._dataset_type,
+                                             units_override=self.units_override)
+        self.data = self.index.grids[0]
 
-    def set_units(self):
-        """Overide the set_units function of Dataset: we don't have units in our GeoTiff"""
-        print "set_units overide"
-        self._override_code_units()
+    # def set_units(self):
+    #     """
+    #     Overide the set_units function of Dataset: we don't have units in our
+    #     GeoTiff. This will need a metadatafile
+    #     """
+    #     # print "set_units overide"
+    #     self.set_code_units()
 
     def _parse_parameter_file(self):
         # self.refine_by = 2
@@ -137,47 +145,47 @@ class YTGTiffDataset(Dataset):
                 self.parameters[key] = v
             self._with_parameter_file_open(f)
             self.parameters['transform'] = f.transform
+
         # # No time steps/snapshots
         self.current_time = 0.
         self.unique_identifier = 0
         self.parameters["cosmological_simulation"] = False
-        self.domain_dimensions = np.array([self.parameters['width'],
-                                           self.parameters['height'],
+        self.domain_dimensions = np.array([self.parameters['height'],
+                                           self.parameters['width'],
                                            1], dtype=np.int32)
         self.dimensionality = 3
-        rightedge_xy = coord_arc_dist_cal(self.domain_dimensions[0], self.domain_dimensions[1], self.parameters['transform'], self.parameters['height'])
-        self.domain_left_edge = np.zeros(self.dimensionality, dtype=np.float64)
-        self.domain_right_edge = np.array([rightedge_xy[0], rightedge_xy[1], 1], dtype=np.float64)
+        rightedge_xy = left_aligned_coord_cal(self.domain_dimensions[0],
+                                          self.domain_dimensions[1],
+                                          self.parameters['transform'])
+        # self.domain_left_edge = np.zeros(self.dimensionality,
+        #                                            dtype=np.float64)
+        # self.domain_right_edge = np.array([rightedge_xy[0],
+        #                                   rightedge_xy[1],
+        #                                   1], dtype=np.float64)
+
+        self.domain_left_edge = YTArray(np.zeros(self.dimensionality,
+                                                   dtype=np.float64), 'm')
+        self.domain_right_edge = YTArray([rightedge_xy[0],
+                                          rightedge_xy[1],
+                                          1], 'm', dtype=np.float64)
 
         # Overide the code units as no units are provided
         self._override_code_units()
 
     def _set_code_unit_attributes(self):
-        attrs = ('length_unit', 'time_unit')
-        cgs_units = ('m', 's')
+        attrs = ('length_unit', 'mass_unit', 'time_unit',
+                 'velocity_unit', 'magnetic_unit')
+        si_units = ('m', 'g', 's', 'm/s', 'gauss')
         base_units = np.ones(len(attrs), dtype=np.float64)
-        for unit, attr, cgs_unit in zip(base_units, attrs, cgs_units):
-            uq = None
-            # if attr in self.parameters and \
-            #   isinstance(self.parameters[attr], YTQuantity):
-            #     uq = self.parameters[attr]
-            # elif attr in self.parameters and \
-            #   "%s_units" % attr in self.parameters:
-            #     uq = self.quan(self.parameters[attr],
-            #                    self.parameters["%s_units" % attr])
-            #     del self.parameters[attr]
-            #     del self.parameters["%s_units" % attr]
-            # elif isinstance(unit, string_types):
-            #     uq = self.quan(1.0, unit)
-            # elif isinstance(unit, numeric_type):
-            #     uq = self.quan(unit, cgs_unit)
-            # elif isinstance(unit, YTQuantity):
-            #     uq = unit
-            # elif isinstance(unit, tuple):
-            #     uq = self.quan(unit[0], unit[1])
-            # else:
-            #     raise RuntimeError("%s (%s) is invalid." % (attr, unit))
-            setattr(self, attr, uq)
+        for unit, attr, si_unit in zip(base_units, attrs, si_units):
+            setattr(self, attr, self.quan(unit, si_unit))
+
+    # def _override_code_units(self):
+    #     pass
+        # setattr(self, 'length_unit', self.quan(1.0, 'm'))
+        # setattr(self, 'time_unit', self.quan(1.0, 's'))
+        # setattr(self, 'code_length', self.quan(1.0, 'm'))
+        # setattr(self, 'code_time', self.quan(1.0, 's'))
 
     def create_field_info(self):
         self.field_dependencies = {}

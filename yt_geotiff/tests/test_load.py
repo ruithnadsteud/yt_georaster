@@ -14,4 +14,7 @@ print ds.field_list
 print ds.parameters
 ds.print_stats()
 
-# print ds.r[:] 
+print ds.unit_registry
+
+# slc = yt.SlicePlot(ds, 'z', '1')
+# slc.save()
