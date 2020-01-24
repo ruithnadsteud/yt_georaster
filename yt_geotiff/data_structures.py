@@ -163,9 +163,9 @@ class YTGTiffDataset(Dataset):
         #                                   rightedge_xy[1],
         #                                   1], dtype=np.float64)
 
-        self.domain_left_edge = YTArray(np.zeros(self.dimensionality,
+        self.domain_left_edge = self.arr(np.zeros(self.dimensionality,
                                                    dtype=np.float64), 'm')
-        self.domain_right_edge = YTArray([rightedge_xy[0],
+        self.domain_right_edge = self.arr([rightedge_xy[0],
                                           rightedge_xy[1],
                                           1], 'm', dtype=np.float64)
 
