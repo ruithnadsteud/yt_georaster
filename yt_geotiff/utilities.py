@@ -37,3 +37,44 @@ def left_aligned_coord_cal(xcell, ycell, transform):
                                                   # (xmin, ymax)
     return x_arc_dist, y_arc_dist
 
+
+def parse_awslandsat_metafile(filename):
+    """Function to read in metadata/parameter file and output it as a dict.
+    """
+
+    f = open(filename, 'r') 
+    groupkeys = []
+
+    data = {}
+    flatdata = {}
+
+    while True: 
+
+        # Get next line from file 
+        line = f.readline().strip().replace('"', '').replace('\n', '')
+
+        # if line is empty 
+        # end of file is reached 
+        if not line or line == 'END': 
+            break
+        # print line.split('=')
+        key, value = line.split(' = ')
+
+        # make sure we have all of value if it is an array
+        while value.count('(') != value.count(')'):
+            line = f.readline().strip().replace('"', '').replace('\n', '')
+            value += line
+
+        # save to data dictionary
+        if key == 'GROUP':
+            groupkeys.append(value)
+        elif key == 'END_GROUP':
+            groupkeys.pop()
+        else:
+            data[tuple(groupkeys + [key])] = value
+            flatdata[key] = value
+
+    f.close() 
+
+    return data, flatdata
+
