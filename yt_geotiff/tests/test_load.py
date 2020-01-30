@@ -7,7 +7,7 @@ import yt.extensions.geotiff
 # http://landsat-pds.s3.amazonaws.com/c1/L8/042/034/..
 # ..LC08_L1TP_042034_20170616_20170629_01_T1/..
 # ..LC08_L1TP_042034_20170616_20170629_01_T1_B4.TIF
-filename = 'example.tif'
+filename = 'a.tif'
 # filename = '~/Downloads/F182013.v4/F182013.v4c_web.stable_lights.avg_vis.tif'
 
 ds = yt.load(filename)

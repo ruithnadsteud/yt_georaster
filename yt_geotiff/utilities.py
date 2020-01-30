@@ -5,6 +5,7 @@ Utility functions for yt_geotiff.
 
 """
 import numpy as np
+import rasterio
 
 def coord_cal(xcell, ycell, transform):
     """Function to calculate the position of cell (xcell, ycell) in terms of
@@ -77,4 +78,49 @@ def parse_awslandsat_metafile(filename):
     f.close() 
 
     return data, flatdata
+
+def save_dataset_as_geotiff(ds, filename):
+    r"""Export georeferenced dataset to a reloadable geotiff.
+
+    This function is a wrapper for rasterio's geotiff writing capability. The
+    dataset used must be of the geotiff class (or made to be similar). The 
+    transform and other metadata are then taken from the dataset parameters.
+    This resulting file is a multi- (or single-) band geotiff which can then be
+    loaded by yt or other packages.
+
+    Parameters
+    ----------
+    ds : dataset
+        The georeferenced dataset to be saved to file.
+    filename: str
+        The name of the file to be written.
+
+    Returns
+    -------
+    filename : str
+        The name of the file that has been created.
+    """
+    # create a 3d numpy array which is structured as (bands, rows, columns)
+    # cycle through each field(/band).
+    count = ds.parameters['count']
+    bands = range(1, count + 1)
+    output_array = np.array([np.array(ds.index.grids[0][('bands', str(b))])[:,:,0] for b in bands])
+    dtype = output_array[0].dtype
+    print output_array.shape
+    print ds.parameters['height']
+    print ds.parameters['width']
+
+    with rasterio.open(filename,
+                       'w',
+                       driver='GTiff',
+                       height=ds.parameters['height'],
+                       width=ds.parameters['width'],
+                       count=count,
+                       dtype=dtype,
+                       crs=ds.parameters['crs'],
+                       transform=ds.parameters['transform'],
+                      ) as dst:
+        dst.write(output_array)
+
+    return filename
 
