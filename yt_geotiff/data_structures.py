@@ -24,7 +24,7 @@ from yt import YTArray
 from .fields import \
     YTGTiffFieldInfo
 from .utilities import \
-    coord_cal, left_aligned_coord_cal
+    coord_cal, left_aligned_coord_cal, save_dataset_as_geotiff
 
 
 class YTGTiffGrid(YTGrid):
@@ -121,7 +121,6 @@ class YTGTiffDataset(Dataset):
     _con_attrs = ()
 
     def __init__(self, filename):
-        print 
         super(YTGTiffDataset, self).__init__(filename,
                                              self._dataset_type,
                                              units_override=self.units_override)
@@ -144,7 +143,7 @@ class YTGTiffDataset(Dataset):
                 #     v = v.astype("str")
                 self.parameters[key] = v
             self._with_parameter_file_open(f)
-            self.parameters['transform'] = f.transform
+            # self.parameters['transform'] = f.transform
 
         # # No time steps/snapshots
         self.current_time = 0.
@@ -218,6 +217,10 @@ class YTGTiffDataset(Dataset):
         for ftype, field in self.field_list:
             if ftype == "grid":
                 self.field_info.alias(("gas", field), ("grid", field))
+
+    def save_as(self, filename):
+
+        return save_dataset_as_geotiff(self, filename)
 
     @classmethod
     def _is_valid(self, *args, **kwargs):
