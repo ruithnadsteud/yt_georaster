@@ -7,6 +7,7 @@ Data structures for yt_geotiff.
 
 
 import os
+
 import weakref
 import numpy as np
 import rasterio
@@ -226,7 +227,6 @@ class YTGTiffDataset(Dataset):
     def _is_valid(self, *args, **kwargs):
         if not (args[0].endswith(".tif") or args[0].endswith(".tiff")): return False
         with rasterio.open(args[0], "r") as f:
-            # data_type = parse_gtif_attr(f, "dtype")
             driver_type = f.meta["driver"]
             # if data_type == "uint16":
             #     return True
@@ -234,3 +234,73 @@ class YTGTiffDataset(Dataset):
                 return True
         return False
 
+class LandSatGTiffDataSet(YTGTiffDataset):
+    """"""
+    def __init__(self, filename):
+        super(YTGTiffDataset, self).__init__(filename,
+                                             self._dataset_type,
+                                             units_override=self.units_override)
+        self.data = self.index.grids[0]
+
+    def _parse_parameter_file(self):
+
+        # self.parameter_filename is the dir str
+        if self.parameter_filename[-1] == '/':
+            self.data_dir = self.parameter_filename 
+        else:
+            self.data_dir = self.parameter_filename + '/'
+
+        files = glob.glob(self.data_dir+'*')
+        
+
+        for filename in files:
+            # filename = self.parameters[band]
+            with rasterio.open(filename, "r") as f:
+                for key in f.meta.keys():
+                    v = f.meta[key]
+                    # if key == "con_args":
+                    #     v = v.astype("str")
+                    self.parameters[key] = v
+                self._with_parameter_file_open(f)
+                # self.parameters['transform'] = f.transform
+
+            # # No time steps/snapshots
+            self.current_time = 0.
+            self.unique_identifier = 0
+            self.parameters["cosmological_simulation"] = False
+            self.domain_dimensions = np.array([self.parameters['height'],
+                                               self.parameters['width'],
+                                               1], dtype=np.int32)
+            self.dimensionality = 3
+            rightedge_xy = left_aligned_coord_cal(self.domain_dimensions[0],
+                                              self.domain_dimensions[1],
+                                              self.parameters['transform'])
+            # self.domain_left_edge = np.zeros(self.dimensionality,
+            #                                            dtype=np.float64)
+            # self.domain_right_edge = np.array([rightedge_xy[0],
+            #                                   rightedge_xy[1],
+            #                                   1], dtype=np.float64)
+
+            self.domain_left_edge = self.arr(np.zeros(self.dimensionality,
+                                                       dtype=np.float64), 'm')
+            self.domain_right_edge = self.arr([rightedge_xy[0],
+                                              rightedge_xy[1],
+                                              1], 'm', dtype=np.float64)
+
+    @classmethod
+    def _is_valid(self, *args, **kwargs):
+        if not os.path.isdir(args[0]): return False
+        if len(glob.glob(args[0]+'/*_ANG.txt')) != 1 and\
+           len(glob.glob(args[0]+'/*_MTL.txt')) != 1: return False
+        try:
+            file = glob.glob(args[0]+'/*_.tiff')[0] # open the first file
+            with rasterio.open(file, "r") as f:
+                # data_type = parse_gtif_attr(f, "dtype")
+                driver_type = f.meta["driver"]
+                # if data_type == "uint16":
+                #     return True
+                if driver_type == "GTiff":
+                    return True
+        except:
+            pass
+        return False

@@ -39,7 +39,7 @@ def left_aligned_coord_cal(xcell, ycell, transform):
     return x_arc_dist, y_arc_dist
 
 
-def parse_awslandsat_metafile(filename):
+def parse_awslandsat_metafile(filename, flatdict=True):
     """Function to read in metadata/parameter file and output it as a dict.
     """
 
@@ -47,7 +47,6 @@ def parse_awslandsat_metafile(filename):
     groupkeys = []
 
     data = {}
-    flatdata = {}
 
     while True: 
 
@@ -72,12 +71,14 @@ def parse_awslandsat_metafile(filename):
         elif key == 'END_GROUP':
             groupkeys.pop()
         else:
-            data[tuple(groupkeys + [key])] = value
-            flatdata[key] = value
+            if flatdict: # save as flat dictionary?
+                data[key] = value
+            else: # useful if keys are not unique for each band
+                data[tuple(groupkeys + [key])] = value
 
     f.close() 
 
-    return data, flatdata
+    return data
 
 def save_dataset_as_geotiff(ds, filename):
     r"""Export georeferenced dataset to a reloadable geotiff.
@@ -123,4 +124,14 @@ def save_dataset_as_geotiff(ds, filename):
         dst.write(output_array)
 
     return filename
+
+def merge_dicts(*dict_args):
+    """
+    Given any number of dicts, shallow copy and merge into a new dict,
+    precedence goes to key value pairs in latter dicts.
+    """
+    result = {}
+    for dictionary in dict_args:
+        result.update(dictionary)
+    return result
 
