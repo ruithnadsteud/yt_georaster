@@ -28,7 +28,6 @@ def left_aligned_coord_cal(xcell, ycell, transform):
     """
 
     # rEarth = 6.371e6 # metres
-    # print transform[0:6]
 
     dx, rotx, xmin, roty, dy, ymax = transform[0:6]
     xp, yp = coord_cal(xcell, ycell, transform)
@@ -50,14 +49,13 @@ def parse_awslandsat_metafile(filename, flatdict=True):
 
     while True: 
 
-        # Get next line from file 
+        # Get next line from file
         line = f.readline().strip().replace('"', '').replace('\n', '')
 
         # if line is empty 
         # end of file is reached 
         if not line or line == 'END': 
             break
-        # print line.split('=')
         key, value = line.split(' = ')
 
         # make sure we have all of value if it is an array
@@ -107,9 +105,6 @@ def save_dataset_as_geotiff(ds, filename):
     bands = range(1, count + 1)
     output_array = np.array([np.array(ds.index.grids[0][('bands', str(b))])[:,:,0] for b in bands])
     dtype = output_array[0].dtype
-    print output_array.shape
-    print ds.parameters['height']
-    print ds.parameters['width']
 
     with rasterio.open(filename,
                        'w',

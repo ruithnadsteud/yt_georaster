@@ -12,8 +12,7 @@ import rasterio
 
 from yt.geometry.selection_routines import \
     GridSelector
-# from yt.utilities.io_handler import \
-#     BaseIOHandler
+
 from yt.frontends.ytdata.io import \
     IOHandlerYTGridHDF5
 
