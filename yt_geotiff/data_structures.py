@@ -7,6 +7,8 @@ Data structures for yt_geotiff.
 
 
 import os
+import time
+import glob
 
 import weakref
 import numpy as np
@@ -25,7 +27,8 @@ from yt import YTArray
 from .fields import \
     YTGTiffFieldInfo
 from .utilities import \
-    coord_cal, left_aligned_coord_cal, save_dataset_as_geotiff
+    coord_cal, left_aligned_coord_cal, \
+    save_dataset_as_geotiff, parse_awslandsat_metafile \
 
 
 class YTGTiffGrid(YTGrid):
@@ -103,8 +106,28 @@ class YTGTiffHierarchy(YTGridHierarchy):
             # g.ActiveDimensions = self.ds.domain_dimensions
         self.max_level = self.grid_levels.max()
 
+class LandSatGTiffHierarchy(YTGTiffHierarchy):
 
+    def __init__(self, ds, dataset_type = None):
+        self.dataset = weakref.proxy(ds)
+        self.index_filename = os.path.abspath(
+            self.dataset.parameter_filename)
+        super(LandSatGTiffHierarchy, self).__init__(ds, dataset_type)
 
+    def _detect_output_fields(self):
+        self.field_list = []
+        self.ds.field_units = self.ds.field_units or {}
+
+        # get list of filekeys
+        filekeys = [s for s in self.ds.parameters.keys() if 'FILE_NAME_BAND_' in s]
+        files = [self.ds.data_dir + self.ds.parameters[filekey] for filekey in filekeys]
+
+        group = 'bands'
+        for file in files:
+            band = file.split('.')[0].split('B')[1]
+            field_name = (group, band)
+            self.field_list.append(field_name)
+            self.ds.field_units[field_name] = ""
 
 class YTGTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
@@ -123,14 +146,14 @@ class YTGTiffDataset(Dataset):
 
     def __init__(self, filename):
         super(YTGTiffDataset, self).__init__(filename,
-                                             self._dataset_type,
-                                             units_override=self.units_override)
+                                        self._dataset_type,
+                                        units_override=self.units_override)
         self.data = self.index.grids[0]
 
     # def set_units(self):
     #     """
     #     Overide the set_units function of Dataset: we don't have units in our
-    #     GeoTiff. This will need a metadatafile
+        #     GeoTiff. This will need a metadatafile
     #     """
     #     # print "set_units overide"
     #     self.set_code_units()
@@ -225,7 +248,8 @@ class YTGTiffDataset(Dataset):
 
     @classmethod
     def _is_valid(self, *args, **kwargs):
-        if not (args[0].endswith(".tif") or args[0].endswith(".tiff")): return False
+        if not (args[0].endswith(".tif") or \
+            args[0].endswith(".tiff")): return False
         with rasterio.open(args[0], "r") as f:
             driver_type = f.meta["driver"]
             # if data_type == "uint16":
@@ -236,64 +260,127 @@ class YTGTiffDataset(Dataset):
 
 class LandSatGTiffDataSet(YTGTiffDataset):
     """"""
+    _index_class = LandSatGTiffHierarchy
+
     def __init__(self, filename):
         super(YTGTiffDataset, self).__init__(filename,
-                                             self._dataset_type,
-                                             units_override=self.units_override)
+                                        self._dataset_type,
+                                        units_override=self.units_override)
         self.data = self.index.grids[0]
 
     def _parse_parameter_file(self):
 
         # self.parameter_filename is the dir str
         if self.parameter_filename[-1] == '/':
-            self.data_dir = self.parameter_filename 
+            self.data_dir = self.parameter_filename
+            self.mtlfile = self.data_dir + self.parameter_filename[:-1] + '_MTL.txt'
+            self.angfile = self.data_dir + self.parameter_filename[:-1] + '_ANG.txt'
         else:
             self.data_dir = self.parameter_filename + '/'
+            self.mtlfile = self.data_dir + self.parameter_filename + '_MTL.txt'
+            self.angfile = self.data_dir + self.parameter_filename + '_ANG.txt'
 
-        files = glob.glob(self.data_dir+'*')
+        # load metadata files
+        self.parameters.update(parse_awslandsat_metafile(self.angfile))
+        self.parameters.update(parse_awslandsat_metafile(self.mtlfile))
+
+        # get list of filekeys
+        filekeys = [s for s in self.parameters.keys() if 'FILE_NAME_BAND_' in s]
+        files = [self.data_dir + self.parameters[filekey] for filekey in filekeys]
         
+        # take the parameters displayed in the filename
+        self._parse_landsat_filename_data(self.parameter_filename)
 
         for filename in files:
+            band = filename.split('.')[0].split('B')[1]
             # filename = self.parameters[band]
             with rasterio.open(filename, "r") as f:
                 for key in f.meta.keys():
+                    # skip key if already defined as a parameter
+                    if key in self.parameters.keys(): continue
                     v = f.meta[key]
                     # if key == "con_args":
                     #     v = v.astype("str")
-                    self.parameters[key] = v
+                    self.parameters[(band, key)] = v
                 self._with_parameter_file_open(f)
                 # self.parameters['transform'] = f.transform
 
-            # # No time steps/snapshots
-            self.current_time = 0.
-            self.unique_identifier = 0
-            self.parameters["cosmological_simulation"] = False
-            self.domain_dimensions = np.array([self.parameters['height'],
-                                               self.parameters['width'],
-                                               1], dtype=np.int32)
-            self.dimensionality = 3
-            rightedge_xy = left_aligned_coord_cal(self.domain_dimensions[0],
-                                              self.domain_dimensions[1],
-                                              self.parameters['transform'])
-            # self.domain_left_edge = np.zeros(self.dimensionality,
-            #                                            dtype=np.float64)
-            # self.domain_right_edge = np.array([rightedge_xy[0],
-            #                                   rightedge_xy[1],
-            #                                   1], dtype=np.float64)
+            if band == '1':
+                # # No time steps/snapshots
+                self.current_time = 0.
+                self.unique_identifier = 0
+                self.parameters["cosmological_simulation"] = False
+                self.domain_dimensions = np.array([self.parameters[(band, 'height')],
+                                                   self.parameters[(band, 'width')],
+                                                   1], dtype=np.int32)
+                self.dimensionality = 3
+                rightedge_xy = left_aligned_coord_cal(self.domain_dimensions[0],
+                                                  self.domain_dimensions[1],
+                                                  self.parameters[(band, 'transform')])
+                # self.domain_left_edge = np.zeros(self.dimensionality,
+                #                                            dtype=np.float64)
+                # self.domain_right_edge = np.array([rightedge_xy[0],
+                #                                   rightedge_xy[1],
+                #                                   1], dtype=np.float64)
 
-            self.domain_left_edge = self.arr(np.zeros(self.dimensionality,
-                                                       dtype=np.float64), 'm')
-            self.domain_right_edge = self.arr([rightedge_xy[0],
-                                              rightedge_xy[1],
-                                              1], 'm', dtype=np.float64)
+                self.domain_left_edge = self.arr(np.zeros(self.dimensionality,
+                                                           dtype=np.float64), 'm')
+                self.domain_right_edge = self.arr([rightedge_xy[0],
+                                                  rightedge_xy[1],
+                                                  1], 'm', dtype=np.float64)
+
+    def _parse_landsat_filename_data(self, filename):
+        """
+        "LXSS_LLLL_PPPRRR_YYYYMMDD_yyyymmdd_CC_TX"
+        L = Landsat
+        X = Sensor ("C"=OLI/TIRS combined,
+                    "O"=OLI-only, "T"=TIRS-only, 
+                    E"=ETM+, "T"="TM, "M"=MSS)
+        SS = Satellite ("07"=Landsat 7, "08"=Landsat 8)
+        LLLL = Processing correction level (L1TP/L1GT/L1GS)
+        PPP = WRS path
+        RRR = WRS row
+        YYYYMMDD = Acquisition year, month, day
+        yyyymmdd - Processing year, month, day
+        CC = Collection number (01, 02, …)
+        TX = Collection category ("RT"=Real-Time, "T1"=Tier 1,
+                                  "T2"=Tier 2)
+        """
+        sensor = {"C": "OLI&TIRS combined",
+                  "O":"OLI-only", "T":"TIRS-only", 
+                  "E":"ETM+", "T":"TM", "M":"MSS"}
+        satellite = {"07":"Landsat 7",
+                     "08":"Landsat 8"}
+        category = {"RT":"Real-Time", "T1":"Tier 1",
+                               "T2":"Tier 2"}
+
+        self.parameters['sensor'] = sensor[filename[1]]
+        self.parameters['satellite'] = satellite[filename[2:4]]
+        self.parameters['level'] = filename[5:9]
+
+        self.parameters['wrs'] = {'path': filename[10:13],
+                                  'row': filename[13:16]}
+
+        self.parameters['acquisition_time'] = {'year':filename[17:21],
+                                               'month':filename[21:23],
+                                               'day':filename[23:25]}
+        self.parameters['processing_time'] = {'year':filename[26:30],
+                                              'month':filename[30:32],
+                                              'day':filename[32:34]}
+        self.parameters['collection'] = {
+                                'number': filename[35:37],
+                                'category': category[filename[38:40]]}
+
 
     @classmethod
     def _is_valid(self, *args, **kwargs):
         if not os.path.isdir(args[0]): return False
-        if len(glob.glob(args[0]+'/*_ANG.txt')) != 1 and\
-           len(glob.glob(args[0]+'/*_MTL.txt')) != 1: return False
+        print(args[0])
+        if len(glob.glob(args[0]+'/L*_ANG.txt')) != 1 and\
+           len(glob.glob(args[0]+'/L*_MTL.txt')) != 1: return False
         try:
-            file = glob.glob(args[0]+'/*_.tiff')[0] # open the first file
+            file = glob.glob(args[0]+'/*.TIF')[0] # open the first file
+            print(file)
             with rasterio.open(file, "r") as f:
                 # data_type = parse_gtif_attr(f, "dtype")
                 driver_type = f.meta["driver"]
