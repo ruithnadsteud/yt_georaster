@@ -13,12 +13,15 @@ import glob
 import weakref
 import numpy as np
 import rasterio
+from collections import defaultdict
 
 
 from yt.data_objects.static_output import \
     Dataset
 from yt.frontends.ytdata.data_structures import \
     YTGridHierarchy, YTGrid
+from yt.geometry.geometry_handler import \
+    YTDataChunk
 # from yt.data_objects.grid_patch import \
 #     AMRGridPatch
 
@@ -128,6 +131,20 @@ class LandSatGTiffHierarchy(YTGTiffHierarchy):
             field_name = (group, band)
             self.field_list.append(field_name)
             self.ds.field_units[field_name] = ""
+
+    # # copied from enzo frontend
+    # def _chunk_io(self, dobj, cache = True, local_only = False):
+    #     gfiles = defaultdict(list)
+    #     gobjs = getattr(dobj._current_chunk, "objs", dobj._chunk_info)
+    #     for g in gobjs:
+    #         gfiles[g.filename].append(g)
+    #     for fn in sorted(gfiles):
+    #         if local_only:
+    #             gobjs = [g for g in gfiles[fn] if g.proc_num == self.comm.rank]
+    #             gfiles[fn] = gobjs
+    #         gs = gfiles[fn]
+    #         count = self._count_selection(dobj, gs)
+    #         yield YTDataChunk(dobj, "io", gs, count, cache = cache)
 
 class YTGTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
@@ -287,6 +304,7 @@ class LandSatGTiffDataSet(YTGTiffDataset):
         # get list of filekeys
         filekeys = [s for s in self.parameters.keys() if 'FILE_NAME_BAND_' in s]
         files = [self.data_dir + self.parameters[filekey] for filekey in filekeys]
+        self.parameters['count'] = len(filekeys)
         
         # take the parameters displayed in the filename
         self._parse_landsat_filename_data(self.parameter_filename)
