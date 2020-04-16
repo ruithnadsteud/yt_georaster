@@ -28,7 +28,9 @@ class IOHandlerYTGTiff(IOHandlerYTGridHDF5):
     def _read_fluid_selection(self, chunks, selector, fields, size):
         rv = {}
         # Now we have to do something unpleasant
+        print(chunks)
         chunks = list(chunks)
+        print(chunks)
         if isinstance(selector, GridSelector):
             if not (len(chunks) == len(chunks[0].objs) == 1):
                 raise RuntimeError
