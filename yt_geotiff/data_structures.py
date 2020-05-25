@@ -127,7 +127,7 @@ class LandSatGTiffHierarchy(YTGTiffHierarchy):
 
         group = 'bands'
         for file in files:
-            band = file.split('.')[0].split('B')[1]
+            band = file.split(os.path.sep)[-1].split('.')[0].split('B')[1]
             field_name = (group, band)
             self.field_list.append(field_name)
             self.ds.field_units[field_name] = ""
@@ -290,13 +290,12 @@ class LandSatGTiffDataSet(YTGTiffDataset):
         # self.parameter_filename is the dir str
         if self.parameter_filename[-1] == '/':
             self.data_dir = self.parameter_filename
-            self.mtlfile = self.data_dir + self.parameter_filename[:-1] + '_MTL.txt'
-            self.angfile = self.data_dir + self.parameter_filename[:-1] + '_ANG.txt'
+            self.mtlfile = self.data_dir + self.parameter_filename[:-1].split(os.path.sep)[-1] + '_MTL.txt'
+            self.angfile = self.data_dir + self.parameter_filename[:-1].split(os.path.sep)[-1] + '_ANG.txt'
         else:
             self.data_dir = self.parameter_filename + '/'
-            self.mtlfile = self.data_dir + self.parameter_filename + '_MTL.txt'
-            self.angfile = self.data_dir + self.parameter_filename + '_ANG.txt'
-
+            self.mtlfile = self.data_dir + self.parameter_filename.split(os.path.sep)[-1] + '_MTL.txt'
+            self.angfile = self.data_dir + self.parameter_filename .split(os.path.sep)[-1]+ '_ANG.txt'
         # load metadata files
         self.parameters.update(parse_awslandsat_metafile(self.angfile))
         self.parameters.update(parse_awslandsat_metafile(self.mtlfile))
@@ -305,12 +304,11 @@ class LandSatGTiffDataSet(YTGTiffDataset):
         filekeys = [s for s in self.parameters.keys() if 'FILE_NAME_BAND_' in s]
         files = [self.data_dir + self.parameters[filekey] for filekey in filekeys]
         self.parameters['count'] = len(filekeys)
-        
         # take the parameters displayed in the filename
-        self._parse_landsat_filename_data(self.parameter_filename)
+        self._parse_landsat_filename_data(self.parameter_filename.split(os.path.sep)[-1])
 
         for filename in files:
-            band = filename.split('.')[0].split('B')[1]
+            band = filename.split(os.path.sep)[-1].split('.')[0].split('B')[1]
             # filename = self.parameters[band]
             with rasterio.open(filename, "r") as f:
                 for key in f.meta.keys():
@@ -365,12 +363,12 @@ class LandSatGTiffDataSet(YTGTiffDataset):
                                   "T2"=Tier 2)
         """
         sensor = {"C": "OLI&TIRS combined",
-                  "O":"OLI-only", "T":"TIRS-only", 
-                  "E":"ETM+", "T":"TM", "M":"MSS"}
-        satellite = {"07":"Landsat 7",
-                     "08":"Landsat 8"}
-        category = {"RT":"Real-Time", "T1":"Tier 1",
-                               "T2":"Tier 2"}
+                  "O": "OLI-only", "T": "TIRS-only",
+                  "E": "ETM+", "T": "TM", "M": "MSS"}
+        satellite = {"07": "Landsat 7",
+                     "08": "Landsat 8"}
+        category = {"RT": "Real-Time", "T1": "Tier 1",
+                    "T2": "Tier 2"}
 
         self.parameters['sensor'] = sensor[filename[1]]
         self.parameters['satellite'] = satellite[filename[2:4]]
@@ -379,26 +377,23 @@ class LandSatGTiffDataSet(YTGTiffDataset):
         self.parameters['wrs'] = {'path': filename[10:13],
                                   'row': filename[13:16]}
 
-        self.parameters['acquisition_time'] = {'year':filename[17:21],
-                                               'month':filename[21:23],
-                                               'day':filename[23:25]}
-        self.parameters['processing_time'] = {'year':filename[26:30],
-                                              'month':filename[30:32],
-                                              'day':filename[32:34]}
+        self.parameters['acquisition_time'] = {'year': filename[17:21],
+                                               'month': filename[21:23],
+                                               'day': filename[23:25]}
+        self.parameters['processing_time'] = {'year': filename[26:30],
+                                              'month': filename[30:32],
+                                              'day': filename[32:34]}
         self.parameters['collection'] = {
                                 'number': filename[35:37],
                                 'category': category[filename[38:40]]}
 
-
     @classmethod
     def _is_valid(self, *args, **kwargs):
         if not os.path.isdir(args[0]): return False
-        print(args[0])
         if len(glob.glob(args[0]+'/L*_ANG.txt')) != 1 and\
            len(glob.glob(args[0]+'/L*_MTL.txt')) != 1: return False
         try:
             file = glob.glob(args[0]+'/*.TIF')[0] # open the first file
-            print(file)
             with rasterio.open(file, "r") as f:
                 # data_type = parse_gtif_attr(f, "dtype")
                 driver_type = f.meta["driver"]
