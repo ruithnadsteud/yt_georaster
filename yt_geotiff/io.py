@@ -4,10 +4,8 @@ yt_geotiff data-file handling function.
 
 
 """
-from collections import defaultdict
 
 import numpy as np
-
 import rasterio
 
 from yt.geometry.selection_routines import \
@@ -56,9 +54,6 @@ class IOHandlerYTGTiff(IOHandlerYTGridHDF5):
             ftype, fname = field
             fsize = size
             rv[field] = np.empty(fsize, dtype="float64")
-        ng = sum(len(c.objs) for c in chunks)
-        # mylog.debug("Reading %s cells of %s fields in %s grids",
-        #            size, [f2 for f1, f2 in fields], ng)
         ind = 0
         for chunk in chunks:
             src = None

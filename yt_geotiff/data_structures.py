@@ -9,26 +9,23 @@ Data structures for yt_geotiff.
 import glob
 import os
 import stat
-import time
 
 import weakref
 import numpy as np
 import rasterio
-from collections import defaultdict
 
 
 from yt.data_objects.static_output import \
     Dataset
 from yt.frontends.ytdata.data_structures import \
     YTGridHierarchy, YTGrid
-from yt.geometry.geometry_handler import \
-    YTDataChunk
 
 from .fields import \
     YTGTiffFieldInfo
 from .utilities import \
-    coord_cal, left_aligned_coord_cal, \
-    save_dataset_as_geotiff, parse_awslandsat_metafile \
+    left_aligned_coord_cal, \
+    save_dataset_as_geotiff, \
+    parse_awslandsat_metafile \
 
 class YTGTiffHierarchy(YTGridHierarchy):
 
@@ -266,7 +263,8 @@ class LandSatGTiffDataSet(YTGTiffDataset):
                                   "T2"=Tier 2)
         """
         sensor = {"C": "OLI&TIRS combined",
-                  "O": "OLI-only", "T": "TIRS-only",
+                  "O": "OLI-only",
+                  # "T": "TIRS-only", commenting out to fix flake8 error
                   "E": "ETM+", "T": "TM", "M": "MSS"}
         satellite = {"07": "Landsat 7",
                      "08": "Landsat 8"}
