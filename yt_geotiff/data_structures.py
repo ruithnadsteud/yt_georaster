@@ -18,88 +18,18 @@ from .utilities import \
     parse_awslandsat_metafile \
 
 class GeoTiffHierarchy(YTGridHierarchy):
-
-    _data_file = None 
-
-    def __init__(self, ds, dataset_type = None):
-        self.dataset = weakref.proxy(ds)
-        self.index_filename = os.path.abspath(
-            self.dataset.parameter_filename)
-        super(GeoTiffHierarchy, self).__init__(ds, dataset_type)
-
     def _detect_output_fields(self):
         self.field_list = []
         self.ds.field_units = self.ds.field_units or {}
         with rasterio.open(self.ds.parameter_filename, "r") as f:
             group = 'bands'
             for _i in range(1, f.count + 1):
-                # group = f.read(_i)
-                field_name = (str(group), str(_i))
+                field_name = (group, str(_i))
                 self.field_list.append(field_name)
                 self.ds.field_units[field_name] = ""
 
     def _count_grids(self):
         self.num_grids = 1
-
-    def _parse_index(self):
-        """
-        this must fill in grid_left_edge, grid_right_edge, grid_particle_count,
-        grid_dimensions and grid_levels with the appropriate information. Each
-        of these variables is an array, with an entry for each of the
-        self.num_grids grids. Additionally, grids must be an array of
-        AMRGridPatch objects that already know their IDs.
-        """
-        self.grid_dimensions[:] = self.ds.domain_dimensions
-        self.grid_left_edge[:] = self.ds.domain_left_edge
-        self.grid_right_edge[:] = self.ds.domain_right_edge
-        self.grid_levels[:] = np.zeros(self.num_grids)
-        self.grid_procs = np.zeros(self.num_grids)
-        self.grid_particle_count[:] = 0
-        self.grids = []
-        for gid in range(self.num_grids):
-            self.grids.append(self.grid(gid, self))
-            self.grids[gid].Level = self.grid_levels[gid, 0]
-        self.max_level = self.grid_levels.max()
-        temp_grids = np.empty(self.num_grids, dtype='object')
-        for i, grid in enumerate(self.grids):
-            grid.filename = self.ds.parameter_filename
-            grid._prepare_grid()
-            grid.proc_num = self.grid_procs[i]
-            temp_grids[i] = grid
-        self.grids = temp_grids
-
-    def _populate_grid_objects(self):
-        """
-        this initializes the grids by calling _prepare_grid() and _setup_dx()
-        on all of them. Additionally, it should set up Children and Parent
-        lists on each grid object.
-        """
-        for g in self.grids:
-            g._setup_dx()
-        self.max_level = self.grid_levels.max()
-
-class LandSatGeoTiffHierarchy(GeoTiffHierarchy):
-
-    def __init__(self, ds, dataset_type = None):
-        self.dataset = weakref.proxy(ds)
-        self.index_filename = os.path.abspath(
-            self.dataset.parameter_filename)
-        super(LandSatGeoTiffHierarchy, self).__init__(ds, dataset_type)
-
-    def _detect_output_fields(self):
-        self.field_list = []
-        self.ds.field_units = self.ds.field_units or {}
-
-        # get list of filekeys
-        filekeys = [s for s in self.ds.parameters.keys() if 'FILE_NAME_BAND_' in s]
-        files = [self.ds.data_dir + self.ds.parameters[filekey] for filekey in filekeys]
-
-        group = 'bands'
-        for file in files:
-            band = file.split(os.path.sep)[-1].split('.')[0].split('B')[1]
-            field_name = (group, band)
-            self.field_list.append(field_name)
-            self.ds.field_units[field_name] = ""
 
 class GeoTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
@@ -119,13 +49,15 @@ class GeoTiffDataset(Dataset):
         self.data = self.index.grids[0]
 
     def _parse_parameter_file(self):
+        self.num_particles = {}
+
         with rasterio.open(self.parameter_filename, "r") as f:
             for key in f.meta.keys():
                 v = f.meta[key]
                 self.parameters[key] = v
             # self.parameters['transform'] = f.transform
 
-        # TODO: can we get time info from metadata?
+        ### TODO: can we get time info from metadata?
         self.current_time = 0.
         self.unique_identifier = \
             int(os.stat(self.parameter_filename)[stat.ST_CTIME])
@@ -161,7 +93,7 @@ class GeoTiffDataset(Dataset):
                 self.field_info.alias(("gas", field), ("grid", field))
 
     def save_as(self, filename):
-
+        ### TODO: generalize this to save any dataset type as GeoTiff.
         return save_dataset_as_geotiff(self, filename)
 
     @classmethod
@@ -173,6 +105,22 @@ class GeoTiffDataset(Dataset):
             if driver_type == "GTiff":
                 return True
         return False
+
+class LandSatGeoTiffHierarchy(GeoTiffHierarchy):
+    def _detect_output_fields(self):
+        self.field_list = []
+        self.ds.field_units = self.ds.field_units or {}
+
+        # get list of filekeys
+        filekeys = [s for s in self.ds.parameters.keys() if 'FILE_NAME_BAND_' in s]
+        files = [self.ds.data_dir + self.ds.parameters[filekey] for filekey in filekeys]
+
+        group = 'bands'
+        for file in files:
+            band = file.split(os.path.sep)[-1].split('.')[0].split('B')[1]
+            field_name = (group, band)
+            self.field_list.append(field_name)
+            self.ds.field_units[field_name] = ""
 
 class LandSatGeoTiffDataSet(GeoTiffDataset):
     """"""
