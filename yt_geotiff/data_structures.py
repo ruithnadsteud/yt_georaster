@@ -24,24 +24,11 @@ from yt.frontends.ytdata.data_structures import \
 from yt.geometry.geometry_handler import \
     YTDataChunk
 
-from yt import YTArray
-
 from .fields import \
     YTGTiffFieldInfo
 from .utilities import \
     coord_cal, left_aligned_coord_cal, \
     save_dataset_as_geotiff, parse_awslandsat_metafile \
-
-
-class YTGTiffGrid(YTGrid):
-    _id_offset = 0
-    # __slots__ = ["_level_id"]
-    def __init__(self, id, index, level=-1):
-        YTGrid.__init__(self, id, filename=index.index_filename,
-                              index=index)
-        # self.Parent = None
-        # self.Children = []
-        # self.Level = level
 
 class YTGTiffHierarchy(YTGridHierarchy):
 
