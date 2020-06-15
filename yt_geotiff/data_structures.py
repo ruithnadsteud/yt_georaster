@@ -22,8 +22,6 @@ from yt.frontends.ytdata.data_structures import \
     YTGridHierarchy, YTGrid
 from yt.geometry.geometry_handler import \
     YTDataChunk
-# from yt.data_objects.grid_patch import \
-#     AMRGridPatch
 
 from yt import YTArray
 
@@ -104,9 +102,6 @@ class YTGTiffHierarchy(YTGridHierarchy):
         """
         for g in self.grids:
             g._setup_dx()
-            # # this is non-spatial, so remove the code_length units
-            # g.dds = self.ds.arr(g.dds.d, "")
-            # g.ActiveDimensions = self.ds.domain_dimensions
         self.max_level = self.grid_levels.max()
 
 class LandSatGTiffHierarchy(YTGTiffHierarchy):
@@ -132,20 +127,6 @@ class LandSatGTiffHierarchy(YTGTiffHierarchy):
             self.field_list.append(field_name)
             self.ds.field_units[field_name] = ""
 
-    # # copied from enzo frontend
-    # def _chunk_io(self, dobj, cache = True, local_only = False):
-    #     gfiles = defaultdict(list)
-    #     gobjs = getattr(dobj._current_chunk, "objs", dobj._chunk_info)
-    #     for g in gobjs:
-    #         gfiles[g.filename].append(g)
-    #     for fn in sorted(gfiles):
-    #         if local_only:
-    #             gobjs = [g for g in gfiles[fn] if g.proc_num == self.comm.rank]
-    #             gfiles[fn] = gobjs
-    #         gs = gfiles[fn]
-    #         count = self._count_selection(dobj, gs)
-    #         yield YTDataChunk(dobj, "io", gs, count, cache = cache)
-
 class YTGTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
     _index_class = YTGTiffHierarchy
@@ -153,8 +134,7 @@ class YTGTiffDataset(Dataset):
     _dataset_type = 'ytgeotiff'
     geometry = "cartesian"
     default_fluid_type = "bands"
-    # fluid_types = ("grid", "gas", "deposit", "index")
-    fluid_types = ("bands", "index") #"grid", "index")
+    fluid_types = ("bands", "index")
     periodicity = np.zeros(3, dtype=bool)
     units_override = {'length': 'm', # geotiff projection units
                       'time': 's'}
@@ -167,21 +147,10 @@ class YTGTiffDataset(Dataset):
                                         units_override=self.units_override)
         self.data = self.index.grids[0]
 
-    # def set_units(self):
-    #     """
-    #     Overide the set_units function of Dataset: we don't have units in our
-        #     GeoTiff. This will need a metadatafile
-    #     """
-    #     # print "set_units overide"
-    #     self.set_code_units()
-
     def _parse_parameter_file(self):
-        # self.refine_by = 2
         with rasterio.open(self.parameter_filename, "r") as f:
             for key in f.meta.keys():
                 v = f.meta[key]
-                # if key == "con_args":
-                #     v = v.astype("str")
                 self.parameters[key] = v
             self._with_parameter_file_open(f)
             # self.parameters['transform'] = f.transform
@@ -197,11 +166,6 @@ class YTGTiffDataset(Dataset):
         rightedge_xy = left_aligned_coord_cal(self.domain_dimensions[0],
                                           self.domain_dimensions[1],
                                           self.parameters['transform'])
-        # self.domain_left_edge = np.zeros(self.dimensionality,
-        #                                            dtype=np.float64)
-        # self.domain_right_edge = np.array([rightedge_xy[0],
-        #                                   rightedge_xy[1],
-        #                                   1], dtype=np.float64)
 
         self.domain_left_edge = self.arr(np.zeros(self.dimensionality,
                                                    dtype=np.float64), 'm')
@@ -219,13 +183,6 @@ class YTGTiffDataset(Dataset):
         base_units = np.ones(len(attrs), dtype=np.float64)
         for unit, attr, si_unit in zip(base_units, attrs, si_units):
             setattr(self, attr, self.quan(unit, si_unit))
-
-    # def _override_code_units(self):
-    #     pass
-        # setattr(self, 'length_unit', self.quan(1.0, 'm'))
-        # setattr(self, 'time_unit', self.quan(1.0, 's'))
-        # setattr(self, 'code_length', self.quan(1.0, 'm'))
-        # setattr(self, 'code_time', self.quan(1.0, 's'))
 
     def create_field_info(self):
         self.field_dependencies = {}
@@ -269,8 +226,6 @@ class YTGTiffDataset(Dataset):
             args[0].endswith(".tiff")): return False
         with rasterio.open(args[0], "r") as f:
             driver_type = f.meta["driver"]
-            # if data_type == "uint16":
-            #     return True
             if driver_type == "GTiff":
                 return True
         return False
@@ -333,11 +288,6 @@ class LandSatGTiffDataSet(YTGTiffDataset):
                 rightedge_xy = left_aligned_coord_cal(self.domain_dimensions[0],
                                                   self.domain_dimensions[1],
                                                   self.parameters[(band, 'transform')])
-                # self.domain_left_edge = np.zeros(self.dimensionality,
-                #                                            dtype=np.float64)
-                # self.domain_right_edge = np.array([rightedge_xy[0],
-                #                                   rightedge_xy[1],
-                #                                   1], dtype=np.float64)
 
                 self.domain_left_edge = self.arr(np.zeros(self.dimensionality,
                                                            dtype=np.float64), 'm')
