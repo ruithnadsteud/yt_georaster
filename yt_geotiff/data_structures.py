@@ -6,9 +6,10 @@ Data structures for yt_geotiff.
 """
 
 
-import os
-import time
 import glob
+import os
+import stat
+import time
 
 import weakref
 import numpy as np
@@ -80,7 +81,7 @@ class YTGTiffHierarchy(YTGridHierarchy):
         self.grid_right_edge[:] = self.ds.domain_right_edge
         self.grid_levels[:] = np.zeros(self.num_grids)
         self.grid_procs = np.zeros(self.num_grids)
-        self.grid_particle_count[:] = sum(self.ds.num_particles.values())
+        self.grid_particle_count[:] = 0
         self.grids = []
         for gid in range(self.num_grids):
             self.grids.append(self.grid(gid, self))
@@ -136,15 +137,12 @@ class YTGTiffDataset(Dataset):
     default_fluid_type = "bands"
     fluid_types = ("bands", "index")
     periodicity = np.zeros(3, dtype=bool)
-    units_override = {'length': 'm', # geotiff projection units
-                      'time': 's'}
 
     _con_attrs = ()
 
     def __init__(self, filename):
         super(YTGTiffDataset, self).__init__(filename,
-                                        self._dataset_type,
-                                        units_override=self.units_override)
+                                        self._dataset_type)
         self.data = self.index.grids[0]
 
     def _parse_parameter_file(self):
@@ -152,13 +150,14 @@ class YTGTiffDataset(Dataset):
             for key in f.meta.keys():
                 v = f.meta[key]
                 self.parameters[key] = v
-            self._with_parameter_file_open(f)
             # self.parameters['transform'] = f.transform
 
-        # # No time steps/snapshots
+        # TODO: can we get time info from metadata?
         self.current_time = 0.
-        self.unique_identifier = 0
-        self.parameters["cosmological_simulation"] = False
+        self.unique_identifier = \
+            int(os.stat(self.parameter_filename)[stat.ST_CTIME])
+
+        self.cosmological_simulation = False
         self.domain_dimensions = np.array([self.parameters['height'],
                                            self.parameters['width'],
                                            1], dtype=np.int32)
@@ -173,9 +172,6 @@ class YTGTiffDataset(Dataset):
                                           rightedge_xy[1],
                                           1], 'm', dtype=np.float64)
 
-        # Overide the code units as no units are provided
-        self._override_code_units()
-
     def _set_code_unit_attributes(self):
         attrs = ('length_unit', 'mass_unit', 'time_unit',
                  'velocity_unit', 'magnetic_unit')
@@ -183,31 +179,6 @@ class YTGTiffDataset(Dataset):
         base_units = np.ones(len(attrs), dtype=np.float64)
         for unit, attr, si_unit in zip(base_units, attrs, si_units):
             setattr(self, attr, self.quan(unit, si_unit))
-
-    def create_field_info(self):
-        self.field_dependencies = {}
-        self.derived_field_list = []
-        self.filtered_particle_types = []
-        self.field_info = self._field_info_class(self, self.field_list)
-        self.coordinates.setup_fields(self.field_info)
-        self.field_info.setup_fluid_fields()
-        for ptype in self.particle_types:
-            self.field_info.setup_particle_fields(ptype)
-
-        self._setup_gas_alias()
-        self.field_info.setup_fluid_index_fields()
-        self.field_info.setup_extra_union_fields()
-        # mylog.debug("Loading field plugins.")
-        self.field_info.load_all_plugins()
-        deps, unloaded = self.field_info.check_derived_fields()
-        self.field_dependencies.update(deps)
-
-    def _setup_override_fields(self):
-        pass
-
-    def _with_parameter_file_open(self, f):
-        self.num_particles = \
-          dict([('n', 0)])
 
     def _setup_gas_alias(self):
         "Alias the grid type to gas with a field alias."
@@ -234,13 +205,12 @@ class LandSatGTiffDataSet(YTGTiffDataset):
     """"""
     _index_class = LandSatGTiffHierarchy
 
-    def __init__(self, filename):
-        super(YTGTiffDataset, self).__init__(filename,
-                                        self._dataset_type,
-                                        units_override=self.units_override)
-        self.data = self.index.grids[0]
-
     def _parse_parameter_file(self):
+        self.current_time = 0.
+        self.unique_identifier = \
+            int(os.stat(self.parameter_filename)[stat.ST_CTIME])
+
+        self.cosmological_simulation = False
 
         # self.parameter_filename is the dir str
         if self.parameter_filename[-1] == '/':
@@ -277,10 +247,6 @@ class LandSatGTiffDataSet(YTGTiffDataset):
                 # self.parameters['transform'] = f.transform
 
             if band == '1':
-                # # No time steps/snapshots
-                self.current_time = 0.
-                self.unique_identifier = 0
-                self.parameters["cosmological_simulation"] = False
                 self.domain_dimensions = np.array([self.parameters[(band, 'height')],
                                                    self.parameters[(band, 'width')],
                                                    1], dtype=np.int32)
