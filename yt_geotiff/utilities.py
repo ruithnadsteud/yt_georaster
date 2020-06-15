@@ -33,10 +33,8 @@ def left_aligned_coord_cal(xcell, ycell, transform):
     xp, yp = coord_cal(xcell, ycell, transform)
     # convert to meters
     x_arc_dist = (xp - xmin)# * np.pi/180. * rEarth
-    y_arc_dist = (ymax - yp)# * np.pi/180. * rEarth # (0, 0) corresponds to
-                                                  # (xmin, ymax)
+    y_arc_dist = (ymax - yp)# * np.pi/180. * rEarth # (0, 0) corresponds to (xmin, ymax)
     return x_arc_dist, y_arc_dist
-
 
 def parse_awslandsat_metafile(filename, flatdict=True):
     """Function to read in metadata/parameter file and output it as a dict.
