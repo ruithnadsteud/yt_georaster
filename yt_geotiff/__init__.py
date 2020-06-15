@@ -1,22 +1,10 @@
-"""
-API for geotiff frontend.
-
-
-
-
-"""
-
-from .utilities import \
-    coord_cal
-
 from .data_structures import \
-    YTGTiffDataset
+    GeoTiffDataset
 
 from .io import \
-    IOHandlerYTGTiff
+    IOHandlerGeoTiff
 
 from .fields import \
-    YTGTiffFieldInfo
+    GeoTiffFieldInfo
 
-
-__version__ = '0.dev'
+__version__ = '1.0.dev0'

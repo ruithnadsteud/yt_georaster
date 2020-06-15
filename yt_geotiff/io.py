@@ -1,10 +1,3 @@
-"""
-yt_geotiff data-file handling function.
-
-
-
-"""
-
 import numpy as np
 import rasterio
 
@@ -14,14 +7,13 @@ from yt.geometry.selection_routines import \
 from yt.frontends.ytdata.io import \
     IOHandlerYTGridHDF5
 
-
-class IOHandlerYTGTiff(IOHandlerYTGridHDF5):
-    _dataset_type = "ytgeotiff"
+class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
+    _dataset_type = "geotiff"
     _base = slice(None)
     _field_dtype = "float64"
 
     def __init__(self, ds, *args, **kwargs):
-        super(IOHandlerYTGTiff, self).__init__(ds)
+        super(IOHandlerGeoTiff, self).__init__(ds)
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
         rv = {}
