@@ -1,42 +1,31 @@
-"""
-Data structures for yt_geotiff.
-
-
-
-"""
-
-
 import glob
-import os
-import stat
-
-import weakref
 import numpy as np
+import os
 import rasterio
-
+import stat
+import weakref
 
 from yt.data_objects.static_output import \
     Dataset
 from yt.frontends.ytdata.data_structures import \
-    YTGridHierarchy, YTGrid
+    YTGridHierarchy
 
 from .fields import \
-    YTGTiffFieldInfo
+    GeoTiffFieldInfo
 from .utilities import \
     left_aligned_coord_cal, \
     save_dataset_as_geotiff, \
     parse_awslandsat_metafile \
 
-class YTGTiffHierarchy(YTGridHierarchy):
+class GeoTiffHierarchy(YTGridHierarchy):
 
-    grid = YTGrid
     _data_file = None 
 
     def __init__(self, ds, dataset_type = None):
         self.dataset = weakref.proxy(ds)
         self.index_filename = os.path.abspath(
             self.dataset.parameter_filename)
-        super(YTGTiffHierarchy, self).__init__(ds, dataset_type)
+        super(GeoTiffHierarchy, self).__init__(ds, dataset_type)
 
     def _detect_output_fields(self):
         self.field_list = []
@@ -89,13 +78,13 @@ class YTGTiffHierarchy(YTGridHierarchy):
             g._setup_dx()
         self.max_level = self.grid_levels.max()
 
-class LandSatGTiffHierarchy(YTGTiffHierarchy):
+class LandSatGeoTiffHierarchy(GeoTiffHierarchy):
 
     def __init__(self, ds, dataset_type = None):
         self.dataset = weakref.proxy(ds)
         self.index_filename = os.path.abspath(
             self.dataset.parameter_filename)
-        super(LandSatGTiffHierarchy, self).__init__(ds, dataset_type)
+        super(LandSatGeoTiffHierarchy, self).__init__(ds, dataset_type)
 
     def _detect_output_fields(self):
         self.field_list = []
@@ -112,11 +101,11 @@ class LandSatGTiffHierarchy(YTGTiffHierarchy):
             self.field_list.append(field_name)
             self.ds.field_units[field_name] = ""
 
-class YTGTiffDataset(Dataset):
+class GeoTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
-    _index_class = YTGTiffHierarchy
-    _field_info_class = YTGTiffFieldInfo
-    _dataset_type = 'ytgeotiff'
+    _index_class = GeoTiffHierarchy
+    _field_info_class = GeoTiffFieldInfo
+    _dataset_type = 'geotiff'
     geometry = "cartesian"
     default_fluid_type = "bands"
     fluid_types = ("bands", "index")
@@ -125,7 +114,7 @@ class YTGTiffDataset(Dataset):
     _con_attrs = ()
 
     def __init__(self, filename):
-        super(YTGTiffDataset, self).__init__(filename,
+        super(GeoTiffDataset, self).__init__(filename,
                                         self._dataset_type)
         self.data = self.index.grids[0]
 
@@ -185,9 +174,9 @@ class YTGTiffDataset(Dataset):
                 return True
         return False
 
-class LandSatGTiffDataSet(YTGTiffDataset):
+class LandSatGeoTiffDataSet(GeoTiffDataset):
     """"""
-    _index_class = LandSatGTiffHierarchy
+    _index_class = LandSatGeoTiffHierarchy
 
     def _parse_parameter_file(self):
         self.current_time = 0.
