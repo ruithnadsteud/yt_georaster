@@ -85,13 +85,6 @@ class GeoTiffDataset(Dataset):
         for unit, attr, si_unit in zip(base_units, attrs, si_units):
             setattr(self, attr, self.quan(unit, si_unit))
 
-    def _setup_gas_alias(self):
-        "Alias the grid type to gas with a field alias."
-
-        for ftype, field in self.field_list:
-            if ftype == "grid":
-                self.field_info.alias(("gas", field), ("grid", field))
-
     def save_as(self, filename):
         ### TODO: generalize this to save any dataset type as GeoTiff.
         return save_dataset_as_geotiff(self, filename)
