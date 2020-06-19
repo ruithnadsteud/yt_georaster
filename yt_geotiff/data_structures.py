@@ -36,10 +36,12 @@ class GeoTiffDataset(Dataset):
     _index_class = GeoTiffHierarchy
     _field_info_class = GeoTiffFieldInfo
     _dataset_type = 'geotiff'
+    _valid_extensions = ('.tif', '.tiff')
     geometry = "cartesian"
     default_fluid_type = "bands"
     fluid_types = ("bands", "index")
     periodicity = np.zeros(3, dtype=bool)
+    cosmological_simulation = False
 
     _con_attrs = ()
 
@@ -62,7 +64,6 @@ class GeoTiffDataset(Dataset):
         self.unique_identifier = \
             int(os.stat(self.parameter_filename)[stat.ST_CTIME])
 
-        self.cosmological_simulation = False
         self.domain_dimensions = np.array([self.parameters['height'],
                                            self.parameters['width'],
                                            1], dtype=np.int32)
@@ -89,11 +90,27 @@ class GeoTiffDataset(Dataset):
         ### TODO: generalize this to save any dataset type as GeoTiff.
         return save_dataset_as_geotiff(self, filename)
 
+    def __repr__(self):
+        fn = self.basename
+        for ext in self._valid_extensions:
+            if fn.endswith(ext):
+                fn = fn[:-len(ext)]
+                break
+        return fn
+
+
     @classmethod
     def _is_valid(self, *args, **kwargs):
-        if not (args[0].endswith(".tif") or \
-            args[0].endswith(".tiff")): return False
-        with rasterio.open(args[0], "r") as f:
+        fn = args[0]
+        valid = False
+        for ext in self._valid_extensions:
+            if fn.endswith(ext):
+                valid = True
+                break
+        if not valid:
+            return False
+
+        with rasterio.open(fn, "r") as f:
             driver_type = f.meta["driver"]
             if driver_type == "GTiff":
                 return True
@@ -123,8 +140,6 @@ class LandSatGeoTiffDataSet(GeoTiffDataset):
         self.current_time = 0.
         self.unique_identifier = \
             int(os.stat(self.parameter_filename)[stat.ST_CTIME])
-
-        self.cosmological_simulation = False
 
         # self.parameter_filename is the dir str
         if self.parameter_filename[-1] == '/':
