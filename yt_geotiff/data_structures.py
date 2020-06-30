@@ -3,7 +3,6 @@ import numpy as np
 import os
 import rasterio
 import stat
-import weakref
 
 from yt.data_objects.static_output import \
     Dataset
@@ -39,13 +38,14 @@ class GeoTiffDataset(Dataset):
     _valid_extensions = ('.tif', '.tiff')
     geometry = "cartesian"
     default_fluid_type = "bands"
-    fluid_types = ("bands", "index")
+    fluid_types = ("bands", "index", "sentinel2")
     periodicity = np.zeros(3, dtype=bool)
     cosmological_simulation = False
 
     _con_attrs = ()
 
-    def __init__(self, filename):
+    def __init__(self, filename, field_map=None):
+        self.field_map = field_map
         super(GeoTiffDataset, self).__init__(filename,
                                         self._dataset_type)
         self.data = self.index.grids[0]
