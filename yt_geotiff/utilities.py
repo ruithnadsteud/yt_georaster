@@ -6,6 +6,11 @@ Utility functions for yt_geotiff.
 """
 import numpy as np
 import rasterio
+from rasterio.windows import Window
+
+# AR
+import pdb # debugging library
+import yt.geometry.selection_routines as selector_shape
 
 def coord_cal(xcell, ycell, transform):
     """Function to calculate the position of cell (xcell, ycell) in terms of
@@ -128,3 +133,59 @@ def merge_dicts(*dict_args):
         result.update(dictionary)
     return result
 
+def rasterio_window_cal(grid_array):
+       """ 
+       This calculate the pixel dimensions of a given raster image that has
+       already been loaded.
+       
+       """
+       
+       print('Calculating window dimension with Rasterio formatting')
+       
+       #Window.from_slices((row_start, row_stop), (col_start, col_stop))
+       
+       window = (0, 0, grid_array.shape[0], grid_array.shape[1])
+       
+       print('offset col = '+ '0')
+       
+       print('offset row = '+ '0')
+       
+       print('width = '+str(grid_array.shape[0]))
+       
+       print('height = '+str(grid_array.shape[1]))
+       
+       return(window)
+       
+
+def rasterio_window_calc(selector):
+        """ 
+        This reads in the information required to 
+       
+        """        
+        #[30000. 40000. 42000. 52000.]
+        
+        #Window(col_off, row_off, width, height)
+        
+        #pdb.set_trace()
+        
+        if type(selector) == selector_shape.SphereSelector:
+               print('Sphere selector')
+               
+               selector_left_edge = [(selector.center[0] - selector.radius),(selector.center[1] - selector.radius), selector.center[2]]
+               selector_right_edge = [(selector.center[0] + selector.radius),(selector.center[1] + selector.radius), selector.center[2]] 
+               
+               selector_width = ((selector.radius)*2)
+               
+               selector_height = selector_width
+                                     
+        elif type(selector) == selector_shape.RegionSelector:
+               print('Box or region selector')
+               
+               selector_left_edge = selector.left_edge
+               selector_right_edge = selector.right_edge
+               
+               selector_width = 10000#selector_right_edge- selector_left_edge
+               
+               selector_height = selector_width
+                  
+        return(np.array(selector_left_edge), np.array(selector_right_edge), selector_width, selector_height)
