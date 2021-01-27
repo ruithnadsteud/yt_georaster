@@ -24,8 +24,7 @@ from .utilities import \
     parse_awslandsat_metafile \
           
 class GeoTiffWindowGrid(YTGrid):
-    #def __init__(self, window_left_edge, window_right_edge, window_dims):
-        
+    
     def __init__(self, gridobj, window_left_edge, window_right_edge, window_dims):
 
         YTSelectionContainer.__init__(self, gridobj._index.dataset, None)
@@ -43,9 +42,8 @@ class GeoTiffWindowGrid(YTGrid):
         self._parent_id = -1
         self.Level = 0
         
-        
-        #pdb.set_trace()
-        self.LeftEdge = self.ds.arr(window_left_edge,'m')
+
+        self.LeftEdge = self.ds.arr(window_left_edge,'m') # AR: put left/right edge dimensions in to a yt array
         self.RightEdge = self.ds.arr(window_right_edge,'m')
         self.ActiveDimensions = window_dims
         
@@ -54,33 +52,13 @@ class GeoTiffGrid(YTGrid):
     def select(self, selector, source, dest, offset,
                window_left_edge, window_right_edge, window_dimensions):
 
-        
-
-        # # Alternative solution:
-        # # Create GeoTiffWindowGrid object with left/right edge and dimensions of window
-        # # call select with temporary window grid object
+        # AR: call select with temporary window grid object
         temp_grid = GeoTiffWindowGrid(self,window_left_edge, window_right_edge, window_dimensions)
-       
-        pdb.set_trace()
+               
         temp_grid._setup_dx()
         rvalue = temp_grid.select(selector, source, dest, offset)
         return rvalue
 
-        #original_left_edge = self.LeftEdge
-        # original_right_edge = self.RightEdge
-
-        # self.LeftEdge = window_left_edge
-        # self.RightEdge = window_right_edge
-        # self.ActiveDimensions = np.array(window_dimensions)
-        
-        # rvalue = super(GeoTiffGrid, self).select(selector, source, dest, offset)
-        
-        # print(rvalue)
-        
-        # # Reinstate correct dimensions
-        # self.LeftEdge = original_left_edge
-        # self.RightEdge = original_right_edge
-        #return rvalue
  
 class GeoTiffHierarchy(YTGridHierarchy):
     grid = GeoTiffGrid

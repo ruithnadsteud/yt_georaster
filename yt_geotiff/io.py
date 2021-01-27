@@ -10,11 +10,9 @@ from yt.geometry.selection_routines import \
 from yt.frontends.ytdata.io import \
     IOHandlerYTGridHDF5
     
-from .utilities import rasterio_window_cal, rasterio_window_calc 
+from .utilities import rasterio_window_calc 
 
 import yt
-
-#import unyt
 
 class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
     _dataset_type = "geotiff"
@@ -48,13 +46,11 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                     continue
                 self._misses += 1
                 ftype, fname = field
-                # reading here
-                print('Reading image (for cached)')
+
                 rv[(ftype, fname)] = src.read(int(fname)).astype(self._field_dtype) # read in the band/field
                 
             if self._cache_on:
-                print('Reading into cache')                                  
-                self._cached_fields.setdefault(g.id,{})                
+                self._cached_fields.setdefault(g.id,{}) # Reading into cache               
                 self._cached_fields[g.id].update(rv)   
             return rv
                
@@ -76,35 +72,22 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                     src = rasterio.open(g.filename, "r")
                 gf = self._cached_fields.get(g.id,{})                                                          
                 nd = 0
-                
-                
-                #pdb.set_trace()     
-                
-                
-                
-                # determine the window size given selector
+                                
+                # AR: determine the window dimensions of a given selector
                 left_edge, right_edge, width, height = rasterio_window_calc(selector)                                   
                  
-                # Build Rasterio window-read format
-                #Window(col_off, row_off, width, height)
+                # AR: Build Rasterio window-read format
                 rasterio_wr_dim = Window((left_edge[0]/src.res[0]), (right_edge[0]/src.res[0]), 
-                                         (width/src.res[0]), (height/src.res[0]))
-                
-                print('left edge= ',left_edge)
-                print('right edge= ',right_edge)
-                print('width (pixels)= ',width)
-                print('height (pixels)= ',height)
-                
+                                         (width/src.res[0]), (height/src.res[0]))               
+                                
                 for field in fields:
-                    #pdb.set_trace()
                     if field in gf:   # only for cached gridded objects  
-                        print('Cache retrieval loop')
-                                                 
-                        # Add third dimension to numpy array    
+                        
+                        # AR: Add third dimension to numpy array    
                         for dim in range(len(gf[field].shape), 3): # change to 3d
                                gf[field] = np.expand_dims(gf[field], dim)
                                      
-                        nd = g.select(selector, gf[field], rv[field], ind) # calc window here # make 3d?
+                        nd = g.select(selector, gf[field], rv[field], ind)
                                                                        
                         self._hits += 1
                         continue
@@ -113,27 +96,21 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                     
                     ftype, fname = field
              
-                    #data = src.read(int(fname)).astype(self._field_dtype) # window read here    
-                    # addd devision here
-                    
-                    print('Rasterio window read')     
+                    # AR: Perform Rasterio window read
                     data = src.read(int(fname),window=rasterio_wr_dim).astype(self._field_dtype)
                                             
-                    for dim in range(len(data.shape), 3): # change to 3d
-                           
+                    for dim in range(len(data.shape), 3): # change to 3d                          
                         data = np.expand_dims(data, dim)
                                      
                     if self._cache_on:
                         self._cached_fields.setdefault(g.id, {})
                         self._cached_fields[g.id][field] = data
 
-                    pdb.set_trace()
-                    # g is a grid object
+                    # AR: Create a temporary GeoTiffWindowGrid object that matches the selector dimensions
                     nd = g.select(selector, data, rv[field], ind,
-                                  left_edge, right_edge, np.array([1000, 1000, 1])) # caches
-                     
-                    #nd = g.select(selector, data, rv[field], ind) # expecting full dataset
-                 
+                                  left_edge, right_edge, 
+                                  np.array([int(width/src.res[0]), int(height/src.res[0]), 1]))
+                                      
                 ind += nd
                 
         return rv
