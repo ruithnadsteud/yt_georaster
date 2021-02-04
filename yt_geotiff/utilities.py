@@ -9,8 +9,6 @@ import rasterio
 from rasterio.windows import Window
 from unyt import unyt_array, uconcatenate
 
-# AR
-import pdb # debugging library
 import yt.geometry.selection_routines as selector_shape
 
 def coord_cal(xcell, ycell, transform):
@@ -46,19 +44,19 @@ def parse_awslandsat_metafile(filename, flatdict=True):
     """Function to read in metadata/parameter file and output it as a dict.
     """
 
-    f = open(filename, 'r') 
+    f = open(filename, 'r')
     groupkeys = []
 
     data = {}
 
-    while True: 
+    while True:
 
         # Get next line from file
         line = f.readline().strip().replace('"', '').replace('\n', '')
 
-        # if line is empty 
-        # end of file is reached 
-        if not line or line == 'END': 
+        # if line is empty
+        # end of file is reached
+        if not line or line == 'END':
             break
         key, value = line.split(' = ')
 
@@ -78,7 +76,7 @@ def parse_awslandsat_metafile(filename, flatdict=True):
             else: # useful if keys are not unique for each band
                 data[tuple(groupkeys + [key])] = value
 
-    f.close() 
+    f.close()
 
     return data
 
@@ -86,7 +84,7 @@ def save_dataset_as_geotiff(ds, filename):
     r"""Export georeferenced dataset to a reloadable geotiff.
 
     This function is a wrapper for rasterio's geotiff writing capability. The
-    dataset used must be of the geotiff class (or made to be similar). The 
+    dataset used must be of the geotiff class (or made to be similar). The
     transform and other metadata are then taken from the dataset parameters.
     This resulting file is a multi- (or single-) band geotiff which can then be
     loaded by yt or other packages.
@@ -133,40 +131,36 @@ def merge_dicts(*dict_args):
     for dictionary in dict_args:
         result.update(dictionary)
     return result
-      
+
 
 def rasterio_window_calc(selector):
-       """ 
-       This function reads information from either a sphere, box or region selector 
-       object and outputs the dimensions of a container: left edge, right edge,
-       width and height.
-       
-       Output uses:
-              - Construct dimensions to perform a Rasterio Window Read
-              - Provide a temporary update ro the image domain size             
-       """        
-       #pdb.set_trace()
-       if type(selector) == selector_shape.SphereSelector:
-              print('Sphere selector')
-              
-              selector_left_edge = [(selector.center[0] - selector.radius),(selector.center[1] - selector.radius), selector.center[2]]
-              selector_right_edge = [(selector.center[0] + selector.radius),(selector.center[1] + selector.radius), selector.center[2]] 
-              
-              selector_width = ((selector.radius)*2)
-              
-              selector_height = selector_width
-                                    
-       elif type(selector) == selector_shape.RegionSelector:
-              print('Box or region selector')
-              
-              selector_left_edge = selector.left_edge
-              selector_right_edge = selector.right_edge
-              
-              selector_width =  selector.right_edge[0] - selector.left_edge[0]
-              
-              selector_height = selector_width
-                 
-       return(np.array(selector_left_edge), np.array(selector_right_edge), selector_width, selector_height)
+    """
+    This function reads information from either a sphere, box or region selector
+    object and outputs the dimensions of a container: left edge, right edge,
+    width and height.
+    """
+
+    if isinstance(selector, selector_shape.SphereSelector):
+
+        selector_left_edge = np.array(selector.center)
+        selector_left_edge[:2] -= selector.radius
+        selector_right_edge = np.array(selector.center)
+        selector_right_edge[:2] += selector.radius
+
+        selector_width = ((selector.radius)*2)
+
+        selector_height = selector_width
+
+    elif isinstance(selector, selector_shape.RegionSelector):
+
+        selector_left_edge = selector.left_edge
+        selector_right_edge = selector.right_edge
+
+        selector_width =  selector.right_edge[0] - selector.left_edge[0]
+
+        selector_height = selector_width
+
+    return selector_left_edge, selector_right_edge, selector_width, selector_height
 
 def validate_coord_array(ds, coord, name, padval, def_units):
     """
@@ -195,3 +189,7 @@ def validate_coord_array(ds, coord, name, padval, def_units):
 
     newc = cfunc([coord, afunc(padval.to(units))])
     return newc
+=======
+
+       return(selector_left_edge, selector_right_edge, selector_width, selector_height)
+>>>>>>> 32e2ce959a21f6a43448baee7f5982ee0fe49648
