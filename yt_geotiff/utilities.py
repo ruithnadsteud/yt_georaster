@@ -146,18 +146,14 @@ def rasterio_window_calc(selector):
         selector_left_edge[:2] -= selector.radius
         selector_right_edge = np.array(selector.center)
         selector_right_edge[:2] += selector.radius
-
-        selector_width = ((selector.radius)*2)
-
+        selector_width = selector.radius*2
         selector_height = selector_width
 
     elif isinstance(selector, selector_shape.RegionSelector):
 
         selector_left_edge = selector.left_edge
         selector_right_edge = selector.right_edge
-
         selector_width =  selector.right_edge[0] - selector.left_edge[0]
-
         selector_height = selector_width
 
     return selector_left_edge, selector_right_edge, selector_width, selector_height
@@ -189,7 +185,3 @@ def validate_coord_array(ds, coord, name, padval, def_units):
 
     newc = cfunc([coord, afunc(padval.to(units))])
     return newc
-=======
-
-       return(selector_left_edge, selector_right_edge, selector_width, selector_height)
->>>>>>> 32e2ce959a21f6a43448baee7f5982ee0fe49648
