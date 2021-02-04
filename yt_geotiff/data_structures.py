@@ -4,6 +4,8 @@ import os
 import rasterio
 import stat
 
+from unyt import unyt_array, uconcatenate
+
 import pdb
 
 from yt.data_objects.static_output import \
@@ -136,7 +138,47 @@ class GeoTiffDataset(Dataset):
                 fn = fn[:-len(ext)]
                 break
         return fn
-    
+
+    def circle(self, center, radius):
+        """
+        Create a circular data container.
+
+        Parameters
+        ----------
+        center : array_like
+            Center of the circle.
+        radius : float, width specifier, or unyt_quantity
+            The radius of the sphere. If passed a float,
+            that will be interpreted in code units. Also
+            accepts a (radius, unit) tuple or unyt_quantity
+            instance with units attached.
+        """
+
+        if not isinstance(center, np.ndarray):
+            raise ValueError(
+                f"center argument must be array-like: {center}.")
+
+        # Do this to allow circles to be easily made from other circles
+        # without having to truncate the 3D center array.
+        if center.size == 3:
+            return self.sphere(center, radius)
+        if center.size != 2:
+            raise ValueError(
+                f"center argument must be of size 2 or 3.")
+
+        zc = self.domain_center[2]
+        if isinstance(center, unyt_array):
+            cfunc = uconcatenate
+            afunc = self.arr
+            units = center.units
+            zc = self.arr([zc])
+        elif isinstance(center, np.ndarray):
+            cfunc = np.concatenate
+            afunc = np.array
+            units = "code_length"
+
+        cc = cfunc([center, afunc(zc.to(units))])
+        return self.sphere(cc, radius)
        
     @classmethod
     def _is_valid(self, *args, **kwargs):
@@ -288,4 +330,4 @@ class LandSatGeoTiffDataSet(GeoTiffDataset):
                     return True
         except:
             pass
-        return False           
+        return False
