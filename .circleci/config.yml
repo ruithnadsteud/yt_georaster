@@ -1,0 +1,195 @@
+version: 2.1
+
+commands:
+  set-env:
+    description: "Set environment variables."
+    steps:
+      - run:
+          name: "Set environment variables."
+          command: |
+            echo 'export YT_DIR=$HOME/yt-git' >> $BASH_ENV
+            echo 'export TEST_DATA=$HOME/test_data' >> $BASH_ENV
+
+  install:
+    description: "Install yt_geotiff and dependencies."
+    parameters:
+      ytdev:
+        type: integer
+        default: 0
+    steps:
+      - run:
+          name: "Install yt_geotiff and dependencies."
+          no_output_timeout: 20m
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y gdal-bin libgdal-dev
+            export CPLUS_INCLUDE_PATH=/usr/include/gdal
+            export C_INCLUDE_PATH=/usr/include/gdal
+            if [ ! -d $HOME/venv ]; then
+                python3 -m venv $HOME/venv
+            fi
+            source $BASH_ENV
+            source $HOME/venv/bin/activate
+            pip install --upgrade pip
+            pip install --upgrade wheel
+            pip install --upgrade setuptools
+            pip install Cython
+            pip install 'numpy<1.20'
+            pip install 'pygdal==2.4.0.6'
+            pip install 'gdal==2.4.0'
+            export MAX_BUILD_CORES=2
+            if [ << parameters.ytdev >> == 1 ]; then
+                if [ ! -f $YT_DIR/README.md ]; then
+                    git clone --branch=ytgeotiff https://github.com/brittonsmith/yt $YT_DIR
+                fi
+                pushd $YT_DIR
+                git pull origin ytgeotiff
+                git checkout ytgeotiff
+                pip install -e .
+                popd
+            fi
+            # configure yt
+            yt config set --global yt test_data_dir $TEST_DATA
+            pip install -e .[dev]
+
+  download-test-data:
+    description: "Download test data."
+    steps:
+      - run:
+          name: "Download test data."
+          command: |
+            # download test data
+            if [ ! -d $TEST_DATA/notafile ]; then
+                source $BASH_ENV
+                source $HOME/venv/bin/activate
+                echo "Nothing to do!"
+            fi
+
+  lint:
+    description: "Lint."
+    steps:
+      - run:
+          name: "Lint."
+          command: |
+            source $BASH_ENV
+            source $HOME/venv/bin/activate
+            flake8 yt_geotiff
+
+  run-tests:
+    description: "Build yt_geotiff and run tests."
+    parameters:
+      coverage:
+        type: integer
+        default: 0
+
+    steps:
+      - run:
+          name: "Build yt_geotiff and run tests."
+          command: |
+            source $BASH_ENV
+            source $HOME/venv/bin/activate
+            # pytest --cov=yt_geotiff tests
+            pytest tests
+            if [ << parameters.coverage >> == 1 ]; then
+                # code coverage report
+                codecov
+            fi
+
+  build-docs:
+    description: "Test the docs build."
+    steps:
+      - run:
+          name: "Test the docs build."
+          command: |
+            source $BASH_ENV
+            source $HOME/venv/bin/activate
+            cd doc/source
+            python -m sphinx -M html "." "_build" -W
+
+executors:
+  python:
+    parameters:
+      tag:
+        type: string
+        default: latest
+    docker:
+      - image: circleci/python:<< parameters.tag >>
+
+jobs:
+  tests:
+    parameters:
+      tag:
+        type: string
+        default: latest
+      ytdev:
+        type: integer
+        default: 0
+      coverage:
+        type: integer
+        default: 0
+    executor:
+      name: python
+      tag: << parameters.tag >>
+
+    working_directory: ~/yt_geotiff
+
+    steps:
+      - checkout
+      - set-env
+
+      - restore_cache:
+          name: "Restore dependencies cache."
+          key: python-<< parameters.tag >>-<< parameters.ytdev >>-dependencies-v1
+
+      - install:
+          ytdev: << parameters.ytdev >>
+
+      - save_cache:
+          name: "Save dependencies cache."
+          key: python-<< parameters.tag >>-<< parameters.ytdev >>-dependencies-v1
+          paths:
+            - ~/.cache/pip
+            - ~/venv
+            - ~/yt-git
+
+      # - lint
+
+      # - restore_cache:
+      #     name: "Restore test data cache."
+      #     key: test-data-v1
+
+      # - download-test-data
+
+      # - save_cache:
+      #     name: "Save test data cache."
+      #     key: test-data-v1
+      #     paths:
+      #       - ~/test_data
+
+      - run-tests:
+          coverage: << parameters.coverage >>
+
+workflows:
+   version: 2
+
+   normal-tests:
+     jobs:
+       - tests:
+           name: "Python 3.8 tests"
+           tag: "3.8.7"
+           coverage: 0
+           ytdev: 1
+
+   weekly:
+     triggers:
+       - schedule:
+           cron: "0 0 * * 5"
+           filters:
+            branches:
+              only:
+                - master
+     jobs:
+       - tests:
+           name: "Python 3.8 tests"
+           tag: "3.8.7"
+           ytdev: 1
