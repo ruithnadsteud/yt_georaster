@@ -4,8 +4,6 @@ import os
 import rasterio
 import stat
 
-import pdb
-
 from yt.data_objects.static_output import \
     Dataset
 
@@ -43,7 +41,7 @@ class GeoTiffWindowGrid(YTGrid):
         self.Level = 0
         
 
-        self.LeftEdge = self.ds.arr(window_left_edge,'m') # AR: put left/right edge dimensions in to a yt array
+        self.LeftEdge = self.ds.arr(window_left_edge,'m') # Put left/right edge dimensions in to a yt array
         self.RightEdge = self.ds.arr(window_right_edge,'m')
         self.ActiveDimensions = window_dims
         
@@ -52,7 +50,7 @@ class GeoTiffGrid(YTGrid):
     def select(self, selector, source, dest, offset,
                window_left_edge, window_right_edge, window_dimensions):
 
-        # AR: call select with temporary window grid object
+        # Call select with temporary window grid object
         temp_grid = GeoTiffWindowGrid(self,window_left_edge, window_right_edge, window_dimensions)
                
         temp_grid._setup_dx()

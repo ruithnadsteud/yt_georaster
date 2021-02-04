@@ -15,7 +15,7 @@ yaml_file = ('C:/Users/arevi/OneDrive/yt_project/yt_geotiff-master/yt_geotiff/da
 # Load 
 ds = yt.load(filename, field_map=yaml_file)
 
-txt = input("Read image into cache: yes (1) or no (2)")
+txt = 2 #input("Read image into cache: yes (1) or no (2)")
 
 
 #-----------------------------------------------------------------------------
