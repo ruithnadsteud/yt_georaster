@@ -7,6 +7,7 @@ Utility functions for yt_geotiff.
 import numpy as np
 import rasterio
 from rasterio.windows import Window
+from unyt import unyt_array, uconcatenate
 
 # AR
 import pdb # debugging library
@@ -166,3 +167,31 @@ def rasterio_window_calc(selector):
               selector_height = selector_width
                  
        return(np.array(selector_left_edge), np.array(selector_right_edge), selector_width, selector_height)
+
+def validate_coord_array(ds, coord, name, padval, def_units):
+    """
+    Take a length 2 or 3 array and return a length 3 array.
+    If array is length 2, use padval for third value.
+    """
+    if not isinstance(coord, np.ndarray):
+        raise ValueError(
+            f"{name} argument must be array-like: {coord}.")
+
+    if coord.size == 3:
+        return coord
+    if coord.size != 2:
+        raise ValueError(
+            f"{name} argument must be of size 2 or 3.")
+
+    if isinstance(coord, unyt_array):
+        cfunc = uconcatenate
+        afunc = ds.arr
+        units = coord.units
+        padval = ds.arr([padval])
+    elif isinstance(coord, np.ndarray):
+        cfunc = np.concatenate
+        afunc = np.array
+        units = "code_length"
+
+    newc = cfunc([coord, afunc(padval.to(units))])
+    return newc

@@ -4,8 +4,6 @@ import os
 import rasterio
 import stat
 
-from unyt import unyt_array, uconcatenate
-
 import pdb
 
 from yt.data_objects.static_output import \
@@ -23,7 +21,8 @@ from .fields import \
 from .utilities import \
     left_aligned_coord_cal, \
     save_dataset_as_geotiff, \
-    parse_awslandsat_metafile \
+    parse_awslandsat_metafile, \
+    validate_coord_array
           
 class GeoTiffWindowGrid(YTGrid):
     
@@ -143,43 +142,77 @@ class GeoTiffDataset(Dataset):
         """
         Create a circular data container.
 
+        This is a wrapper around the sphere data container
+        that allows for specifying the center with only x
+        and y values.
+
         Parameters
         ----------
-        center : array_like
-            Center of the circle.
+        center : array_like of length 2 or 3
+            Center of the circle. If center is of length 2,
+            the third dimension is the domain center in the
+            z direction. If center is of length 3, center is
+            unaltered.
         radius : float, width specifier, or unyt_quantity
             The radius of the sphere. If passed a float,
             that will be interpreted in code units. Also
             accepts a (radius, unit) tuple or unyt_quantity
             instance with units attached.
+
+        Examples
+        --------
+        >>> center = ds.arr([100, 100], 'm')
+        >>> cir = ds.circle(center, (1, 'km'))
+        >>> vals = cir[("Bands", "1")]
         """
 
-        if not isinstance(center, np.ndarray):
-            raise ValueError(
-                f"center argument must be array-like: {center}.")
-
-        # Do this to allow circles to be easily made from other circles
-        # without having to truncate the 3D center array.
-        if center.size == 3:
-            return self.sphere(center, radius)
-        if center.size != 2:
-            raise ValueError(
-                f"center argument must be of size 2 or 3.")
-
-        zc = self.domain_center[2]
-        if isinstance(center, unyt_array):
-            cfunc = uconcatenate
-            afunc = self.arr
-            units = center.units
-            zc = self.arr([zc])
-        elif isinstance(center, np.ndarray):
-            cfunc = np.concatenate
-            afunc = np.array
-            units = "code_length"
-
-        cc = cfunc([center, afunc(zc.to(units))])
+        cc = validate_coord_array(
+            self, center, "center",
+            self.domain_center[2], "code_length")
         return self.sphere(cc, radius)
-       
+
+    def rectangle(self, left_edge, right_edge):
+        """
+        Create a rectangular data container.
+
+        This is a wrapper around the box data container that allows
+        the edges to be specified with only x and y values.
+
+        Takes an array of two or three *left_edge* coordinates and two
+        or three *right_edge* coordinates that can be anywhere in the
+        domain. If the selected region extends past the edges of the
+        domain, no data will be found there, though the object's
+        *left_edge* or *right_edge* are not modified.
+
+        Parameters
+        ----------
+        left_edge : array_like
+            The left edge of the region. If array is of length 2,
+            the third dimension is the domain left edge in the z
+            direction. If array is of length 3, left_edge is
+            unaltered.
+        right_edge : array_like
+            The right edge of the region. If array is of length 2,
+            the third dimension is the domain right edge in the z
+            direction. If array is of length 3, right_edge is
+            unaltered.
+
+        Examples
+        --------
+        >>> left_edge = ds.arr([1, 1], 'km')
+        >>> right_edge = ds.arr(5, 5], 'km')
+        >>> rec = ds.rectangle(left_edge, right_edge)
+        >>> vals = rec[("Bands", "1")]
+        """
+
+        le = validate_coord_array(
+            self, left_edge, "left_edge",
+            self.domain_left_edge[2], "code_length")
+        re = validate_coord_array(
+            self, right_edge, "right_edge",
+            self.domain_right_edge[2], "code_length")
+        return self.box(le, re)
+
     @classmethod
     def _is_valid(self, *args, **kwargs):
         fn = args[0]
