@@ -1,4 +1,3 @@
-
 from setuptools import setup
 
 def get_version(filename):
@@ -16,6 +15,9 @@ def get_version(filename):
 
 VERSION = get_version("yt_geotiff/__init__.py")
 
+dev_requirements = [
+    'pytest>=3.6']
+
 setup(name="yt_geotiff",
       version=VERSION,
       description="A package for handling geotiff files and georeferenced datasets within yt.",
@@ -26,9 +28,11 @@ setup(name="yt_geotiff",
       packages=["yt_geotiff"],
       keywords=["GeoTiff", "GTiff", "raster"],
       install_requires=[
-          'rasterio',
           'gdal',
           'numpy',
+          'pyyaml',
+          'rasterio',
+          'yt'
       ],
       classifiers=[
           "Development Status :: 2 - Pre-Alpha",
@@ -40,5 +44,9 @@ setup(name="yt_geotiff",
           "Operating System :: POSIX :: Linux",
           "Programming Language :: Python",
           "Topic :: Utilities",
-          ]
+          ],
+      extras_require={
+          'dev': dev_requirements,
+      },
+      python_requires='>=3.6'
       )
