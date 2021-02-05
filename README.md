@@ -1,4 +1,7 @@
 # yt_geotiff
+
+[![CircleCI](https://circleci.com/gh/ruithnadsteud/yt_geotiff/tree/master.svg?style=shield)](https://circleci.com/gh/ruithnadsteud/yt_geotiff/tree/master)
+
 A package for handling _geotiff_ files and georeferenced datasets within **yt**.
 
 ## Dependencies
