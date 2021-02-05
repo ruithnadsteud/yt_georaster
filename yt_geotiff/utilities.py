@@ -6,6 +6,9 @@ Utility functions for yt_geotiff.
 """
 import numpy as np
 import rasterio
+from rasterio.windows import Window
+from unyt import unyt_array, uconcatenate
+
 import yt.geometry.selection_routines as selector_shape
 
 def coord_cal(xcell, ycell, transform):
@@ -131,30 +134,54 @@ def merge_dicts(*dict_args):
 
 
 def rasterio_window_calc(selector):
-       """
-       This function reads information from either a sphere, box or region selector
-       object and outputs the dimensions of a container: left edge, right edge,
-       width and height.
-       """
+    """
+    This function reads information from either a sphere, box or region selector
+    object and outputs the dimensions of a container: left edge, right edge,
+    width and height.
+    """
 
-       if isinstance(selector, selector_shape.SphereSelector):
+    if isinstance(selector, selector_shape.SphereSelector):
 
-              selector_left_edge = np.array(selector.center)
-              selector_left_edge[:2] -= selector.radius
-              selector_right_edge = np.array(selector.center)
-              selector_right_edge[:2] += selector.radius
+        selector_left_edge = np.array(selector.center)
+        selector_left_edge[:2] -= selector.radius
+        selector_right_edge = np.array(selector.center)
+        selector_right_edge[:2] += selector.radius
+        selector_width = selector.radius*2
+        selector_height = selector_width
 
-              selector_width = ((selector.radius)*2)
+    elif isinstance(selector, selector_shape.RegionSelector):
 
-              selector_height = selector_width
+        selector_left_edge = selector.left_edge
+        selector_right_edge = selector.right_edge
+        selector_width =  selector.right_edge[0] - selector.left_edge[0]
+        selector_height = selector_width
 
-       elif isinstance(selector, selector_shape.RegionSelector):
+    return selector_left_edge, selector_right_edge, selector_width, selector_height
 
-              selector_left_edge = selector.left_edge
-              selector_right_edge = selector.right_edge
+def validate_coord_array(ds, coord, name, padval, def_units):
+    """
+    Take a length 2 or 3 array and return a length 3 array.
+    If array is length 2, use padval for third value.
+    """
+    if not isinstance(coord, np.ndarray):
+        raise ValueError(
+            f"{name} argument must be array-like: {coord}.")
 
-              selector_width =  selector.right_edge[0] - selector.left_edge[0]
+    if coord.size == 3:
+        return coord
+    if coord.size != 2:
+        raise ValueError(
+            f"{name} argument must be of size 2 or 3.")
 
-              selector_height = selector_width
+    if isinstance(coord, unyt_array):
+        cfunc = uconcatenate
+        afunc = ds.arr
+        units = coord.units
+        padval = ds.arr([padval])
+    elif isinstance(coord, np.ndarray):
+        cfunc = np.concatenate
+        afunc = np.array
+        units = "code_length"
 
-       return(selector_left_edge, selector_right_edge, selector_width, selector_height)
+    newc = cfunc([coord, afunc(padval.to(units))])
+    return newc
