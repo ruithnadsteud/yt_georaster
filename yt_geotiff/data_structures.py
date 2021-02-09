@@ -6,10 +6,11 @@ import stat
 
 from yt.data_objects.static_output import \
     Dataset
-
 from yt.data_objects.selection_objects.data_selection_objects import (
     YTSelectionContainer,
-)    
+)
+from yt.geometry.selection_routines import \
+    GridSelector
 from yt.frontends.ytdata.data_structures import \
     YTGridHierarchy, \
     YTGrid
@@ -55,11 +56,15 @@ class GeoTiffWindowGrid(YTGrid):
 
 class GeoTiffGrid(YTGrid):
     def select(self, selector, source, dest, offset):
+        if isinstance(selector, GridSelector):
+            return super().select(selector, source, dest, offset)
         wgrid = self._get_window_grid(selector)
         rvalue = wgrid.select(selector, source, dest, offset)
         return rvalue
 
     def count(self, selector):
+        if isinstance(selector, GridSelector):
+            return super().count(selector)
         wgrid = self._get_window_grid(selector)
         rvalue = wgrid.count(selector)
         return rvalue
