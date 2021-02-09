@@ -20,11 +20,11 @@ from .utilities import \
     left_aligned_coord_cal, \
     save_dataset_as_geotiff, \
     parse_awslandsat_metafile, \
-    validate_coord_array
-          
+    validate_coord_array, \
+    rasterio_window_calc
+
 class GeoTiffWindowGrid(YTGrid):
-    
-    def __init__(self, gridobj, window_left_edge, window_right_edge, window_dims):
+    def __init__(self, gridobj, left_edge, right_edge):
 
         YTSelectionContainer.__init__(self, gridobj._index.dataset, None)
 
@@ -40,24 +40,37 @@ class GeoTiffWindowGrid(YTGrid):
         self._children_ids = []
         self._parent_id = -1
         self.Level = 0
-        
 
-        self.LeftEdge = self.ds.arr(window_left_edge,'m') # Put left/right edge dimensions in to a yt array
-        self.RightEdge = self.ds.arr(window_right_edge,'m')
-        self.ActiveDimensions = window_dims
-        
-        
+        self.LeftEdge = self.ds.arr(left_edge, 'm')
+        self.RightEdge = self.ds.arr(right_edge, 'm')
+        # Make sure z dimension edges are the same as parent grid.
+        self.LeftEdge[2] = gridobj.LeftEdge[2]
+        self.RightEdge[2] = gridobj.RightEdge[2]
+        self.ActiveDimensions = \
+          (gridobj.ActiveDimensions *
+           (self.RightEdge - self.LeftEdge) / \
+           (gridobj.RightEdge - gridobj.LeftEdge)).d.astype(np.int32)
+        # Inherit dx values from parent.
+        self.dds = gridobj.dds
+
 class GeoTiffGrid(YTGrid):
-    def select(self, selector, source, dest, offset,
-               window_left_edge, window_right_edge, window_dimensions):
-
-        # Call select with temporary window grid object
-        temp_grid = GeoTiffWindowGrid(self,window_left_edge, window_right_edge, window_dimensions)
-               
-        temp_grid._setup_dx()
-        rvalue = temp_grid.select(selector, source, dest, offset)
+    def select(self, selector, source, dest, offset):
+        wgrid = self._get_window_grid(selector)
+        rvalue = wgrid.select(selector, source, dest, offset)
         return rvalue
 
+    def count(self, selector):
+        wgrid = self._get_window_grid(selector)
+        rvalue = wgrid.count(selector)
+        return rvalue
+
+    def _get_window_grid(self, selector):
+        """
+        Return a GeoTiffWindowGrid for a given selector.
+        """
+        left, right, width, height = rasterio_window_calc(selector)
+        wgrid = GeoTiffWindowGrid(self, left, right)
+        return wgrid
  
 class GeoTiffHierarchy(YTGridHierarchy):
     grid = GeoTiffGrid
@@ -101,23 +114,25 @@ class GeoTiffDataset(Dataset):
             for key in f.meta.keys():
                 v = f.meta[key]
                 self.parameters[key] = v
-            # self.parameters['transform'] = f.transform
+
         ### TODO: can we get time info from metadata?
-        self.current_time = 0.
-        self.unique_identifier = \
-            int(os.stat(self.parameter_filename)[stat.ST_CTIME])
-        self.domain_dimensions = np.array([self.parameters['height'],
-                                           self.parameters['width'],
-                                           1], dtype=np.int32)
+        self.current_time = 0
+
+        width = self.parameters['width']
+        height = self.parameters['height']
+        transform = self.parameters['transform']
         self.dimensionality = 3
-        rightedge_xy = left_aligned_coord_cal(self.domain_dimensions[0],
-                                          self.domain_dimensions[1],
-                                          self.parameters['transform'])
-        self.domain_left_edge = self.arr(np.zeros(self.dimensionality,
-                                                   dtype=np.float64), 'm')
-        self.domain_right_edge = self.arr([rightedge_xy[0],
-                                          rightedge_xy[1],
-                                          1], 'm', dtype=np.float64)
+        self.domain_dimensions = np.array([height, width, 1], dtype=np.int32)
+
+        rast_left = np.concatenate([transform * (0, 0), [0]])
+        rast_right = np.concatenate([transform * (width, height), [1]])
+        right_edge = rast_right - rast_left
+        # up is down in GeoTiff
+        right_edge[1] *= -1
+
+        self.domain_left_edge = self.arr(np.zeros(self.dimensionality), 'm')
+        self.domain_right_edge = self.arr(right_edge, 'm')
+
     def _set_code_unit_attributes(self):
         attrs = ('length_unit', 'mass_unit', 'time_unit',
                  'velocity_unit', 'magnetic_unit')
@@ -216,7 +231,7 @@ class GeoTiffDataset(Dataset):
         fn = args[0]
         valid = False
         for ext in self._valid_extensions:
-            if fn.endswith(ext):
+            if fn.endswith(ext) or fn.endswith(ext.upper()):
                 valid = True
                 break
         if not valid:

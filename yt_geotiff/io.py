@@ -70,8 +70,9 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                 left_edge, right_edge, width, height = rasterio_window_calc(selector)
 
                 # Build Rasterio window-read format
-                rasterio_wr_dim = Window((left_edge[0]/src.res[0]), (right_edge[0]/src.res[0]),
-                                         (width/src.res[0]), (height/src.res[0]))
+                rasterio_wr_dim = Window(
+                    left_edge[0]/src.res[0], left_edge[1]/src.res[1],
+                    width/src.res[0], height/src.res[1])
 
                 for field in fields:
                     if field in gf:   # only for cached gridded objects
@@ -90,7 +91,8 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                     ftype, fname = field
 
                     # Perform Rasterio window read
-                    data = src.read(int(fname),window=rasterio_wr_dim).astype(self._field_dtype)
+                    data = src.read(int(fname),window=rasterio_wr_dim).astype(
+                        self._field_dtype)
 
                     for dim in range(len(data.shape), 3): # change to 3d
                         data = np.expand_dims(data, dim)
@@ -99,10 +101,7 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                         self._cached_fields.setdefault(g.id, {})
                         self._cached_fields[g.id][field] = data
 
-                    # Create a temporary GeoTiffWindowGrid object that matches the selector dimensions
-                    nd = g.select(selector, data, rv[field], ind,
-                                  left_edge, right_edge,
-                                  np.array([int(width/src.res[0]), int(height/src.res[0]), 1]))
+                    nd = g.select(selector, data, rv[field], ind)
 
                 ind += nd
 
