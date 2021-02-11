@@ -55,6 +55,9 @@ class GeoTiffWindowGrid(YTGrid):
         self.dds = gridobj.dds
 
 class GeoTiffGrid(YTGrid):
+    _last_wgrid = None
+    _last_wgrid_id = None
+
     def select(self, selector, source, dest, offset):
         if isinstance(selector, GridSelector):
             return super().select(selector, source, dest, offset)
@@ -69,12 +72,38 @@ class GeoTiffGrid(YTGrid):
         rvalue = wgrid.count(selector)
         return rvalue
 
+    def select_icoords(self, dobj):
+        if isinstance(dobj.selector, GridSelector):
+            return super().select_icoords(dobj)
+        wgrid = self._get_window_grid(dobj.selector)
+        rvalue = wgrid.select_icoords(dobj)
+        return rvalue
+
+    def select_fcoords(self, dobj):
+        if isinstance(dobj.selector, GridSelector):
+            return super().select_fcoords(dobj)
+        wgrid = self._get_window_grid(dobj.selector)
+        rvalue = wgrid.select_fcoords(dobj)
+        return rvalue
+
+    def _get_selector_mask(self, selector):
+        if isinstance(selector, GridSelector):
+            return super()._get_selector_mask(selector)
+        wgrid = self._get_window_grid(selector)
+        rvalue = wgrid._get_selector_mask(selector)
+        return rvalue
+
     def _get_window_grid(self, selector):
         """
         Return a GeoTiffWindowGrid for a given selector.
         """
+        if self._last_wgrid and hash(selector) == self._last_wgrid_id:
+            return self._last_wgrid
+
         left, right, width, height = rasterio_window_calc(selector)
         wgrid = GeoTiffWindowGrid(self, left, right)
+        self._last_wgrid = wgrid
+        self._last_wgrid_id = hash(selector)
         return wgrid
  
 class GeoTiffHierarchy(YTGridHierarchy):
