@@ -10,7 +10,9 @@ from yt.data_objects.selection_objects.data_selection_objects import (
     YTSelectionContainer,
 )
 from yt.geometry.selection_routines import \
-    GridSelector
+    GridSelector, \
+    RegionSelector, \
+    SphereSelector
 from yt.frontends.ytdata.data_structures import \
     YTGridHierarchy, \
     YTGrid
@@ -21,8 +23,7 @@ from .utilities import \
     left_aligned_coord_cal, \
     save_dataset_as_geotiff, \
     parse_awslandsat_metafile, \
-    validate_coord_array, \
-    rasterio_window_calc
+    validate_coord_array
 
 class GeoTiffWindowGrid(YTGrid):
     def __init__(self, gridobj, left_edge, right_edge):
@@ -97,14 +98,56 @@ class GeoTiffGrid(YTGrid):
         """
         Return a GeoTiffWindowGrid for a given selector.
         """
+
         if self._last_wgrid and hash(selector) == self._last_wgrid_id:
             return self._last_wgrid
 
-        left, right, width, height = rasterio_window_calc(selector)
-        wgrid = GeoTiffWindowGrid(self, left, right)
+        left_edge, right_edge = self._get_selection_window(selector)
+        wgrid = GeoTiffWindowGrid(self, left_edge, right_edge)
         self._last_wgrid = wgrid
         self._last_wgrid_id = hash(selector)
         return wgrid
+
+    def _get_selection_window(self, selector):
+        """
+        Calculate bounding box for selectors.
+        """
+
+        dle = self.ds.domain_left_edge.d
+        dre = self.ds.domain_right_edge.d
+
+        if isinstance(selector, SphereSelector):
+            left_edge = np.array(selector.center)
+            left_edge[:2] -= selector.radius
+            left_edge[2] = dle[2]
+
+            right_edge = np.asarray(selector.center)
+            right_edge[:2] += selector.radius
+            right_edge[2] = dre[2]
+
+        elif isinstance(selector, RegionSelector):
+            left_edge = selector.left_edge
+            right_edge = selector.right_edge
+
+        else:
+            raise NotImplementedError
+
+        left_edge.clip(min=dle, max=dre, out=left_edge)
+        right_edge.clip(min=dle, max=dre, out=right_edge)
+        return left_edge, right_edge
+
+    def _get_rasterio_window(self, selector):
+        """
+        Calculate position, width, and height for a rasterio window read.
+        """
+
+        left_edge, right_edge = self._get_selection_window(selector)
+        width = ((right_edge - left_edge) / self.dds.d).astype(int)
+        return left_edge[:2].astype(int), width[:2]
+
+    def __repr__(self):
+        ad = self.ActiveDimensions
+        return f"GeoTiffGrid ({ad[0]}x{ad[1]})"
  
 class GeoTiffHierarchy(YTGridHierarchy):
     grid = GeoTiffGrid
@@ -138,8 +181,8 @@ class GeoTiffDataset(Dataset):
     
     def __init__(self, filename, field_map=None):
         self.field_map = field_map
-        super(GeoTiffDataset, self).__init__(filename,
-                                        self._dataset_type)
+        super(GeoTiffDataset, self).__init__(
+            filename, self._dataset_type, unit_system="mks")
         self.data = self.index.grids[0]
         
     def _parse_parameter_file(self):
@@ -170,13 +213,15 @@ class GeoTiffDataset(Dataset):
     def _set_code_unit_attributes(self):
         attrs = ('length_unit', 'mass_unit', 'time_unit',
                  'velocity_unit', 'magnetic_unit')
-        si_units = ('m', 'g', 's', 'm/s', 'gauss')
+        si_units = ('m', 'kg', 's', 'm/s', 'T')
         base_units = np.ones(len(attrs), dtype=np.float64)
         for unit, attr, si_unit in zip(base_units, attrs, si_units):
             setattr(self, attr, self.quan(unit, si_unit))
+
     def save_as(self, filename):
         ### TODO: generalize this to save any dataset type as GeoTiff.
         return save_dataset_as_geotiff(self, filename)
+
     def __repr__(self):
         fn = self.basename
         for ext in self._valid_extensions:
