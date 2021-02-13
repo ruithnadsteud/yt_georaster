@@ -23,7 +23,8 @@ from .utilities import \
     left_aligned_coord_cal, \
     save_dataset_as_geotiff, \
     parse_awslandsat_metafile, \
-    validate_coord_array
+    validate_coord_array, \
+    validate_quantity
 
 class GeoTiffWindowGrid(YTGrid):
     def __init__(self, gridobj, left_edge, right_edge):
@@ -126,11 +127,12 @@ class GeoTiffGrid(YTGrid):
             right_edge[2] = dre[2]
 
         elif isinstance(selector, RegionSelector):
-            left_edge = selector.left_edge
-            right_edge = selector.right_edge
+            left_edge = np.array(selector.left_edge)
+            right_edge = np.array(selector.right_edge)
 
         else:
-            raise NotImplementedError
+            left_edge = dle
+            right_edge = dre
 
         left_edge.clip(min=dle, max=dre, out=left_edge)
         right_edge.clip(min=dle, max=dre, out=right_edge)
@@ -142,8 +144,9 @@ class GeoTiffGrid(YTGrid):
         """
 
         left_edge, right_edge = self._get_selection_window(selector)
-        width = ((right_edge - left_edge) / self.dds.d).astype(int)
-        return left_edge[:2].astype(int), width[:2]
+        left_pixels = (left_edge / self.dds.d).astype(int)
+        width_pixels = ((right_edge - left_edge) / self.dds.d).astype(int)
+        return left_pixels[:2], width_pixels[:2]
 
     def __repr__(self):
         ad = self.ActiveDimensions
@@ -304,6 +307,46 @@ class GeoTiffDataset(Dataset):
             self, right_edge, "right_edge",
             self.domain_right_edge[2], "code_length")
         return self.box(le, re)
+
+    def rectangle_from_center(self, center, width, height):
+        """
+        Create a rectangular data container from center, width, height.
+
+        This is a variant of the rectangle data container that takes a
+        center, width, and height instead of a left and right corner.
+
+        Parameters
+        ----------
+        center : array_like of length 2 or 3
+            Center of the rectangle. If center is of length 2,
+            the third dimension is the domain center in the
+            z direction. If center is of length 3, center is
+            unaltered.
+        width : float, unyt_quantity, or tuple of (float, units)
+            Width of the rectangle. If no units given, "code_length"
+            is assumed.
+        height : float or unyt_quantity
+            Height of the rectangle. If no units given, "code_length"
+            is assumed.
+
+        Examples
+        --------
+        >>> center = ds.arr([5, 5], 'km')
+        >>> width = ds.quan(2, 'km')
+        >>> height = (1, 'km')
+        >>> rec = ds.rectangle_from_center(center, width, height)
+        >>> vals = rec[("Bands", "1")]
+        """
+
+        cc = validate_coord_array(
+            self, center, "center",
+            self.domain_center[2], "code_length")
+        width = validate_quantity(self, width, "code_length")
+        height = validate_quantity(self, height, "code_length")
+        size = self.arr([width, height])
+        left = cc[:2] - size / 2
+        right = cc[:2] + size / 2
+        return self.rectangle(left, right)
 
     @classmethod
     def _is_valid(self, *args, **kwargs):

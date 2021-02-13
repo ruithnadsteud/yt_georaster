@@ -66,10 +66,8 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                 nd = 0
 
                 # Determine the window dimensions of a given selector
-                left_edge, width = g._get_rasterio_window(selector)
-
-                # Build Rasterio window-read format
-                rasterio_wr_dim = Window(left_edge[0], left_edge[1], width[0], width[1])
+                rleft, rdims = g._get_rasterio_window(selector)
+                rasterio_window = Window(rleft[0], rleft[1], rdims[0], rdims[1])
 
                 for field in fields:
                     # only for cached gridded objects
@@ -89,8 +87,8 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                     ftype, fname = field
 
                     # Perform Rasterio window read
-                    data = src.read(int(fname),window=rasterio_wr_dim).astype(
-                        self._field_dtype)
+                    data = src.read(int(fname), window=rasterio_window).astype(
+                        self._field_dtype).T
 
                     for dim in range(len(data.shape), 3):
                         data = np.expand_dims(data, dim)
