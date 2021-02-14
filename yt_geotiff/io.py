@@ -17,6 +17,12 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
     def __init__(self, ds, *args, **kwargs):
         super(IOHandlerGeoTiff, self).__init__(ds)
 
+    def _transform_data(self, data):
+        data = data.T
+        if self.ds._flip_axes:
+            data = np.flip(data, axis=self.ds._flip_axes)
+        return data
+
     def _read_fluid_selection(self, chunks, selector, fields, size):
         rv = {}
         chunks = list(chunks)
@@ -40,8 +46,9 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                 ftype, fname = field
 
                 # Read in the band/field
-                rv[(ftype, fname)] = src.read(int(fname)).astype(
-                    self._field_dtype).T
+                data = src.read(int(fname)).astype(self._field_dtype)
+                rv[(ftype, fname)] = self._transform_data(data)
+
 
             if self._cache_on:
                 self._cached_fields.setdefault(g.id,{})
@@ -89,7 +96,8 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
 
                     # Perform Rasterio window read
                     data = src.read(int(fname), window=rasterio_window).astype(
-                        self._field_dtype).T
+                        self._field_dtype)
+                    data = self._transform_data(data)
 
                     for dim in range(len(data.shape), 3):
                         data = np.expand_dims(data, dim)

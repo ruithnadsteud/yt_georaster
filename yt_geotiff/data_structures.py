@@ -212,6 +212,8 @@ class GeoTiffDataset(Dataset):
 
         rast_left = np.concatenate([transform * (0, 0), [0]])
         rast_right = np.concatenate([transform * (width, height), [1]])
+        # save dimensions that need to be flipped
+        self._flip_axes = np.where(rast_left > rast_right)[0]
         self.domain_left_edge = self.arr(np.min([rast_left, rast_right], axis=0), 'm')
         self.domain_right_edge = self.arr(np.max([rast_left, rast_right], axis=0), 'm')
 
