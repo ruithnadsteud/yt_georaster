@@ -7,7 +7,7 @@ Utility functions for yt_geotiff.
 import numpy as np
 import rasterio
 from rasterio.windows import Window
-from unyt import unyt_array, uconcatenate
+from unyt import unyt_array, unyt_quantity, uconcatenate
 
 import yt.geometry.selection_routines as selector_shape
 
@@ -185,3 +185,17 @@ def validate_coord_array(ds, coord, name, padval, def_units):
 
     newc = cfunc([coord, afunc(padval.to(units))])
     return newc
+
+def validate_quantity(ds, value, units):
+    """
+    Take a unyt_quantity, float, or (float, string) tuple
+    and return a unyt_quantity.
+    """
+
+    if isinstance(value, unyt_quantity):
+        return value
+    elif isinstance(value, (tuple, list)):
+        value = ds.quan(*value)
+    else:
+        value = ds.quan(value, units)
+    return value
