@@ -40,7 +40,8 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                 ftype, fname = field
 
                 # Read in the band/field
-                rv[(ftype, fname)] = src.read(int(fname)).astype(self._field_dtype)
+                rv[(ftype, fname)] = src.read(int(fname)).astype(
+                    self._field_dtype).T
 
             if self._cache_on:
                 self._cached_fields.setdefault(g.id,{})

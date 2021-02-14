@@ -144,8 +144,10 @@ class GeoTiffGrid(YTGrid):
         """
 
         left_edge, right_edge = self._get_selection_window(selector)
-        left_pixels = (left_edge / self.dds.d).astype(int)
-        width_pixels = ((right_edge - left_edge) / self.dds.d).astype(int)
+        left_pixels = ((left_edge - self.ds.domain_left_edge.d) /
+                       self.dds.d).astype(int)
+        width_pixels = ((right_edge - left_edge) /
+                        self.dds.d).astype(int)
         return left_pixels[:2], width_pixels[:2]
 
     def __repr__(self):
@@ -206,12 +208,8 @@ class GeoTiffDataset(Dataset):
 
         rast_left = np.concatenate([transform * (0, 0), [0]])
         rast_right = np.concatenate([transform * (width, height), [1]])
-        right_edge = rast_right - rast_left
-        # up is down in GeoTiff
-        right_edge[1] *= -1
-
-        self.domain_left_edge = self.arr(np.zeros(self.dimensionality), 'm')
-        self.domain_right_edge = self.arr(right_edge, 'm')
+        self.domain_left_edge = self.arr(np.min([rast_left, rast_right], axis=0), 'm')
+        self.domain_right_edge = self.arr(np.max([rast_left, rast_right], axis=0), 'm')
 
     def _set_code_unit_attributes(self):
         attrs = ('length_unit', 'mass_unit', 'time_unit',
