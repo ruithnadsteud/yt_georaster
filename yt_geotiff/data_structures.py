@@ -4,11 +4,14 @@ import os
 import rasterio
 import stat
 
+from unyt import dimensions
+
 from yt.data_objects.static_output import \
     Dataset
 from yt.data_objects.selection_objects.data_selection_objects import (
     YTSelectionContainer,
 )
+from yt.funcs import mylog
 from yt.geometry.selection_routines import \
     GridSelector, \
     RegionSelector, \
@@ -196,6 +199,7 @@ class GeoTiffDataset(Dataset):
             for key in f.meta.keys():
                 v = f.meta[key]
                 self.parameters[key] = v
+            self.parameters['res'] = f.res
 
         ### TODO: can we get time info from metadata?
         self.current_time = 0
@@ -218,6 +222,17 @@ class GeoTiffDataset(Dataset):
         base_units = np.ones(len(attrs), dtype=np.float64)
         for unit, attr, si_unit in zip(base_units, attrs, si_units):
             setattr(self, attr, self.quan(unit, si_unit))
+
+    def set_units(self):
+        super().set_units()
+        res = self.parameters['res']
+        for i, ax in enumerate('xy'):
+            self.unit_registry.add(f"{ax}pixels", res[i], dimensions.length)
+
+        if res[0] == res[1]:
+            self.unit_registry.add("pixels", res[0], dimensions.length)
+        else:
+            mylog.warn("x and y pixels have different sizes.")
 
     def save_as(self, filename):
         ### TODO: generalize this to save any dataset type as GeoTiff.
