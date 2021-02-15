@@ -2,6 +2,7 @@ import glob
 import numpy as np
 import os
 import rasterio
+from rasterio.windows import Window
 import stat
 
 from unyt import dimensions
@@ -19,6 +20,7 @@ from yt.geometry.selection_routines import \
 from yt.frontends.ytdata.data_structures import \
     YTGridHierarchy, \
     YTGrid
+from yt.visualization.api import SlicePlot
 
 from .fields import \
     GeoTiffFieldInfo
@@ -27,7 +29,8 @@ from .utilities import \
     save_dataset_as_geotiff, \
     parse_awslandsat_metafile, \
     validate_coord_array, \
-    validate_quantity
+    validate_quantity, \
+    log_level
 
 class GeoTiffWindowGrid(YTGrid):
     def __init__(self, gridobj, left_edge, right_edge):
@@ -58,6 +61,10 @@ class GeoTiffWindowGrid(YTGrid):
            (gridobj.RightEdge - gridobj.LeftEdge)).d.astype(np.int32)
         # Inherit dx values from parent.
         self.dds = gridobj.dds
+
+    def __repr__(self):
+        ad = self.ActiveDimensions
+        return f"GeoTiffWindowGrid ({ad[0]}x{ad[1]})"
 
 class GeoTiffGrid(YTGrid):
     _last_wgrid = None
@@ -146,12 +153,18 @@ class GeoTiffGrid(YTGrid):
         Calculate position, width, and height for a rasterio window read.
         """
 
-        left_edge, right_edge = self._get_selection_window(selector)
-        left_pixels = ((left_edge - self.ds.domain_left_edge.d) /
-                       self.dds.d).astype(int)
-        width_pixels = ((right_edge - left_edge) /
-                        self.dds.d).astype(int)
-        return left_pixels[:2], width_pixels[:2]
+        if hasattr(self.ds, "_window_coords"):
+            left_pixels, width_pixels = self.ds._window_coords
+        else:
+            left_edge, right_edge = self._get_selection_window(selector)
+            left_pixels = ((left_edge - self.ds.domain_left_edge.d) /
+                           self.dds.d).astype(int)
+            width_pixels = ((right_edge - left_edge) /
+                            self.dds.d).astype(int)
+
+        window = Window(left_pixels[0], left_pixels[1],
+                        width_pixels[0], width_pixels[1])
+        return window
 
     def __repr__(self):
         ad = self.ActiveDimensions
@@ -172,7 +185,7 @@ class GeoTiffHierarchy(YTGridHierarchy):
                 
     def _count_grids(self):
         self.num_grids = 1
-        
+
 class GeoTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
     _index_class = GeoTiffHierarchy
@@ -192,7 +205,7 @@ class GeoTiffDataset(Dataset):
         super(GeoTiffDataset, self).__init__(
             filename, self._dataset_type, unit_system="mks")
         self.data = self.index.grids[0]
-        
+
     def _parse_parameter_file(self):
         self.num_particles = {}
         with rasterio.open(self.parameter_filename, "r") as f:
@@ -216,6 +229,7 @@ class GeoTiffDataset(Dataset):
         self._flip_axes = np.where(rast_left > rast_right)[0]
         self.domain_left_edge = self.arr(np.min([rast_left, rast_right], axis=0), 'm')
         self.domain_right_edge = self.arr(np.max([rast_left, rast_right], axis=0), 'm')
+        self.resolution = self.arr(self.parameters['res'], 'm')
 
     def _set_code_unit_attributes(self):
         attrs = ('length_unit', 'mass_unit', 'time_unit',
@@ -363,6 +377,48 @@ class GeoTiffDataset(Dataset):
         right = cc[:2] + size / 2
         return self.rectangle(left, right)
 
+    def plot(self, field, data_source=None,
+             center=None, width=None, height=None):
+
+        if width is not None:
+            width = validate_quantity(self, width, "code_length")
+        if height is not None:
+            height = validate_quantity(self, height, "code_length")
+
+        if data_source is None:
+            if width is None:
+                data_source = self.all_data()
+            else:
+                if center is None:
+                    center = self.domain_center
+                if height is None:
+                    height = width
+                data_source = self.rectangle_from_center(
+                    center, width, height)
+
+        # construct a window data set
+        wleft, wright = self.data._get_selection_window(data_source.selector)
+        with log_level(40):
+            wds = GeoTiffWindowDataset(self, wleft, wright)
+
+        # construct shadow data source using window dataset
+        con_args = [getattr(data_source, arg) for arg in data_source._con_args]
+        type_name = data_source._type_name
+        w_data_source = getattr(wds, type_name)(*con_args)
+
+        if center is None:
+            center = wds.domain_center
+        if width is None:
+            width = wds.domain_width[0]
+        if height is None:
+            height = wds.domain_width[1]
+
+        plot_width = max(width, height)
+
+        p = SlicePlot(wds, 'z', field, data_source=w_data_source,
+                      center=center, width=plot_width)
+        return p
+
     @classmethod
     def _is_valid(self, *args, **kwargs):
         fn = args[0]
@@ -379,7 +435,41 @@ class GeoTiffDataset(Dataset):
             if driver_type == "GTiff":
                 return True
         return False
- 
+
+class GeoTiffWindowDataset(GeoTiffDataset):
+    """
+    Class used for plotting a window of data from GeoTiffDataset.
+    """
+
+    @classmethod
+    def _is_valid(self, *args, **kwargs):
+        return False
+
+    def __init__(self, parent_ds, left_edge, right_edge):
+        self._parent_ds = parent_ds
+        self.domain_left_edge = parent_ds.arr(left_edge, 'm')
+        self.domain_right_edge = parent_ds.arr(right_edge, 'm')
+        self.domain_dimensions = \
+          (parent_ds.domain_dimensions *
+           (self.domain_right_edge - self.domain_left_edge) / \
+           (parent_ds.domain_right_edge - parent_ds.domain_left_edge)).d.astype(np.int32)
+
+        wleftpx = ((self.domain_left_edge - parent_ds.domain_left_edge)[:2] /
+                   parent_ds.resolution).d.astype(int)
+        wwidthpx = ((self.domain_right_edge - self.domain_left_edge)[:2] /
+                    parent_ds.resolution).d.astype(int)
+        self._window_coords = (wleftpx, wwidthpx)
+
+        super().__init__(parent_ds.parameter_filename, parent_ds.field_map)
+
+    def _parse_parameter_file(self):
+        inh_attrs = ("current_time", "dimensionality",
+                     "num_particles", "_flip_axes")
+        for attr in inh_attrs:
+            setattr(self, attr, getattr(self._parent_ds, attr))
+
+        self.parameters = self._parent_ds.parameters.copy()
+
 class LandSatGeoTiffHierarchy(GeoTiffHierarchy):
     def _detect_output_fields(self):
         self.field_list = []

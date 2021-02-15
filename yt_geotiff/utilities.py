@@ -10,6 +10,7 @@ from rasterio.windows import Window
 from unyt import unyt_array, unyt_quantity, uconcatenate
 
 import yt.geometry.selection_routines as selector_shape
+from yt.utilities.logger import ytLogger
 
 def coord_cal(xcell, ycell, transform):
     """Function to calculate the position of cell (xcell, ycell) in terms of
@@ -199,3 +200,21 @@ def validate_quantity(ds, value, units):
     else:
         value = ds.quan(value, units)
     return value
+
+class log_level():
+    """
+    Context manager for setting log level.
+    """
+    def __init__(self, minlevel, mylog=None):
+        if mylog is None:
+            mylog = ytLogger
+        self.mylog = mylog
+        self.minlevel = minlevel
+        self.level = mylog.level
+
+    def __enter__(self):
+        if self.level > 10 and self.level < self.minlevel:
+            self.mylog.setLevel(40)
+
+    def __exit__(self, *args):
+        self.mylog.setLevel(self.level)

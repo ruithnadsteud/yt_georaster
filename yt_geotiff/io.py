@@ -1,6 +1,5 @@
 import numpy as np
 import rasterio
-from rasterio.windows import Window
 
 from yt.geometry.selection_routines import \
     GridSelector
@@ -36,8 +35,12 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                 gf = self._cached_fields[g.id]
                 rv.update(gf)
 
-            if len(rv) == len(fields): return rv
+            if len(rv) == len(fields):
+                return rv
+
             src = rasterio.open(g.filename, "r")
+            rasterio_window = g._get_rasterio_window(selector)
+
             for field in fields:
                 if field in rv:
                     self._hits += 1
@@ -46,9 +49,9 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                 ftype, fname = field
 
                 # Read in the band/field
-                data = src.read(int(fname)).astype(self._field_dtype)
+                data = src.read(int(fname), window=rasterio_window).astype(
+                    self._field_dtype)
                 rv[(ftype, fname)] = self._transform_data(data)
-
 
             if self._cache_on:
                 self._cached_fields.setdefault(g.id,{})
@@ -70,12 +73,11 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                 if g.filename is None: continue
                 if src is None:
                     src = rasterio.open(g.filename, "r")
+                # Create a rasterio window to read just what we need.
+                rasterio_window = g._get_rasterio_window(selector)
+
                 gf = self._cached_fields.get(g.id,{})
                 nd = 0
-
-                # Determine the window dimensions of a given selector
-                rleft, rdims = g._get_rasterio_window(selector)
-                rasterio_window = Window(rleft[0], rleft[1], rdims[0], rdims[1])
 
                 for field in fields:
                     # only for cached gridded objects
