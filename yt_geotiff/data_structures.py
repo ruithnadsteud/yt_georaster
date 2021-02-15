@@ -9,9 +9,8 @@ from unyt import dimensions
 
 from yt.data_objects.static_output import \
     Dataset
-from yt.data_objects.selection_objects.data_selection_objects import (
-    YTSelectionContainer,
-)
+from yt.data_objects.selection_objects.data_selection_objects import \
+    YTSelectionContainer
 from yt.funcs import mylog
 from yt.geometry.selection_routines import \
     GridSelector, \
@@ -20,6 +19,8 @@ from yt.geometry.selection_routines import \
 from yt.frontends.ytdata.data_structures import \
     YTGridHierarchy, \
     YTGrid
+from yt.utilities.parallel_tools.parallel_analysis_interface import \
+    parallel_root_only
 from yt.visualization.api import SlicePlot
 
 from .fields import \
@@ -195,7 +196,7 @@ class GeoTiffDataset(Dataset):
     geometry = "cartesian"
     default_fluid_type = "bands"
     fluid_types = ("bands", "index", "sentinel2")
-    periodicity = np.zeros(3, dtype=bool)
+    _periodicity = np.zeros(3, dtype=bool)
     cosmological_simulation = False       
     
     _con_attrs = ()
@@ -205,6 +206,19 @@ class GeoTiffDataset(Dataset):
         super(GeoTiffDataset, self).__init__(
             filename, self._dataset_type, unit_system="mks")
         self.data = self.index.grids[0]
+
+    @parallel_root_only
+    def print_key_parameters(self):
+        for a in [
+            "domain_dimensions",
+            "domain_left_edge",
+            "domain_right_edge",
+        ]:
+            if not hasattr(self, a):
+                mylog.error("Missing %s in parameter file definition!", a)
+                continue
+            v = getattr(self, a)
+            mylog.info("Parameters: %-25s = %s", a, v)
 
     def _parse_parameter_file(self):
         self.num_particles = {}
