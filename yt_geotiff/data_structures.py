@@ -379,6 +379,43 @@ class GeoTiffDataset(Dataset):
 
     def plot(self, field, data_source=None,
              center=None, width=None, height=None):
+        """
+        Create a spatial plot of a given field.
+
+        Optionally, a center, width, height, or data_source
+        can be provided to restrict the bounds or data plotted.
+
+        Parameters
+        ----------
+        field : tuple of (field type, field name)
+            The field to be plotted.
+        data_source : optional, data container
+            If given, only data within the container will be
+            plotted. If center, width, or height not given,
+            bounds will be determined from the data_source.
+        center : optional, array_like
+            Center of the plotted region. If not given, either
+            the center of the domain or data_source will be used.
+        width : optional, float, unyt_quantity, or tuple of (float, units)
+            Width of the plotted region. If no units given,
+            "code_length" is assumed. If not given, either
+            the width of the domain or data_source will be used.
+        height : optional, float, unyt_quantity, or tuple of (float, units)
+            Height of the plotted region. If no units given,
+            "code_length" is assumed. If not given, either
+            the height of the domain or data_source will be used.
+
+        Examples
+        --------
+        >>> import yt
+        >>> ds = yt.load(...)
+        >>> p = ds.plot(('bands', '1'), width=(1, 'km'))
+        >>> p.save()
+
+        >>> rec = ds.rectangle_from_center(center, width, height)
+        >>> p = ds.plot(('bands', '1'), data_source=rec)
+        >>> p.save()
+        """
 
         if width is not None:
             width = validate_quantity(self, width, "code_length")
