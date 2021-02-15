@@ -257,7 +257,7 @@ class GeoTiffDataset(Dataset):
     def __repr__(self):
         fn = self.basename
         for ext in self._valid_extensions:
-            if fn.endswith(ext):
+            if fn.endswith(ext) or fn.endswith(ext.upper()):
                 fn = fn[:-len(ext)]
                 break
         return fn
@@ -432,6 +432,7 @@ class GeoTiffDataset(Dataset):
                     height = width
                 data_source = self.rectangle_from_center(
                     center, width, height)
+                center = data_source.center
 
         # construct a window data set
         wleft, wright = self.data._get_selection_window(data_source.selector)
