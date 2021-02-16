@@ -462,6 +462,8 @@ class GeoTiffDataset(Dataset):
 
         p = SlicePlot(wds, 'z', field, data_source=w_data_source,
                       center=center, width=plot_width)
+        # make this an actual pointer so wds doesn't go out of scope
+        p.ds = wds
         return p
 
     @classmethod
