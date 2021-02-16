@@ -2,7 +2,7 @@ import glob
 import numpy as np
 import os
 import rasterio
-from rasterio.windows import Window
+from rasterio.windows import from_bounds
 import stat
 
 from unyt import dimensions
@@ -154,17 +154,10 @@ class GeoTiffGrid(YTGrid):
         Calculate position, width, and height for a rasterio window read.
         """
 
-        if hasattr(self.ds, "_window_coords"):
-            left_pixels, width_pixels = self.ds._window_coords
-        else:
-            left_edge, right_edge = self._get_selection_window(selector)
-            left_pixels = ((left_edge - self.ds.domain_left_edge.d) /
-                           self.dds.d).astype(int)
-            width_pixels = ((right_edge - left_edge) /
-                            self.dds.d).astype(int)
-
-        window = Window(left_pixels[0], left_pixels[1],
-                        width_pixels[0], width_pixels[1])
+        left_edge, right_edge = self._get_selection_window(selector)
+        window = from_bounds(left_edge[0], left_edge[1],
+                             right_edge[0], right_edge[1],
+                             self.ds.parameters["transform"])
         return window
 
     def __repr__(self):
@@ -505,12 +498,6 @@ class GeoTiffWindowDataset(GeoTiffDataset):
           (parent_ds.domain_dimensions *
            (self.domain_right_edge - self.domain_left_edge) / \
            (parent_ds.domain_right_edge - parent_ds.domain_left_edge)).d.astype(np.int32)
-
-        wleftpx = ((self.domain_left_edge - parent_ds.domain_left_edge)[:2] /
-                   parent_ds.resolution).d.astype(int)
-        wwidthpx = ((self.domain_right_edge - self.domain_left_edge)[:2] /
-                    parent_ds.resolution).d.astype(int)
-        self._window_coords = (wleftpx, wwidthpx)
 
         super().__init__(parent_ds.parameter_filename, parent_ds.field_map)
 
