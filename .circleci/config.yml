@@ -37,6 +37,7 @@ commands:
             pip install 'numpy<1.20'
             pip install 'pygdal==2.4.0.6'
             pip install 'gdal==2.4.0'
+            pip install girder-client
             export MAX_BUILD_CORES=2
             if [ << parameters.ytdev >> == 1 ]; then
                 if [ ! -f $YT_DIR/README.md ]; then
@@ -59,10 +60,10 @@ commands:
           name: "Download test data."
           command: |
             # download test data
-            if [ ! -d $TEST_DATA/notafile ]; then
+            if [ ! -d $TEST_DATA/200km_2p5m_N38E34 ]; then
                 source $BASH_ENV
                 source $HOME/venv/bin/activate
-                echo "Nothing to do!"
+                girder-cli --api-url https://girder.hub.yt/api/v1 download 602fc2e068085e0001d2a924 $TEST_DATA
             fi
 
   lint:
@@ -154,17 +155,17 @@ jobs:
 
       # - lint
 
-      # - restore_cache:
-      #     name: "Restore test data cache."
-      #     key: test-data-v1
+      - restore_cache:
+          name: "Restore test data cache."
+          key: test-data-v2
 
-      # - download-test-data
+      - download-test-data
 
-      # - save_cache:
-      #     name: "Save test data cache."
-      #     key: test-data-v1
-      #     paths:
-      #       - ~/test_data
+      - save_cache:
+          name: "Save test data cache."
+          key: test-data-v2
+          paths:
+            - ~/test_data
 
       - run-tests:
           coverage: << parameters.coverage >>
