@@ -63,7 +63,7 @@ commands:
             if [ ! -d $TEST_DATA/200km_2p5m_N38E34 ]; then
                 source $BASH_ENV
                 source $HOME/venv/bin/activate
-                girder-cli --api-url https://girder.hub.yt/api/v1 download 602fc2e068085e0001d2a924 $YTREE_DATA
+                girder-cli --api-url https://girder.hub.yt/api/v1 download 602fc2e068085e0001d2a924 $TEST_DATA
             fi
 
   lint:
