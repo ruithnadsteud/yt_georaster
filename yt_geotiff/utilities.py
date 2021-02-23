@@ -6,16 +6,15 @@ Utility functions for yt_geotiff.
 """
 import numpy as np
 import rasterio
-from rasterio.windows import Window
 from unyt import unyt_array, unyt_quantity, uconcatenate
 
 import yt.geometry.selection_routines as selector_shape
 from yt.utilities.logger import ytLogger
 
+
 def coord_cal(xcell, ycell, transform):
     """Function to calculate the position of cell (xcell, ycell) in terms of
     longitude and latitude"""
-
 
     # note dy is -ve
     dx, rotx, xmin, roty, dy, ymax = transform[0:6]
@@ -23,6 +22,7 @@ def coord_cal(xcell, ycell, transform):
     yp = ymax + dy/2 + dy*ycell + roty*xcell
 
     return xp, yp
+
 
 def left_aligned_coord_cal(xcell, ycell, transform):
     """Function to calculate the position of cell (xcell, ycell) in terms of
@@ -32,14 +32,13 @@ def left_aligned_coord_cal(xcell, ycell, transform):
     degrees.
     """
 
-    # rEarth = 6.371e6 # metres
-
     dx, rotx, xmin, roty, dy, ymax = transform[0:6]
     xp, yp = coord_cal(xcell, ycell, transform)
     # convert to meters
-    x_arc_dist = (xp - xmin)# * np.pi/180. * rEarth
-    y_arc_dist = (ymax - yp)# * np.pi/180. * rEarth # (0, 0) corresponds to (xmin, ymax)
+    x_arc_dist = (xp - xmin)
+    y_arc_dist = (ymax - yp)
     return x_arc_dist, y_arc_dist
+
 
 def parse_awslandsat_metafile(filename, flatdict=True):
     """Function to read in metadata/parameter file and output it as a dict.
@@ -72,14 +71,15 @@ def parse_awslandsat_metafile(filename, flatdict=True):
         elif key == 'END_GROUP':
             groupkeys.pop()
         else:
-            if flatdict: # save as flat dictionary?
+            if flatdict:
                 data[key] = value
-            else: # useful if keys are not unique for each band
+            else:
                 data[tuple(groupkeys + [key])] = value
 
     f.close()
 
     return data
+
 
 def save_dataset_as_geotiff(ds, filename):
     r"""Export georeferenced dataset to a reloadable geotiff.
@@ -106,7 +106,8 @@ def save_dataset_as_geotiff(ds, filename):
     # cycle through each field(/band).
     count = ds.parameters['count']
     bands = range(1, count + 1)
-    output_array = np.array([np.array(ds.index.grids[0][('bands', str(b))])[:,:,0] for b in bands])
+    output_array = np.array([np.array(ds.index.grids[0]
+                            [('bands', str(b))])[:, :, 0] for b in bands])
     dtype = output_array[0].dtype
 
     with rasterio.open(filename,
@@ -118,10 +119,11 @@ def save_dataset_as_geotiff(ds, filename):
                        dtype=dtype,
                        crs=ds.parameters['crs'],
                        transform=ds.parameters['transform'],
-                      ) as dst:
+                       ) as dst:
         dst.write(output_array)
 
     return filename
+
 
 def merge_dicts(*dict_args):
     """
@@ -136,8 +138,9 @@ def merge_dicts(*dict_args):
 
 def rasterio_window_calc(selector):
     """
-    This function reads information from either a sphere, box or region selector
-    object and outputs the dimensions of a container: left edge, right edge,
+    This function reads information from either a sphere,
+    box or region selector object and outputs the
+    dimensions of a container: left edge, right edge,
     width and height.
     """
 
@@ -154,10 +157,12 @@ def rasterio_window_calc(selector):
 
         selector_left_edge = selector.left_edge
         selector_right_edge = selector.right_edge
-        selector_width =  selector.right_edge[0] - selector.left_edge[0]
+        selector_width = selector.right_edge[0] - selector.left_edge[0]
         selector_height = selector_width
 
-    return selector_left_edge, selector_right_edge, selector_width, selector_height
+    return selector_left_edge, selector_right_edge,\
+        selector_width, selector_height
+
 
 def validate_coord_array(ds, coord, name, padval, def_units):
     """
@@ -187,6 +192,7 @@ def validate_coord_array(ds, coord, name, padval, def_units):
     newc = cfunc([coord, afunc(padval.to(units))])
     return newc
 
+
 def validate_quantity(ds, value, units):
     """
     Take a unyt_quantity, float, or (float, string) tuple
@@ -200,6 +206,7 @@ def validate_quantity(ds, value, units):
     else:
         value = ds.quan(value, units)
     return value
+
 
 class log_level():
     """

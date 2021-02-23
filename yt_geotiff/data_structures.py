@@ -33,13 +33,15 @@ from .utilities import \
     validate_quantity, \
     log_level
 
+
 class GeoTiffWindowGrid(YTGrid):
     def __init__(self, gridobj, left_edge, right_edge):
 
         YTSelectionContainer.__init__(self, gridobj._index.dataset, None)
 
         self.id = gridobj.id
-        self._child_mask = gridobj._child_indices = gridobj._child_index_mask = None
+        self._child_mask = gridobj._child_indices =\
+            gridobj._child_index_mask = None
         self.ds = gridobj._index.dataset
         self._index = gridobj._index
         self.start_index = None
@@ -56,16 +58,17 @@ class GeoTiffWindowGrid(YTGrid):
         # Make sure z dimension edges are the same as parent grid.
         self.LeftEdge[2] = gridobj.LeftEdge[2]
         self.RightEdge[2] = gridobj.RightEdge[2]
-        self.ActiveDimensions = \
-          (gridobj.ActiveDimensions *
-           (self.RightEdge - self.LeftEdge) / \
-           (gridobj.RightEdge - gridobj.LeftEdge)).d.astype(np.int32)
+        self.ActiveDimensions =\
+            (gridobj.ActiveDimensions *
+                (self.RightEdge - self.LeftEdge) /
+                (gridobj.RightEdge - gridobj.LeftEdge)).d.astype(np.int32)
         # Inherit dx values from parent.
         self.dds = gridobj.dds
 
     def __repr__(self):
         ad = self.ActiveDimensions
         return f"GeoTiffWindowGrid ({ad[0]}x{ad[1]})"
+
 
 class GeoTiffGrid(YTGrid):
     _last_wgrid = None
@@ -163,7 +166,8 @@ class GeoTiffGrid(YTGrid):
     def __repr__(self):
         ad = self.ActiveDimensions
         return f"GeoTiffGrid ({ad[0]}x{ad[1]})"
- 
+
+
 class GeoTiffHierarchy(YTGridHierarchy):
     grid = GeoTiffGrid
 
@@ -176,9 +180,10 @@ class GeoTiffHierarchy(YTGridHierarchy):
                 field_name = (group, str(_i))
                 self.field_list.append(field_name)
                 self.ds.field_units[field_name] = ""
-                
+
     def _count_grids(self):
         self.num_grids = 1
+
 
 class GeoTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
@@ -190,10 +195,9 @@ class GeoTiffDataset(Dataset):
     default_fluid_type = "bands"
     fluid_types = ("bands", "index", "sentinel2")
     _periodicity = np.zeros(3, dtype=bool)
-    cosmological_simulation = False       
-    
+    cosmological_simulation = False
     _con_attrs = ()
-    
+
     def __init__(self, filename, field_map=None):
         self.field_map = field_map
         super(GeoTiffDataset, self).__init__(
@@ -220,8 +224,6 @@ class GeoTiffDataset(Dataset):
                 v = f.meta[key]
                 self.parameters[key] = v
             self.parameters['res'] = f.res
-
-        ### TODO: can we get time info from metadata?
         self.current_time = 0
 
         width = self.parameters['width']
@@ -234,8 +236,10 @@ class GeoTiffDataset(Dataset):
         rast_right = np.concatenate([transform * (width, height), [1]])
         # save dimensions that need to be flipped
         self._flip_axes = np.where(rast_left > rast_right)[0]
-        self.domain_left_edge = self.arr(np.min([rast_left, rast_right], axis=0), 'm')
-        self.domain_right_edge = self.arr(np.max([rast_left, rast_right], axis=0), 'm')
+        self.domain_left_edge =\
+            self.arr(np.min([rast_left, rast_right], axis=0), 'm')
+        self.domain_right_edge =\
+            self.arr(np.max([rast_left, rast_right], axis=0), 'm')
         self.resolution = self.arr(self.parameters['res'], 'm')
 
     def _set_code_unit_attributes(self):
@@ -258,7 +262,7 @@ class GeoTiffDataset(Dataset):
             mylog.warn("x and y pixels have different sizes.")
 
     def save_as(self, filename):
-        ### TODO: generalize this to save any dataset type as GeoTiff.
+        # TODO: generalize this to save any dataset type as GeoTiff.
         return save_dataset_as_geotiff(self, filename)
 
     def __repr__(self):
@@ -476,12 +480,13 @@ class GeoTiffDataset(Dataset):
                 break
         if not valid:
             return False
-     
+
         with rasterio.open(fn, "r") as f:
             driver_type = f.meta["driver"]
             if driver_type == "GTiff":
                 return True
         return False
+
 
 class GeoTiffWindowDataset(GeoTiffDataset):
     """
@@ -497,9 +502,10 @@ class GeoTiffWindowDataset(GeoTiffDataset):
         self.domain_left_edge = parent_ds.arr(left_edge, 'm')
         self.domain_right_edge = parent_ds.arr(right_edge, 'm')
         self.domain_dimensions = \
-          (parent_ds.domain_dimensions *
-           (self.domain_right_edge - self.domain_left_edge) / \
-           (parent_ds.domain_right_edge - parent_ds.domain_left_edge)).d.astype(np.int32)
+            (parent_ds.domain_dimensions *
+                (self.domain_right_edge - self.domain_left_edge) /
+                (parent_ds.domain_right_edge -
+                    parent_ds.domain_left_edge)).d.astype(np.int32)
 
         super().__init__(parent_ds.parameter_filename, parent_ds.field_map)
 
@@ -511,36 +517,43 @@ class GeoTiffWindowDataset(GeoTiffDataset):
 
         self.parameters = self._parent_ds.parameters.copy()
 
+
 class LandSatGeoTiffHierarchy(GeoTiffHierarchy):
     def _detect_output_fields(self):
         self.field_list = []
         self.ds.field_units = self.ds.field_units or {}
-        
+
         # get list of filekeys
-        filekeys = [s for s in self.ds.parameters.keys() if 'FILE_NAME_BAND_' in s]
-        files = [self.ds.data_dir + self.ds.parameters[filekey] for filekey in filekeys]
-        
+        filekeys = [s for s in self.ds.parameters.keys()
+                    if 'FILE_NAME_BAND_' in s]
+        files = [self.ds.data_dir + self.ds.parameters[filekey]
+                 for filekey in filekeys]
+
         group = 'bands'
         for file in files:
             band = file.split(os.path.sep)[-1].split('.')[0].split('B')[1]
             field_name = (group, band)
             self.field_list.append(field_name)
-            self.ds.field_units[field_name] = ""     
-            
+            self.ds.field_units[field_name] = ""
+
+
 class LandSatGeoTiffDataSet(GeoTiffDataset):
     """"""
     _index_class = LandSatGeoTiffHierarchy
-    
+
     def _parse_parameter_file(self):
         self.current_time = 0.
         self.unique_identifier = \
             int(os.stat(self.parameter_filename)[stat.ST_CTIME])
-            
+
         # self.parameter_filename is the dir str
         if self.parameter_filename[-1] == '/':
             self.data_dir = self.parameter_filename
-            self.mtlfile = self.data_dir + self.parameter_filename[:-1].split(os.path.sep)[-1] + '_MTL.txt'
-            self.angfile = self.data_dir + self.parameter_filename[:-1].split(os.path.sep)[-1] + '_ANG.txt'
+            self.mtlfile = self.data_dir +\
+                self.parameter_filename[:-1]\
+                .split(os.path.sep)[-1] + '_MTL.txt'
+            self.angfile = self.data_dir + self.parameter_filename[:-1]\
+                          .split(os.path.sep)[-1] + '_ANG.txt'
         else:
             self.data_dir = self.parameter_filename + '/'
             self.mtlfile = self.data_dir + self.parameter_filename.split(os.path.sep)[-1] + '_MTL.txt'
@@ -548,14 +561,14 @@ class LandSatGeoTiffDataSet(GeoTiffDataset):
         # load metadata files
         self.parameters.update(parse_awslandsat_metafile(self.angfile))
         self.parameters.update(parse_awslandsat_metafile(self.mtlfile))
-        
+
         # get list of filekeys
         filekeys = [s for s in self.parameters.keys() if 'FILE_NAME_BAND_' in s]
         files = [self.data_dir + self.parameters[filekey] for filekey in filekeys]
         self.parameters['count'] = len(filekeys)
         # take the parameters displayed in the filename
-        self._parse_landsat_filename_data(self.parameter_filename.split(os.path.sep)[-1])       
-        
+        self._parse_landsat_filename_data(self.parameter_filename.split(os.path.sep)[-1])
+
         for filename in files:
             band = filename.split(os.path.sep)[-1].split('.')[0].split('B')[1]
             # filename = self.parameters[band]
@@ -569,22 +582,22 @@ class LandSatGeoTiffDataSet(GeoTiffDataset):
                     self.parameters[(band, key)] = v
                 self._with_parameter_file_open(f)
                 # self.parameters['transform'] = f.transform
-                
+
             if band == '1':
                 self.domain_dimensions = np.array([self.parameters[(band, 'height')],
                                                    self.parameters[(band, 'width')],
                                                    1], dtype=np.int32)
                 self.dimensionality = 3
                 rightedge_xy = left_aligned_coord_cal(self.domain_dimensions[0],
-                                                  self.domain_dimensions[1],
-                                                  self.parameters[(band, 'transform')])
+                                                      self.domain_dimensions[1],
+                                                      self.parameters[(band, 'transform')])
                 
                 self.domain_left_edge = self.arr(np.zeros(self.dimensionality,
                                                            dtype=np.float64), 'm')
                 self.domain_right_edge = self.arr([rightedge_xy[0],
                                                   rightedge_xy[1],
                                                   1], 'm', dtype=np.float64)
-    
+
     def _parse_landsat_filename_data(self, filename):
         """
         "LXSS_LLLL_PPPRRR_YYYYMMDD_yyyymmdd_CC_TX"
@@ -610,14 +623,12 @@ class LandSatGeoTiffDataSet(GeoTiffDataset):
                      "08": "Landsat 8"}
         category = {"RT": "Real-Time", "T1": "Tier 1",
                     "T2": "Tier 2"}
-        
+
         self.parameters['sensor'] = sensor[filename[1]]
         self.parameters['satellite'] = satellite[filename[2:4]]
         self.parameters['level'] = filename[5:9]        
-        
         self.parameters['wrs'] = {'path': filename[10:13],
                                   'row': filename[13:16]}
-        
         self.parameters['acquisition_time'] = {'year': filename[17:21],
                                                'month': filename[21:23],
                                                'day': filename[23:25]}
@@ -627,7 +638,7 @@ class LandSatGeoTiffDataSet(GeoTiffDataset):
         self.parameters['collection'] = {
                                 'number': filename[35:37],
                                 'category': category[filename[38:40]]}
-    
+
     @classmethod
     def _is_valid(self, *args, **kwargs):
         if not os.path.isdir(args[0]): return False
