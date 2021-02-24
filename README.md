@@ -74,7 +74,9 @@ Number of pixels 2400.0 pixels
 
 Use functionality in yt to create a plot of the window-read output. For example, rectangular window-read with dimensions of 2 x 2 km:
 ```
->>> p = ds.plot(('bands', '1'), height=(2., 'km'), width=(2., 'km'), center=(ds.arr(point_center[X,Y],'m')))
+>>> rectangle_centre = ds.arr([X,Y],'m')
+
+>>> p = ds.plot(('bands', '1'), height=(2., 'km'), width=(2., 'km'), center=rectangle_centre)
 >>> p.set_log(('bands', '1'), False)
 >>> p.set_cmap(('bands', '1'), 'B-W LINEAR')
 >>> p.show()
