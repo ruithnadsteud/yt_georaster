@@ -73,7 +73,7 @@ Use functionality in yt to create a plot of the window-read output. For example,
 >>> p.set_cmap(('bands', '1'), 'B-W LINEAR')
 >>> p.show()
 ```
-Example ploit using a circle data container with 1000 m radius:
+Example plot using a circle data container with 1000 m radius:
 ```
 >>> radius = ds.arr(1000.,'m')
 >>> circle_centre = ds.arr(point_center[X,Y],'m')
