@@ -152,7 +152,7 @@ jobs:
             - ~/venv
             - ~/yt-git
 
-      # - lint
+      - lint
 
       # - restore_cache:
       #     name: "Restore test data cache."
