@@ -35,8 +35,9 @@ Generate rectangular yt data container for performing the yt_geotiff Window-read
 ```
 >>> width = ds.arr(2000., 'm')
 >>> height = ds.arr(2000.,'m') 
+>>> rectangle_centre = ds.arr([X,Y],'m')
 
->>> rectangular_yt_container = ds.rectangle_from_center((ds.arr(point_center[:,0],'m')),width,height)
+>>> rectangular_yt_container = ds.rectangle_from_center(rectangle_centre,width,height)
 ```
 Generate circular yt data container for performing the yt_geotiff Window-read based on centre coordinates and radius:
 ```
@@ -78,7 +79,7 @@ Use functionality in yt to create a plot of the window-read output. For example,
 Example plot using a circle data container with 1000 m radius:
 ```
 >>> radius = ds.arr(1000.,'m')
->>> circle_centre = ds.arr(point_center[X,Y],'m')
+>>> circle_centre = ds.arr([X,Y],'m')
 
 >>> cp = ds.circle(circle_centre, radius)
                
