@@ -17,7 +17,7 @@ Key developments applied to the yt_geotiff package include the enabling of raste
 
 Import yt and the yt_geotiff extensions
 ```
-import yt
+>>> import yt
 import yt.extensions.geotiff
 ```
 
