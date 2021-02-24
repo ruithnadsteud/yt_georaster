@@ -15,6 +15,8 @@ Aside from **yt** itself, the following packages are required to use yt_geotiff:
 
 Key developments applied to the yt_geotiff package include the enabling of rasterio Window-reads. This Window-read feature allows for yt_geotiff users to read a sub-region of a multiband raster image analysis without having to read the entire image. Reading only an area of interest allows user to work more efficiently and circumvents the issue whereby the raster image size exceeds a computer's RAM. The function uses existng functionality in yt in order to define Window-read areas based on rectangular and circular yt data container shapes.
 
+For the yt_geotiff working example below (also detailed in the "yt_geotiff/examples/Milestone_1_demo.ipynb" jupyter notebook) we have used the European Settlement Map (ESM 2017) N38E34 map tile available from the Copernicus Land Monitoring Service (source: https://land.copernicus.eu/pan-european/GHSL/european-settlement-map/esm-2012-release-2017-urban-green ). 
+
 Import yt and the yt_geotiff extensions
 ```
 >>> import yt
@@ -23,7 +25,7 @@ Import yt and the yt_geotiff extensions
 
 Users of yt_geotiff can load a raster image to first extract image metadata, including pixel dimensions and the coordinate reference system:
 ```
->>> ds = yt.load(raster_file)
+>>> ds = yt.load("200km_2p5m_N38E34.tif")
 
 yt : [INFO     ] 2021-02-23 23:58:46,416 Parameters: domain_dimensions         = [80000 80000     1]
 yt : [INFO     ] 2021-02-23 23:58:46,419 Parameters: domain_left_edge          = [3444000. 3642000.       0.] m
