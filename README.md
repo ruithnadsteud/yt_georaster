@@ -15,6 +15,12 @@ Aside from **yt** itself, the following packages are required to use yt_geotiff:
 
 A key developments applied to the yt_geotiff package include the enabling of rasterio Window-reads. This Window-read feature allows for yt_geotiff users to read a sub-region of a multiband raster image analysis without having to read the entire image. Reading only an area of interest allows user to work more efficiently and circumvents the issue whereby the raster image size exceeds a computer's RAM. The function uses exisitng funcitonality in yt in order to define Window-read areas based on rectangular and circular yt data container shapes.
 
+Import yt and the yt_geotiff extensions
+```
+import yt
+import yt.extensions.geotiff
+```
+
 Users of yt_geotiff can load a raster image to first extract image metadata, including pixel dimensions and the coordinate reference system:
 ```
 ds = yt.load(raster_file)
@@ -58,4 +64,24 @@ rectangular_yt_container['radius']
 Convert map unit (e.g. m) distance to pixel unit distance:
 ```
 distance = ds.arr(500., 'm')
+```
+
+Use functionality in yt to create a plot of the window-read output. For example, rectangular window-read with dimensions of 2 x 2 km:
+```
+p = ds.plot(('bands', '1'), height=(2., 'km'), width=(2., 'km'), center=(ds.arr(point_center[X,Y],'m')))
+p.set_log(('bands', '1'), False)
+p.set_cmap(('bands', '1'), 'B-W LINEAR')
+p.show()
+```
+Example ploit using a circle data container with 1000 m radius:
+```
+radius = ds.arr(1000.,'m')
+circle_centre = ds.arr(point_center[X,Y],'m')
+
+cp = ds.circle(circle_centre, radius)
+               
+q = ds.plot([('bands','1')],cp)
+q.set_log(('bands', '1'), False)
+q.set_cmap(('bands', '1'), 'B-W LINEAR')
+q.show()
 ```
