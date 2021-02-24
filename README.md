@@ -18,12 +18,12 @@ Key developments applied to the yt_geotiff package include the enabling of raste
 Import yt and the yt_geotiff extensions
 ```
 >>> import yt
-import yt.extensions.geotiff
+>>> import yt.extensions.geotiff
 ```
 
 Users of yt_geotiff can load a raster image to first extract image metadata, including pixel dimensions and the coordinate reference system:
 ```
-ds = yt.load(raster_file)
+>>> ds = yt.load(raster_file)
 
 yt : [INFO     ] 2021-02-23 23:58:46,416 Parameters: domain_dimensions         = [80000 80000     1]
 yt : [INFO     ] 2021-02-23 23:58:46,419 Parameters: domain_left_edge          = [3444000. 3642000.       0.] m
@@ -31,57 +31,57 @@ yt : [INFO     ] 2021-02-23 23:58:46,420 Parameters: domain_right_edge         =
 ```
 Generate rectangular yt data container for performing the yt_geotiff Window-read based on centre coordinates and width and height dimensions:
 ```
-width = ds.arr(2000., 'm')
-height = ds.arr(2000.,'m') 
+>>> width = ds.arr(2000., 'm')
+>>> height = ds.arr(2000.,'m') 
 
-rectangular_yt_container = ds.rectangle_from_center((ds.arr(point_center[:,0],'m')),width,height)
+>>> rectangular_yt_container = ds.rectangle_from_center((ds.arr(point_center[:,0],'m')),width,height)
 ```
 Generate circular yt data container for performing the yt_geotiff Window-read based on centre coordinates and radius:
 ```
-radius = ds.arr(1000.,'m')
-circle_centre = ds.arr(point_center[X,Y],'m')
+>>> radius = ds.arr(1000.,'m')
+>>> circle_centre = ds.arr(point_center[X,Y],'m')
 
-circular_yt_container = ds.circle(circle_centre, radius)
+>>> circular_yt_container = ds.circle(circle_centre, radius)
 ```
 Find the name of individual raster fields/bands:
 ```
-ds.field_list
+>>> ds.field_list
 
 [('bands', '1')]
 ```
 
 Perform window-read using a yt data container for a single band:
 ```
-rectangular_yt_container[('bands','1')]
+>>> rectangular_yt_container[('bands','1')]
 ```
 Query X, Y and radius fields of a yt data container:
 ```
-rectangular_yt_container['X']
-rectangular_yt_container['Y']
-rectangular_yt_container['radius']
+>>> rectangular_yt_container['X']
+>>> rectangular_yt_container['Y']
+>>> rectangular_yt_container['radius']
 ```
 
 Convert map unit (e.g. m) distance to pixel unit distance:
 ```
-distance = ds.arr(500., 'm')
+>>> distance = ds.arr(500., 'm')
 ```
 
 Use functionality in yt to create a plot of the window-read output. For example, rectangular window-read with dimensions of 2 x 2 km:
 ```
-p = ds.plot(('bands', '1'), height=(2., 'km'), width=(2., 'km'), center=(ds.arr(point_center[X,Y],'m')))
-p.set_log(('bands', '1'), False)
-p.set_cmap(('bands', '1'), 'B-W LINEAR')
-p.show()
+>>> p = ds.plot(('bands', '1'), height=(2., 'km'), width=(2., 'km'), center=(ds.arr(point_center[X,Y],'m')))
+>>> p.set_log(('bands', '1'), False)
+>>> p.set_cmap(('bands', '1'), 'B-W LINEAR')
+>>> p.show()
 ```
 Example ploit using a circle data container with 1000 m radius:
 ```
-radius = ds.arr(1000.,'m')
-circle_centre = ds.arr(point_center[X,Y],'m')
+>>> radius = ds.arr(1000.,'m')
+>>> circle_centre = ds.arr(point_center[X,Y],'m')
 
-cp = ds.circle(circle_centre, radius)
+>>> cp = ds.circle(circle_centre, radius)
                
-q = ds.plot([('bands','1')],cp)
-q.set_log(('bands', '1'), False)
-q.set_cmap(('bands', '1'), 'B-W LINEAR')
-q.show()
+>>> q = ds.plot([('bands','1')],cp)
+>>> q.set_log(('bands', '1'), False)
+>>> q.set_cmap(('bands', '1'), 'B-W LINEAR')
+>>> q.show()
 ```
