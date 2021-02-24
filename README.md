@@ -25,12 +25,17 @@ yt : [INFO     ] 2021-02-23 23:58:46,420 Parameters: domain_right_edge         =
 ```
 Generate rectangular yt data container for performing the yt_geotiff Window-read based on centre coordinates and width and height dimensions:
 ```
-width = ds.arr(2000, 'm')
-height = ds.arr(2000,'m') 
+width = ds.arr(2000., 'm')
+height = ds.arr(2000.,'m') 
 
-rectangular_container = ds.rectangle_from_center((ds.arr(point_center[:,0],'m')),width,height)
+rectangular_yt_container = ds.rectangle_from_center((ds.arr(point_center[:,0],'m')),width,height)
 ```
+Generate circular yt data container for performing the yt_geotiff Window-read based on centre coordinates and radius:
+```
+radius = ds.arr(1000.,'m')
+circle_centre = ds.arr(point_center[X,Y],'m')
 
-
+circular_yt_container = ds.circle(circle_centre, radius)
+```
 
 ## 
