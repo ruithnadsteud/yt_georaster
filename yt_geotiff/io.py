@@ -7,6 +7,7 @@ from yt.geometry.selection_routines import \
 from yt.frontends.ytdata.io import \
     IOHandlerYTGridHDF5
 
+
 class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
     _dataset_type = "geotiff"
     _base = slice(None)
@@ -54,7 +55,7 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                 rv[(ftype, fname)] = self._transform_data(data)
 
             if self._cache_on:
-                self._cached_fields.setdefault(g.id,{})
+                self._cached_fields.setdefault(g.id, {})
                 self._cached_fields[g.id].update(rv)
             return rv
 
@@ -70,13 +71,14 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
         for chunk in chunks:
             src = None
             for g in chunk.objs:
-                if g.filename is None: continue
+                if g.filename is None:
+                    continue
                 if src is None:
                     src = rasterio.open(g.filename, "r")
                 # Create a rasterio window to read just what we need.
                 rasterio_window = g._get_rasterio_window(selector)
 
-                gf = self._cached_fields.get(g.id,{})
+                gf = self._cached_fields.get(g.id, {})
                 nd = 0
 
                 for field in fields:
@@ -85,7 +87,7 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
 
                         # Add third dimension to numpy array
                         for dim in range(len(gf[field].shape), 3):
-                               gf[field] = np.expand_dims(gf[field], dim)
+                            gf[field] = np.expand_dims(gf[field], dim)
 
                         nd = g.select(selector, gf[field], rv[field], ind)
 
