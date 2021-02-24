@@ -13,7 +13,7 @@ Aside from **yt** itself, the following packages are required to use yt_geotiff:
 
 ## Developments and working examples
 
-Key developments applied to the yt_geotiff package include the enabling of rasterio Window-reads. This Window-read feature allows for yt_geotiff users to read a sub-region of a multiband raster image analysis without having to read the entire image. Reading only an area of interest allows user to work more efficiently and circumvents the issue whereby the raster image size exceeds a computer's RAM. The function uses existng functionality in yt in order to define Window-read areas based on rectangular and circular yt data container shapes.
+Key developments applied to the yt_geotiff package include the enabling of rasterio Window-reads. This Window-read feature allows for yt_geotiff users to read a sub-region of a multiband raster image analysis without having to read the entire image. Reading only an area of interest allows user to work more efficiently and circumvents the issue whereby the raster image size exceeds a computer's RAM. The function uses existing functionality in yt in order to define Window-read areas based on rectangular and circular yt data container shapes.
 
 For the yt_geotiff working example below (also detailed in the "yt_geotiff/examples/Milestone_1_demo.ipynb" jupyter notebook) we have used the European Settlement Map (ESM 2017) N38E34 map tile available from the Copernicus Land Monitoring Service (source: https://land.copernicus.eu/pan-european/GHSL/european-settlement-map/esm-2012-release-2017-urban-green ). 
 
@@ -42,7 +42,7 @@ Generate rectangular yt data container for performing the yt_geotiff Window-read
 Generate circular yt data container for performing the yt_geotiff Window-read based on centre coordinates and radius:
 ```
 >>> radius = ds.arr(1000.,'m')
->>> circle_centre = ds.arr(point_center[X,Y],'m')
+>>> circle_centre = ds.arr([X,Y],'m')
 
 >>> circular_yt_container = ds.circle(circle_centre, radius)
 ```
@@ -67,6 +67,9 @@ Query X, Y and radius fields of a yt data container:
 Convert map unit (e.g. m) distance to pixel unit distance:
 ```
 >>> distance = ds.arr(500., 'm')
+>>> print('Number of pixels {0}'.format(distance.to('pixels')))
+
+Number of pixels 2400.0 pixels
 ```
 
 Use functionality in yt to create a plot of the window-read output. For example, rectangular window-read with dimensions of 2 x 2 km:
