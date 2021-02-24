@@ -13,7 +13,7 @@ Aside from **yt** itself, the following packages are required to use yt_geotiff:
 
 ## Developments and working examples
 
-A key developments applied to the yt_geotiff package include the enabling of rasterio Window-reads. This Window-read feature allows for yt_geotiff users to read a sub-region of a multiband raster image analysis without having to read the entire image. Reading only an area of interest allows user to work more efficiently and circumvents the issue whereby the raster image size exceeds a computer's RAM. The function uses exisitng funcitonality in yt in order to define Window-read areas based on rectangular and circular yt data container shapes.
+Key developments applied to the yt_geotiff package include the enabling of rasterio Window-reads. This Window-read feature allows for yt_geotiff users to read a sub-region of a multiband raster image analysis without having to read the entire image. Reading only an area of interest allows user to work more efficiently and circumvents the issue whereby the raster image size exceeds a computer's RAM. The function uses existng functionality in yt in order to define Window-read areas based on rectangular and circular yt data container shapes.
 
 Import yt and the yt_geotiff extensions
 ```
