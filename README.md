@@ -37,5 +37,25 @@ circle_centre = ds.arr(point_center[X,Y],'m')
 
 circular_yt_container = ds.circle(circle_centre, radius)
 ```
+Find the name of individual raster fields/bands:
+```
+ds.field_list
 
-## 
+[('bands', '1')]
+```
+
+Perform window-read using a yt data container for a single band:
+```
+rectangular_yt_container[('bands','1')]
+```
+Query X, Y and radius fields of a yt data container:
+```
+rectangular_yt_container['X']
+rectangular_yt_container['Y']
+rectangular_yt_container['radius']
+```
+
+Convert map unit (e.g. m) distance to pixel unit distance:
+```
+distance = ds.arr(500., 'm')
+```
