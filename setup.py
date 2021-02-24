@@ -16,7 +16,7 @@ def get_version(filename):
 VERSION = get_version("yt_geotiff/__init__.py")
 
 dev_requirements = [
-    'pytest>=3.6']
+    'flake8', 'pytest>=3.6']
 
 setup(name="yt_geotiff",
       version=VERSION,
