@@ -14,7 +14,7 @@ def test_rectangular():
     height = ds.arr(2000.,'m') 
     rectangle_centre = ds.arr([3501279,3725080],'m')
 
-    rectangular_yt_container = ds.rectangle_from_center(rectangle_centre,width,height)
-    rectangular_yt_container[('bands','1')]
-    
-    assert isinstance(rectangular_yt_container.selector,selector_shape.rectangle)
+    p = ds.plot(('bands', '1'), height=height, width=width, center=rectangle_centre)
+    p.set_log(('bands', '1'), False)
+    p.set_cmap(('bands', '1'), 'B-W LINEAR')
+    p.show()
