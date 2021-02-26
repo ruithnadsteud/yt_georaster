@@ -17,4 +17,3 @@ def test_plot():
     p = ds.plot(('bands', '1'), height=height, width=width, center=rectangle_centre)
     p.set_log(('bands', '1'), False)
     p.set_cmap(('bands', '1'), 'B-W LINEAR')
-    p.show()
