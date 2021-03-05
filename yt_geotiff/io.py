@@ -23,6 +23,8 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
             data = np.flip(data, axis=self.ds._flip_axes)
         return data
 
+    # resample function
+
     def _read_fluid_selection(self, chunks, selector, fields, size):
         rv = {}
         chunks = list(chunks)
@@ -39,6 +41,7 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
             if len(rv) == len(fields):
                 return rv
 
+            #     
             src = rasterio.open(g.filename, "r")
             rasterio_window = g._get_rasterio_window(selector)
 
@@ -47,12 +50,12 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                     self._hits += 1
                     continue
                 self._misses += 1
-                ftype, fname = field
+                ftype, fname = field 
 
                 # Read in the band/field
                 data = src.read(int(fname), window=rasterio_window).astype(
                     self._field_dtype)
-                rv[(ftype, fname)] = self._transform_data(data)
+                rv[(ftype, fname)] = self._transform_data(data) ####
 
             if self._cache_on:
                 self._cached_fields.setdefault(g.id, {})
@@ -82,6 +85,7 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                 nd = 0
 
                 for field in fields:
+                    
                     # only for cached gridded objects
                     if field in gf:
 
@@ -100,6 +104,116 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
 
                     # Perform Rasterio window read
                     data = src.read(int(fname), window=rasterio_window).astype(
+                        self._field_dtype)
+                    data = self._transform_data(data)
+
+                    for dim in range(len(data.shape), 3):
+                        data = np.expand_dims(data, dim)
+
+                    if self._cache_on:
+                        self._cached_fields.setdefault(g.id, {})
+                        self._cached_fields[g.id][field] = data
+
+                    nd = g.select(selector, data, rv[field], ind)
+
+                ind += nd
+    
+        return rv
+
+    # -- NOTES --------------------
+    # resampling funciton
+    # rv[(ftype, fname)] = self._resample_data(data) ####
+    # self.
+
+class io_handler_JPEG2000(IOHandlerGeoTiff):
+    _dataset_type = "JPEG2000"
+
+    def _read_fluid_selection(self, chunks, selector, fields, size):
+
+        rv = {}
+        chunks = list(chunks)
+
+        if isinstance(selector, GridSelector):            
+
+            if not (len(chunks) == len(chunks[0].objs) == 1):
+                raise RuntimeError
+            g = chunks[0].objs[0]
+
+            if g.id in self._cached_fields:
+                gf = self._cached_fields[g.id]
+                rv.update(gf)
+
+            if len(rv) == len(fields):
+                return rv
+            
+            for field in fields:
+                if field in rv:
+                    self._hits += 1
+                    continue
+                self._misses += 1
+                ftype, fname = field 
+                  
+                g.filename=self.ds._field_filename[fname]
+                src = rasterio.open(g.filename, "r")
+                rasterio_window = g._get_rasterio_window(selector)
+
+                # Read in the band/field
+                data = src.read(1, window=rasterio_window).astype(
+                    self._field_dtype)
+                rv[(ftype, fname)] = self._transform_data(data)
+
+            if self._cache_on:
+                self._cached_fields.setdefault(g.id, {})
+                self._cached_fields[g.id].update(rv)
+            return rv
+
+        
+        if size is None:
+            size = sum((g.count(selector) for chunk in chunks
+                        for g in chunk.objs))
+        for field in fields:
+            ftype, fname = field
+            #print(field, fname)
+            fsize = size
+            rv[field] = np.empty(fsize, dtype="float64")
+        ind = 0
+                
+        for chunk in chunks:
+            src = None
+            for g in chunk.objs:
+                if g.filename is None:
+                    continue
+
+
+
+                gf = self._cached_fields.get(g.id, {})
+                nd = 0
+
+                for field in fields:
+                    
+                    # only for cached gridded objects
+                    if field in gf:
+
+                        # Add third dimension to numpy array
+                        for dim in range(len(gf[field].shape), 3):
+                            gf[field] = np.expand_dims(gf[field], dim)
+
+                        nd = g.select(selector, gf[field], rv[field], ind)
+
+                        self._hits += 1
+                        continue
+
+                    self._misses += 1
+
+                    ftype, fname = field
+                    
+                    g.filename=self.ds._field_filename[fname]
+                    src = rasterio.open(g.filename, "r")
+                    # Create a rasterio window to read just what we need.
+                    rasterio_window = g._get_rasterio_window(selector)
+
+                    # Perform Rasterio window read
+                    data = src.read(1, window=rasterio_window).astype(
                         self._field_dtype)
                     data = self._transform_data(data)
 
