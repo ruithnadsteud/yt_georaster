@@ -1,6 +1,8 @@
 import numpy as np
 import rasterio
 
+import scipy.ndimage
+
 from yt.geometry.selection_routines import \
     GridSelector
 
@@ -23,7 +25,12 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
             data = np.flip(data, axis=self.ds._flip_axes)
         return data
 
-    # resample function
+    def _resample(self, data, fname, scale_factor, original_res, load_res, order):
+        print('Resampling {}: {} to {} m'.format(fname,\
+         str(original_res), str(load_res)))
+        
+        data_resample = scipy.ndimage.zoom(data,scale_factor, order=order)     
+        return(data_resample)
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
         rv = {}
@@ -79,6 +86,7 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                 if src is None:
                     src = rasterio.open(g.filename, "r")
                 # Create a rasterio window to read just what we need.
+                # 
                 rasterio_window = g._get_rasterio_window(selector)
 
                 gf = self._cached_fields.get(g.id, {})
@@ -120,11 +128,6 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
     
         return rv
 
-    # -- NOTES --------------------
-    # resampling funciton
-    # rv[(ftype, fname)] = self._resample_data(data) ####
-    # self.
-
 class io_handler_JPEG2000(IOHandlerGeoTiff):
     _dataset_type = "JPEG2000"
 
@@ -153,21 +156,39 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
                 self._misses += 1
                 ftype, fname = field 
                   
-                g.filename=self.ds._field_filename[fname]
-                src = rasterio.open(g.filename, "r")
+                filename=self.ds._field_filename[fname]['filename']
+
+                src = rasterio.open(filename, "r")
                 rasterio_window = g._get_rasterio_window(selector)
+
+                # round up rasterio window width and height
+                rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)
 
                 # Read in the band/field
                 data = src.read(1, window=rasterio_window).astype(
                     self._field_dtype)
+
                 rv[(ftype, fname)] = self._transform_data(data)
+                
+                # Get resolution from load image
+                load_resolution = self.ds.resolution.d[0]
+                                
+                if src.res[0] !=load_resolution:
+                    # calculate scale factor to adjust resolution
+                    scale_factor = src.res[0]/load_resolution
+                     
+                    # Order of spline interpolation- has to be in the range 0 (no interp.) to 5.
+                    rv[(ftype, fname)] = self._resample(rv[(ftype, fname)], \
+                        fname, scale_factor, src.res[0], load_resolution, order=0) 
+                    
+                base_window = g._get_rasterio_window(selector, self.ds.parameters['transform'])
+                rv[(ftype, fname)] = rv[(ftype, fname)][:int(base_window.width), :int(base_window.height)]
 
             if self._cache_on:
                 self._cached_fields.setdefault(g.id, {})
                 self._cached_fields[g.id].update(rv)
             return rv
-
-        
+      
         if size is None:
             size = sum((g.count(selector) for chunk in chunks
                         for g in chunk.objs))
@@ -183,8 +204,6 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
             for g in chunk.objs:
                 if g.filename is None:
                     continue
-
-
 
                 gf = self._cached_fields.get(g.id, {})
                 nd = 0
@@ -207,16 +226,34 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
 
                     ftype, fname = field
                     
-                    g.filename=self.ds._field_filename[fname]
-                    src = rasterio.open(g.filename, "r")
-                    # Create a rasterio window to read just what we need.
-                    rasterio_window = g._get_rasterio_window(selector)
+                    filename=self.ds._field_filename[fname]['filename']
 
+                    src = rasterio.open(filename, "r")
+
+                    # Create a rasterio window to read just what we need.
+                    rasterio_window = g._get_rasterio_window(selector, src.transform)
+
+                    # Round up rasterio window width and height
+                    rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)
+                    
                     # Perform Rasterio window read
                     data = src.read(1, window=rasterio_window).astype(
-                        self._field_dtype)
-                    data = self._transform_data(data)
+                        self._field_dtype)                   
 
+                    data = self._transform_data(data)
+                    
+                    # Get resolution from load image
+                    load_resolution = self.ds.resolution.d[0]
+                    
+                    if src.res[0] !=load_resolution:
+                        # calculate scale factor to adjust resolution
+                        scale_factor = src.res[0]/load_resolution
+                        # Order of the spline interpolation, has to be in the range 0 (no interp.) to 5.
+                        data = self._resample(data, fname, scale_factor, src.res[0], load_resolution, order=0)                       
+
+                    base_window = g._get_rasterio_window(selector, self.ds.parameters['transform'])
+                    data = data[:int(base_window.width), :int(base_window.height)]
+                                            
                     for dim in range(len(data.shape), 3):
                         data = np.expand_dims(data, dim)
 

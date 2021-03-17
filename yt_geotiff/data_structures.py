@@ -1,7 +1,6 @@
 import glob
 import numpy as np
 import os
-import re
 import rasterio
 from rasterio.windows import from_bounds
 import stat
@@ -153,7 +152,7 @@ class GeoTiffGrid(YTGrid):
         right_edge.clip(min=dle, max=dre, out=right_edge)
         return left_edge, right_edge
 
-    def _get_rasterio_window(self, selector):
+    def _get_rasterio_window(self, selector, transform):
         """
         Calculate position, width, and height for a rasterio window read.
         """
@@ -161,12 +160,13 @@ class GeoTiffGrid(YTGrid):
         left_edge, right_edge = self._get_selection_window(selector)
         window = from_bounds(left_edge[0], left_edge[1],
                              right_edge[0], right_edge[1],
-                             self.ds.parameters["transform"])
+                             transform)
+
         return window
 
     def __repr__(self):
-        ad = self.ActiveDimensions
-        return f"GeoTiffGrid ({ad[0]}x{ad[1]})"
+        #ad = self.ActiveDimensions
+        return "GeoTiffGrid ({ad[0]}x{ad[1]})"
 
 
 class GeoTiffHierarchy(YTGridHierarchy):
@@ -203,13 +203,6 @@ class JPEG2000Hierarchy(GeoTiffHierarchy):
         # Filename dictionary
         self.ds._field_filename = {}
 
-        # -- NOTES --------------------
-        # Open all files determine resolution
-        # Nested dictionary resolution for each file
-        # Find minimum resolution
-        # create ds._min_res required resolution
-        # write new function in io.py 
-
         # extract s2 band name from file name
         def get_band_name(band_file_list):
             band_file = band_file_list.split("_")
@@ -217,14 +210,17 @@ class JPEG2000Hierarchy(GeoTiffHierarchy):
 
         band_names = [list(b) for b in zip(*map(get_band_name, s2_band_file_list))][2]
 
+        # Attribute with resolution of original loaded image
+        #self.ds._load_resolution = self.ds.resolution.d[0]
+
         for _i in range(1, len(s2_band_file_list) + 1):
             with rasterio.open(self.ds.directory+"/"+s2_band_file_list[_i-1], "r") as f:
                 group = 'bands'
-                #field_name = (group, str(_i))
-                field_name = (group, band_names[_i-1])
+                field_name = (group, band_names[_i-1] +'_'+str(round(f.res[0])))
                 self.field_list.append(field_name)
                 self.ds.field_units[field_name] = ""
-                self.ds._field_filename.update({band_names[_i-1] : (self.ds.directory+'/'+s2_band_file_list[_i-1])})
+                self.ds._field_filename.update({(band_names[_i-1] +'_'+str(round(f.res[0]))):\
+                 {'filename': (self.ds.directory+'/'+s2_band_file_list[_i-1]), 'resolution': f.res[0]}})       
                 
         def _count_grids(self):
             self.num_grids = 1
@@ -565,7 +561,8 @@ class GeoTiffWindowDataset(GeoTiffDataset):
 
     def _parse_parameter_file(self):
         inh_attrs = ("current_time", "dimensionality",
-                     "num_particles", "_flip_axes")
+                     "num_particles", "_flip_axes",
+                     "resolution")
         for attr in inh_attrs:
             setattr(self, attr, getattr(self._parent_ds, attr))
 
