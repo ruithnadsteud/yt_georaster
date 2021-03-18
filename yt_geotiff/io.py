@@ -173,7 +173,7 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
                 load_resolution = self.ds.resolution.d[0]
                                 
                 if src.res[0] !=load_resolution:
-                    # calculate scale factor to adjust resolution
+                    # Calculate scale factor to adjust resolution
                     scale_factor = src.res[0]/load_resolution
                      
                     # Order of spline interpolation- has to be in the range 0 (no interp.) to 5.

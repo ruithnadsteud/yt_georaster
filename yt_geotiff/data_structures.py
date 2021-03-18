@@ -202,7 +202,7 @@ class JPEG2000Hierarchy(GeoTiffHierarchy):
         # Filename dictionary
         self.ds._field_filename = {}
 
-        # extract s2 band name from file name
+        # Extract s2 band name from file name.
         def get_band_name(band_file_list):
             band_file = band_file_list.split("_")
             return band_file
