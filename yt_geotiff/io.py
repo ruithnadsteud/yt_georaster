@@ -9,6 +9,8 @@ from yt.geometry.selection_routines import \
 from yt.frontends.ytdata.io import \
     IOHandlerYTGridHDF5
 
+from yt.funcs import mylog
+
 
 class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
     _dataset_type = "geotiff"
@@ -26,11 +28,9 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
         return data
 
     def _resample(self, data, fname, scale_factor, original_res, load_res, order):
-        print('Resampling {}: {} to {} m'.format(fname,\
-         str(original_res), str(load_res)))
-        
+        mylog.info(f"Resampling {fname}: {original_res} to {load_res} m.")        
         data_resample = scipy.ndimage.zoom(data,scale_factor, order=order)     
-        return(data_resample)
+        return data_resample
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
         rv = {}
@@ -47,8 +47,7 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
 
             if len(rv) == len(fields):
                 return rv
-
-            #     
+   
             src = rasterio.open(g.filename, "r")
             rasterio_window = g._get_rasterio_window(selector)
 
@@ -57,12 +56,12 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                     self._hits += 1
                     continue
                 self._misses += 1
-                ftype, fname = field 
+                ftype, fname = field
 
                 # Read in the band/field
                 data = src.read(int(fname), window=rasterio_window).astype(
                     self._field_dtype)
-                rv[(ftype, fname)] = self._transform_data(data) ####
+                rv[(ftype, fname)] = self._transform_data(data)
 
             if self._cache_on:
                 self._cached_fields.setdefault(g.id, {})
@@ -85,8 +84,8 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                     continue
                 if src is None:
                     src = rasterio.open(g.filename, "r")
+
                 # Create a rasterio window to read just what we need.
-                # 
                 rasterio_window = g._get_rasterio_window(selector)
 
                 gf = self._cached_fields.get(g.id, {})
@@ -168,7 +167,7 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
                 data = src.read(1, window=rasterio_window).astype(
                     self._field_dtype)
 
-                rv[(ftype, fname)] = self._transform_data(data)
+                data = self._transform_data(data)
                 
                 # Get resolution from load image
                 load_resolution = self.ds.resolution.d[0]
@@ -178,11 +177,11 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
                     scale_factor = src.res[0]/load_resolution
                      
                     # Order of spline interpolation- has to be in the range 0 (no interp.) to 5.
-                    rv[(ftype, fname)] = self._resample(rv[(ftype, fname)], \
+                    rv[(ftype, fname)] = self._resample(data, \
                         fname, scale_factor, src.res[0], load_resolution, order=0) 
                     
                 base_window = g._get_rasterio_window(selector, self.ds.parameters['transform'])
-                rv[(ftype, fname)] = rv[(ftype, fname)][:int(base_window.width), :int(base_window.height)]
+                rv[(ftype, fname)] = data[:int(base_window.width), :int(base_window.height)]
 
             if self._cache_on:
                 self._cached_fields.setdefault(g.id, {})
@@ -194,7 +193,6 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
                         for g in chunk.objs))
         for field in fields:
             ftype, fname = field
-            #print(field, fname)
             fsize = size
             rv[field] = np.empty(fsize, dtype="float64")
         ind = 0

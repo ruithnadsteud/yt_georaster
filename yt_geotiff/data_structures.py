@@ -161,11 +161,10 @@ class GeoTiffGrid(YTGrid):
         window = from_bounds(left_edge[0], left_edge[1],
                              right_edge[0], right_edge[1],
                              transform)
-
         return window
 
     def __repr__(self):
-        #ad = self.ActiveDimensions
+        ad = self.ActiveDimensions
         return "GeoTiffGrid ({ad[0]}x{ad[1]})"
 
 
@@ -206,24 +205,19 @@ class JPEG2000Hierarchy(GeoTiffHierarchy):
         # extract s2 band name from file name
         def get_band_name(band_file_list):
             band_file = band_file_list.split("_")
-            return (band_file)
+            return band_file
 
         band_names = [list(b) for b in zip(*map(get_band_name, s2_band_file_list))][2]
 
-        # Attribute with resolution of original loaded image
-        #self.ds._load_resolution = self.ds.resolution.d[0]
-
-        for _i in range(1, len(s2_band_file_list) + 1):
-            with rasterio.open(self.ds.directory+"/"+s2_band_file_list[_i-1], "r") as f:
+        for _i in range(len(s2_band_file_list)):
+            filename = os.path.join(self.ds.directory,s2_band_file_list[_i])
+            with rasterio.open(os.path.join(filename), "r") as f:
                 group = 'bands'
-                field_name = (group, band_names[_i-1] +'_'+str(round(f.res[0])))
+                field_name = (group, band_names[_i] +'_'+str(round(f.res[0])))
                 self.field_list.append(field_name)
                 self.ds.field_units[field_name] = ""
-                self.ds._field_filename.update({(band_names[_i-1] +'_'+str(round(f.res[0]))):\
-                 {'filename': (self.ds.directory+'/'+s2_band_file_list[_i-1]), 'resolution': f.res[0]}})       
-                
-        def _count_grids(self):
-            self.num_grids = 1
+                self.ds._field_filename.update({(band_names[_i] +'_'+str(round(f.res[0]))):\
+                 {'filename': filename, 'resolution': f.res[0]}})       
 
 
 class GeoTiffDataset(Dataset):
@@ -545,7 +539,6 @@ class GeoTiffWindowDataset(GeoTiffDataset):
         return False
 
     def __init__(self, parent_ds, left_edge, right_edge):
-        #breakpoint()
         self._parent_ds = parent_ds
         self._index_class=parent_ds._index_class
         self._dataset_type=parent_ds._dataset_type
