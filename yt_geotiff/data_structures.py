@@ -216,8 +216,7 @@ class JPEG2000Hierarchy(GeoTiffHierarchy):
                 field_name = (group, band_names[_i] +'_'+str(round(f.res[0])))
                 self.field_list.append(field_name)
                 self.ds.field_units[field_name] = ""
-                self.ds._field_filename.update({(band_names[_i] +'_'+str(round(f.res[0]))):\
-                 {'filename': filename, 'resolution': f.res[0]}})       
+                self.ds._field_filename.update({field_name[1]: {'filename': filename, 'resolution': f.res[0]}})
 
 
 class GeoTiffDataset(Dataset):
