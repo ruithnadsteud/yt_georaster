@@ -152,7 +152,7 @@ class GeoTiffGrid(YTGrid):
         right_edge.clip(min=dle, max=dre, out=right_edge)
         return left_edge, right_edge
 
-    def _get_rasterio_window(self, selector):
+    def _get_rasterio_window(self, selector, transform):
         """
         Calculate position, width, and height for a rasterio window read.
         """
@@ -160,7 +160,7 @@ class GeoTiffGrid(YTGrid):
         left_edge, right_edge = self._get_selection_window(selector)
         window = from_bounds(left_edge[0], left_edge[1],
                              right_edge[0], right_edge[1],
-                             self.ds.parameters["transform"])
+                             transform)
         return window
 
     def __repr__(self):
@@ -185,12 +185,47 @@ class GeoTiffHierarchy(YTGridHierarchy):
         self.num_grids = 1
 
 
+class JPEG2000Hierarchy(GeoTiffHierarchy):
+    grid = GeoTiffGrid   
+
+    def _detect_output_fields(self):
+        # check data dir of the given jp2 file and grab all similarly named files.
+
+        # List of band files in s2 directory
+        s2_band_file_list = [os.path.basename(x) \
+         for x in glob.glob(self.ds.directory+'/*_***_***.jp2')]
+
+        # Follow example for GeoTiffHierarchy to populate the field list.
+        self.field_list = []
+        self.ds.field_units = self.ds.field_units or {}
+
+        # Filename dictionary
+        self.ds._field_filename = {}
+
+        # Extract s2 band name from file name.
+        def get_band_name(band_file_list):
+            band_file = band_file_list.split("_")
+            return band_file
+
+        band_names = [list(b) for b in zip(*map(get_band_name, s2_band_file_list))][2]
+
+        for _i in range(len(s2_band_file_list)):
+            filename = os.path.join(self.ds.directory,s2_band_file_list[_i])
+            with rasterio.open(os.path.join(filename), "r") as f:
+                group = 'bands'
+                field_name = (group, band_names[_i] +'_'+str(round(f.res[0])))
+                self.field_list.append(field_name)
+                self.ds.field_units[field_name] = ""
+                self.ds._field_filename.update({field_name[1]: {'filename': filename, 'resolution': f.res[0]}})
+
+
 class GeoTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
     _index_class = GeoTiffHierarchy
     _field_info_class = GeoTiffFieldInfo
     _dataset_type = 'geotiff'
     _valid_extensions = ('.tif', '.tiff')
+    _driver_type = "GTiff"
     geometry = "cartesian"
     default_fluid_type = "bands"
     fluid_types = ("bands", "index", "sentinel2")
@@ -427,7 +462,6 @@ class GeoTiffDataset(Dataset):
         >>> p = ds.plot(('bands', '1'), data_source=rec)
         >>> p.save()
         """
-
         if width is not None:
             width = validate_quantity(self, width, "code_length")
         if height is not None:
@@ -468,6 +502,7 @@ class GeoTiffDataset(Dataset):
                       center=center, width=plot_width)
         # make this an actual pointer so wds doesn't go out of scope
         p.ds = wds
+
         return p
 
     @classmethod
@@ -483,10 +518,15 @@ class GeoTiffDataset(Dataset):
 
         with rasterio.open(fn, "r") as f:
             driver_type = f.meta["driver"]
-            if driver_type == "GTiff":
+            if driver_type == self._driver_type:
                 return True
         return False
 
+class JPEG2000Dataset(GeoTiffDataset):
+    _index_class = JPEG2000Hierarchy
+    _valid_extensions = ('.jp2')
+    _driver_type = "JP2OpenJPEG"
+    _dataset_type = "JPEG2000"
 
 class GeoTiffWindowDataset(GeoTiffDataset):
     """
@@ -499,6 +539,8 @@ class GeoTiffWindowDataset(GeoTiffDataset):
 
     def __init__(self, parent_ds, left_edge, right_edge):
         self._parent_ds = parent_ds
+        self._index_class=parent_ds._index_class
+        self._dataset_type=parent_ds._dataset_type
         self.domain_left_edge = parent_ds.arr(left_edge, 'm')
         self.domain_right_edge = parent_ds.arr(right_edge, 'm')
         self.domain_dimensions = \
@@ -511,7 +553,8 @@ class GeoTiffWindowDataset(GeoTiffDataset):
 
     def _parse_parameter_file(self):
         inh_attrs = ("current_time", "dimensionality",
-                     "num_particles", "_flip_axes")
+                     "num_particles", "_flip_axes",
+                     "resolution")
         for attr in inh_attrs:
             setattr(self, attr, getattr(self._parent_ds, attr))
 
