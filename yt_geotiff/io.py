@@ -177,7 +177,7 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
                     scale_factor = src.res[0]/load_resolution
                      
                     # Order of spline interpolation- has to be in the range 0 (no interp.) to 5.
-                    rv[(ftype, fname)] = self._resample(data, \
+                    data = self._resample(data, \
                         fname, scale_factor, src.res[0], load_resolution, order=0) 
                     
                 base_window = g._get_rasterio_window(selector, self.ds.parameters['transform'])
