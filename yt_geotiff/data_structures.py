@@ -165,7 +165,7 @@ class GeoTiffGrid(YTGrid):
 
     def __repr__(self):
         ad = self.ActiveDimensions
-        return "GeoTiffGrid ({ad[0]}x{ad[1]})"
+        return f"GeoTiffGrid ({ad[0]}x{ad[1]})"
 
 
 class GeoTiffHierarchy(YTGridHierarchy):
