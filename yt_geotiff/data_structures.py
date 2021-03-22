@@ -3,6 +3,7 @@ import numpy as np
 import os
 import rasterio
 from rasterio.windows import from_bounds
+import re
 import stat
 
 from unyt import dimensions
@@ -24,7 +25,8 @@ from yt.utilities.parallel_tools.parallel_analysis_interface import \
 from yt.visualization.api import SlicePlot
 
 from .fields import \
-    GeoTiffFieldInfo
+    GeoTiffFieldInfo, \
+    JPEG2000FieldInfo
 from .utilities import \
     left_aligned_coord_cal, \
     save_dataset_as_geotiff, \
@@ -235,8 +237,8 @@ class GeoTiffDataset(Dataset):
 
     def __init__(self, filename, field_map=None):
         self.field_map = field_map
-        super(GeoTiffDataset, self).__init__(
-            filename, self._dataset_type, unit_system="mks")
+        Dataset.__init__(
+            self, filename, self._dataset_type, unit_system="mks")
         self.data = self.index.grids[0]
 
     @parallel_root_only
@@ -303,7 +305,7 @@ class GeoTiffDataset(Dataset):
     def __repr__(self):
         fn = self.basename
         for ext in self._valid_extensions:
-            if fn.endswith(ext) or fn.endswith(ext.upper()):
+            if re.search(f"{ext}$", fn, flags=re.IGNORECASE):
                 fn = fn[:-len(ext)]
                 break
         return fn
@@ -525,7 +527,7 @@ class GeoTiffDataset(Dataset):
         fn = args[0]
         valid = False
         for ext in self._valid_extensions:
-            if fn.endswith(ext) or fn.endswith(ext.upper()):
+            if re.search(f"{ext}$", fn, flags=re.IGNORECASE):
                 valid = True
                 break
         if not valid:
@@ -539,7 +541,8 @@ class GeoTiffDataset(Dataset):
 
 class JPEG2000Dataset(GeoTiffDataset):
     _index_class = JPEG2000Hierarchy
-    _valid_extensions = ('.jp2')
+    _field_info_class = JPEG2000FieldInfo
+    _valid_extensions = ('.jp2',)
     _driver_type = "JP2OpenJPEG"
     _dataset_type = "JPEG2000"
 
@@ -547,6 +550,11 @@ class GeoTiffWindowDataset(GeoTiffDataset):
     """
     Class used for plotting a window of data from GeoTiffDataset.
     """
+
+    def __init__(self, filename):
+        Dataset.__init__(
+            self, filename, self._dataset_type, unit_system="mks")
+        self.data = self.index.grids[0]
 
     @classmethod
     def _is_valid(self, *args, **kwargs):
