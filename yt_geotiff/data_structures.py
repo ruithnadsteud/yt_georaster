@@ -237,8 +237,7 @@ class GeoTiffDataset(Dataset):
 
     def __init__(self, filename, field_map=None):
         self.field_map = field_map
-        Dataset.__init__(
-            self, filename, self._dataset_type, unit_system="mks")
+        super().__init__(filename, self._dataset_type, unit_system="mks")
         self.data = self.index.grids[0]
 
     @parallel_root_only
