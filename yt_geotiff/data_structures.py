@@ -551,11 +551,6 @@ class GeoTiffWindowDataset(GeoTiffDataset):
     Class used for plotting a window of data from GeoTiffDataset.
     """
 
-    def __init__(self, filename):
-        Dataset.__init__(
-            self, filename, self._dataset_type, unit_system="mks")
-        self.data = self.index.grids[0]
-
     @classmethod
     def _is_valid(self, *args, **kwargs):
         return False
