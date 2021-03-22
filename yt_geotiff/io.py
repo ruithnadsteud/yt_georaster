@@ -247,7 +247,7 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
                         # calculate scale factor to adjust resolution
                         scale_factor = src.res[0]/load_resolution
                         # Order of the spline interpolation, has to be in the range 0 (no interp.) to 5.
-                        data = self._resample(data, fname, scale_factor, src.res[0], load_resolution, order=0)                       
+                        data = self._resample(data, fname, scale_factor, src.res[0], load_resolution, order=0)
 
                     base_window = g._get_rasterio_window(selector, self.ds.parameters['transform'])
                     data = data[:int(base_window.width), :int(base_window.height)]
