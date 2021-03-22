@@ -204,7 +204,7 @@ class JPEG2000Hierarchy(GeoTiffHierarchy):
 
         # Extract s2 band name from file name.
         def get_band_name(band_file_list):
-            band_file = band_file_list.split("_")
+            band_file = band_file_list.split("_",2)
             return band_file
 
         band_names = [list(b) for b in zip(*map(get_band_name, s2_band_file_list))][2]
@@ -213,7 +213,7 @@ class JPEG2000Hierarchy(GeoTiffHierarchy):
             filename = os.path.join(self.ds.directory,s2_band_file_list[_i])
             with rasterio.open(os.path.join(filename), "r") as f:
                 group = 'bands'
-                field_name = (group, band_names[_i] +'_'+str(round(f.res[0])))
+                field_name = (group, band_names[_i].split(".")[0])
                 self.field_list.append(field_name)
                 self.ds.field_units[field_name] = ""
                 self.ds._field_filename.update({field_name[1]: {'filename': filename, 'resolution': f.res[0]}})
