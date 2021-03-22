@@ -49,7 +49,7 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                 return rv
    
             src = rasterio.open(g.filename, "r")
-            rasterio_window = g._get_rasterio_window(selector)
+            rasterio_window = g._get_rasterio_window(selector, src.transform)
 
             for field in fields:
                 if field in rv:
@@ -86,7 +86,7 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                     src = rasterio.open(g.filename, "r")
 
                 # Create a rasterio window to read just what we need.
-                rasterio_window = g._get_rasterio_window(selector)
+                rasterio_window = g._get_rasterio_window(selector, src.transform)
 
                 gf = self._cached_fields.get(g.id, {})
                 nd = 0
@@ -158,7 +158,7 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
                 filename=self.ds._field_filename[fname]['filename']
 
                 src = rasterio.open(filename, "r")
-                rasterio_window = g._get_rasterio_window(selector)
+                rasterio_window = g._get_rasterio_window(selector, src.transform)
 
                 # round up rasterio window width and height
                 rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)
@@ -247,7 +247,7 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
                         # calculate scale factor to adjust resolution
                         scale_factor = src.res[0]/load_resolution
                         # Order of the spline interpolation, has to be in the range 0 (no interp.) to 5.
-                        data = self._resample(data, fname, scale_factor, src.res[0], load_resolution, order=0)                       
+                        data = self._resample(data, fname, scale_factor, src.res[0], load_resolution, order=0)
 
                     base_window = g._get_rasterio_window(selector, self.ds.parameters['transform'])
                     data = data[:int(base_window.width), :int(base_window.height)]

@@ -341,7 +341,7 @@ class GeoTiffDataset(Dataset):
             self.domain_center[2], "code_length")
         return self.sphere(cc, radius)
 
-    def rectangle(self, left_edge, right_edge):
+    def rectangle(self, left_edge, right_edge, clip=True):
         """
         Create a rectangular data container.
 
@@ -366,6 +366,11 @@ class GeoTiffDataset(Dataset):
             the third dimension is the domain right edge in the z
             direction. If array is of length 3, right_edge is
             unaltered.
+        clip : optional, bool
+            If True, clip the left and right edges to be contained
+            within grid boundaries. If False, an exception will be
+            raised if an edge is outside of the domain.
+            Default: True.
 
         Examples
         --------
@@ -381,9 +386,14 @@ class GeoTiffDataset(Dataset):
         re = validate_coord_array(
             self, right_edge, "right_edge",
             self.domain_right_edge[2], "code_length")
+
+        if clip:
+            le.clip(self.domain_left_edge, self.domain_right_edge, out=le)
+            re.clip(self.domain_left_edge, self.domain_right_edge, out=re)
+
         return self.box(le, re)
 
-    def rectangle_from_center(self, center, width, height):
+    def rectangle_from_center(self, center, width, height, clip=True):
         """
         Create a rectangular data container from center, width, height.
 
@@ -403,6 +413,11 @@ class GeoTiffDataset(Dataset):
         height : float or unyt_quantity
             Height of the rectangle. If no units given, "code_length"
             is assumed.
+        clip : optional, bool
+            If True, clip the left and right edges to be contained
+            within grid boundaries. If False, an exception will be
+            raised if an edge is outside of the domain.
+            Default: True.
 
         Examples
         --------
