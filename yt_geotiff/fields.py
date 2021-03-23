@@ -53,7 +53,7 @@ class JPEG2000FieldInfo(FieldInfoContainer):
 
         for (ftype, band), bres in fres.items():
             fname = f"{band}_{min(bres)}m"
-            self.alias(("sentinel2", band), (ftype, fname))
+            self.alias(("bands", band), (ftype, fname))
 
     def _create_sentinel2_aliases(self):
         """
@@ -63,7 +63,7 @@ class JPEG2000FieldInfo(FieldInfoContainer):
         # Note, we use "bands" as the alias field type because we
         # want to be able to define color fields for multiple satellites.
         for fname, band in _sentinel2_fields.items():
-            self.alias(("bands", fname), ("sentinel2", band))
+            self.alias(("bands", fname), ("bands", band))
 
     def _setup_geo_fields(self):
         """
