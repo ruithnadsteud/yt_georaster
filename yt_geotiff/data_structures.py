@@ -5,6 +5,7 @@ import rasterio
 from rasterio.windows import from_bounds
 import re
 import stat
+import ntpath
 
 from unyt import dimensions
 
@@ -154,15 +155,19 @@ class GeoTiffGrid(YTGrid):
         right_edge.clip(min=dle, max=dre, out=right_edge)
         return left_edge, right_edge
 
-    def _get_rasterio_window(self, selector, transform):
+    def _get_rasterio_window(self, selector, dst_crs, transform):
         """
         Calculate position, width, and height for a rasterio window read.
         """
-
         left_edge, right_edge = self._get_selection_window(selector)
-        window = from_bounds(left_edge[0], left_edge[1],
-                             right_edge[0], right_edge[1],
+        
+        transform_x, transform_y =rasterio.warp.transform(self.ds.parameters['crs'], dst_crs,[left_edge[0],\
+            right_edge[0]], [left_edge[1],right_edge[1]], zs=None)        
+
+        window = from_bounds(transform_x[0], transform_y[0],
+                             transform_x[1], transform_y[1],
                              transform)
+
         return window
 
     def __repr__(self):
@@ -186,10 +191,44 @@ class GeoTiffHierarchy(YTGridHierarchy):
     def _count_grids(self):
         self.num_grids = 1
 
+class RasterioGroupHierarchy(GeoTiffHierarchy):
+
+    def _detect_output_fields(self):
+        # Follow example for GeoTiffHierarchy to populate the field list.
+        self.field_list = []
+        self.ds.field_units = self.ds.field_units or {}
+
+        # Filename dictionary
+        self.ds._field_filename = {}
+
+        # Number of bands in image dataset
+        self.ds._number_bands = []
+
+        def path_eval(path):
+            head, tail = ntpath.split(path)
+            return tail or ntpath.basename(head)
+
+        for _i in range(len(self.ds.filename_list)):
+            with rasterio.open(self.ds.filename_list[_i], "r") as f:
+                group = 'bands'                
+                filename =  path_eval(self.ds.filename_list[_i])
+                if (filename.split(".")[1] == "jp2"):
+                    field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]))
+                elif (filename.split(".")[1] == "TIF") and ((filename.split("_")[0])[0:2] == "LC"):             
+                    field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[8]))
+                #breakpoint()
+                self.field_list.append(field_name)
+                self.ds.field_units[field_name] = ""
+
+                # Count number of bands in image dataset
+                number_bands = (filename, f.count)
+                self.ds._number_bands.append(number_bands)
+
+                self.ds._field_filename.update({field_name[1]: {'filename': filename, 'resolution': f.res[0]}})
+
 
 class JPEG2000Hierarchy(GeoTiffHierarchy):
-    grid = GeoTiffGrid   
-
+    
     def _detect_output_fields(self):
         # check data dir of the given jp2 file and grab all similarly named files.
 
@@ -260,6 +299,7 @@ class GeoTiffDataset(Dataset):
                 v = f.meta[key]
                 self.parameters[key] = v
             self.parameters['res'] = f.res
+            self.parameters['src'] = f.crs
         self.current_time = 0
 
         width = self.parameters['width']
@@ -523,6 +563,8 @@ class GeoTiffDataset(Dataset):
 
     @classmethod
     def _is_valid(self, *args, **kwargs):
+        if len(args)>1:
+            return False
         fn = args[0]
         valid = False
         for ext in self._valid_extensions:
@@ -541,9 +583,44 @@ class GeoTiffDataset(Dataset):
 class JPEG2000Dataset(GeoTiffDataset):
     _index_class = JPEG2000Hierarchy
     _field_info_class = JPEG2000FieldInfo
-    _valid_extensions = ('.jp2',)
+    #_valid_extensions = ('.jp2',)
     _driver_type = "JP2OpenJPEG"
     _dataset_type = "JPEG2000"
+
+class RasterioGroupDataset(GeoTiffDataset):
+    _dataset_type = "RasterioGroup"
+    _valid_extensions = ('.tif','.tiff','.jp2')
+    _index_class = RasterioGroupHierarchy
+    _field_info_class = JPEG2000FieldInfo
+
+    # list of all filenames in directory
+    
+    @classmethod
+    def _is_valid(self, *args, **kwargs):
+        # for number of files
+        for fn in args:    
+        
+            # if not instance fnlist
+            #    return false
+            
+            valid = False
+            for ext in self._valid_extensions:
+                if re.search(f"{ext}$", fn, flags=re.IGNORECASE): 
+                    valid = True
+                    break
+            if not valid:
+                return False
+
+        #breakpoint()        
+        # loop open all filenames in fn1 and fn2
+        return True
+
+    def __init__(self, *args, field_map=None):
+        self.filename_list = args
+        filename = args[0] 
+        super().__init__(filename, field_map=field_map)
+        self.data = self.index.grids[0]
+        
 
 class GeoTiffWindowDataset(GeoTiffDataset):
     """
@@ -571,9 +648,9 @@ class GeoTiffWindowDataset(GeoTiffDataset):
     def _parse_parameter_file(self):
         inh_attrs = ("current_time", "dimensionality",
                      "num_particles", "_flip_axes",
-                     "resolution")
+                     "resolution", "filename_list")
         for attr in inh_attrs:
-            setattr(self, attr, getattr(self._parent_ds, attr))
+            setattr(self, attr, getattr(self._parent_ds, attr, None))
 
         self.parameters = self._parent_ds.parameters.copy()
 
