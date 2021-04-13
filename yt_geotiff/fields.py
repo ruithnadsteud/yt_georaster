@@ -117,7 +117,7 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
         def _cdom(field, data):
             visible_blue = data["bands", "blue"]
             visible_green = data["bands", "green"]
-            return 8* (visible_green/visible_blue)^(-1.4)
+            return 8* (visible_green/visible_blue)**(-1.4)
 
         self.add_field(
             ("bands", "CDOM"),

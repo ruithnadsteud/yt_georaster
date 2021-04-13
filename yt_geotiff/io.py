@@ -239,7 +239,8 @@ class rasterio_group(IOHandlerGeoTiff):
                     #if (src.name == self.ds.parameter_filename):
                     
                     rasterio_window = g._get_rasterio_window(selector, src.crs, src.transform) # check elsewhere
-                                                            
+                    
+                    #breakpoint()                              
                     # Round up rasterio window width and height
                     rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)                                   
 
@@ -260,8 +261,8 @@ class rasterio_group(IOHandlerGeoTiff):
 
                     data = data[:int(base_window.width), :int(base_window.height)]
 
-                    #print('base window =', base_window)
-                    #print('rasterio window =', rasterio_window)
+                    print('base window =', base_window)
+                    print('rasterio window =', rasterio_window)
 
                     for dim in range(len(data.shape), 3):
                         data = np.expand_dims(data, dim)

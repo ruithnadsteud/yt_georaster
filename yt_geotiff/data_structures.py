@@ -216,6 +216,8 @@ class RasterioGroupHierarchy(GeoTiffHierarchy):
                     field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]))
                 elif (filename.split(".")[1] == "TIF") and ((filename.split("_")[0])[0:2] == "LC"):             
                     field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[8]))
+                else:
+                    field_name = (group, filename)
                 #breakpoint()
                 self.field_list.append(field_name)
                 self.ds.field_units[field_name] = ""
@@ -263,7 +265,7 @@ class JPEG2000Hierarchy(GeoTiffHierarchy):
 class GeoTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
     _index_class = GeoTiffHierarchy
-    _field_info_class = GeoTiffFieldInfo
+    _field_info_class = JPEG2000FieldInfo
     _dataset_type = 'geotiff'
     _valid_extensions = ('.tif', '.tiff')
     _driver_type = "GTiff"
@@ -273,6 +275,7 @@ class GeoTiffDataset(Dataset):
     _periodicity = np.zeros(3, dtype=bool)
     cosmological_simulation = False
     _con_attrs = ()
+
 
     def __init__(self, filename, field_map=None):
         self.field_map = field_map
