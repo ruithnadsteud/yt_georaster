@@ -6,7 +6,7 @@ Utility functions for yt_geotiff.
 """
 import numpy as np
 import rasterio
-from unyt import unyt_array, unyt_quantity, uconcatenate
+from unyt import unyt_array, uconcatenate
 
 import yt.geometry.selection_routines as selector_shape
 from yt.utilities.logger import ytLogger
@@ -199,7 +199,7 @@ def validate_quantity(ds, value, units):
     and return a unyt_quantity.
     """
 
-    if isinstance(value, unyt_quantity):
+    if isinstance(value, unyt_array):
         return value
     elif isinstance(value, (tuple, list)):
         value = ds.quan(*value)
