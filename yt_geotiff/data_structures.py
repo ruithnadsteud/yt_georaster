@@ -309,7 +309,7 @@ class GeoTiffDataset(Dataset):
         height = self.parameters['height']
         transform = self.parameters['transform']
         self.dimensionality = 3
-        self.domain_dimensions = np.array([height, width, 1], dtype=np.int32)
+        self.domain_dimensions = np.array([width, height, 1], dtype=np.int32)
 
         rast_left = np.concatenate([transform * (0, 0), [0]])
         rast_right = np.concatenate([transform * (width, height), [1]])
