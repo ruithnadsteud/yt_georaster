@@ -11,6 +11,8 @@ from unyt import unyt_array, uconcatenate
 import yt.geometry.selection_routines as selector_shape
 from yt.utilities.logger import ytLogger
 
+from pathlib import Path
+import ntpath
 
 def coord_cal(xcell, ycell, transform):
     """Function to calculate the position of cell (xcell, ycell) in terms of
@@ -206,6 +208,49 @@ def validate_quantity(ds, value, units):
     else:
         value = ds.quan(value, units)
     return value
+
+def s1_geocode(s1_file_path, polarisation):
+    """
+    A quick example of handling transforms from gcps with rasterio.
+    """
+
+    def path_leaf(s1_file_path):
+        head, tail = ntpath.split(s1_file_path)
+        return (head, tail, ntpath.basename(head))
+    
+    """Main function."""
+    # open the file
+    path_to_sen1_tiff = Path(path_leaf(s1_file_path)[0]+'/')/path_leaf(s1_file_path)[1]
+    with rasterio.open(path_to_sen1_tiff) as src:
+        meta = src.meta
+        array = src.read(1)
+        gcps, crs = src.get_gcps()  # get crs and gcps
+        transform = rasterio.transform.from_gcps(gcps)  # get transform
+    
+    
+    temp_file = "s1_"+polarisation+"_temp.tiff"
+    output_path = path_to_sen1_tiff.parent / temp_file
+
+    with rasterio.Env():
+        # update the metadata
+        new_meta = meta.copy()
+        new_meta.update(
+            crs=crs,
+            transform=transform
+        )
+        #print("old: ", meta)
+        #print("new: ", new_meta)
+        # save to file
+        with rasterio.open(output_path, "w", **new_meta) as dst:
+            dst.write(array, 1)
+    # reload that data to double check
+    #with rasterio.open(output_path) as src:
+    #    reloaded_meta = src.meta
+    #    new_array = src.read(1)
+    # does this change the data in anyway?
+    #print("meta the same? ", reloaded_meta == new_meta)
+    #print("data the same? ", (new_array == array).all())
+
 
 
 class log_level():

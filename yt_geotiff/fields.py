@@ -95,7 +95,7 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
             return (green - nir) / (green + nir)
 
         self.add_field(
-            ("bands", "NDWI"),
+            ("band_ratios", "NDWI"),
             function=_ndwi,
             sampling_type="local",
             units="")
@@ -108,7 +108,7 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
             return (red_edge_1  - visible_red) - 0.53*(red_edge_2 - visible_red)
 
         self.add_field(
-            ("bands", "MCI"),
+            ("band_ratios", "MCI"),
             function=_mci,
             sampling_type="local",
             units="")
@@ -120,8 +120,33 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
             return 8* (visible_green/visible_blue)**(-1.4)
 
         self.add_field(
-            ("bands", "CDOM"),
+            ("band_ratios", "CDOM"),
             function=_cdom,
+            sampling_type="local",
+            units="")
+
+        # Normalised Difference Vegetation Index (NDVI)
+        def _ndvi(field, data):
+            visible_red = data["bands", "red"]
+            nir = data["bands", "nir"]
+            return (nir-visible_red)/(nir+visible_red)
+
+        self.add_field(
+            ("band_ratios", "NDVI"),
+            function=_ndvi,
+            sampling_type="local",
+            units="")
+
+        # Enhanced Vegetation Index (EVI)
+        def _evi(field, data):
+            visible_blue = data["bands", "blue"]
+            visible_red = data["bands", "red"]
+            nir = data["bands", "nir"]
+            return 2.5 * (nir - visible_red) / ((nir + 6.0 * visible_red - 7.5 * visible_blue) + 1.0)
+
+        self.add_field(
+            ("band_ratios", "EVI"),
+            function=_evi,
             sampling_type="local",
             units="")
 
@@ -131,7 +156,7 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
             return data.ds.arr((thermal_infrared_1*0.00341802 + 149),'K')
 
         self.add_field(
-            ("bands", "LS_temperature"),
+            ("variables", "LS_temperature"),
             function=_LS_temperature,
             sampling_type="local",
             units="K")
@@ -143,4 +168,3 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
 
         self.add_field(("index", "area"), function=_area,
             sampling_type="local", units="km**2")
-

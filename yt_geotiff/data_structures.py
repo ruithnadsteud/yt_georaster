@@ -34,7 +34,8 @@ from .utilities import \
     parse_awslandsat_metafile, \
     validate_coord_array, \
     validate_quantity, \
-    log_level
+    log_level, \
+    s1_geocode
 
 
 class GeoTiffWindowGrid(YTGrid):
@@ -208,25 +209,42 @@ class RasterioGroupHierarchy(GeoTiffHierarchy):
             head, tail = ntpath.split(path)
             return tail or ntpath.basename(head)
 
+        def s1_polarisation(filename):
+            if "vv" in filename: 
+                pol = "VV"
+            elif "vh" in filename:
+                pol="VH"
+            return pol
+        
         for _i in range(len(self.ds.filename_list)):
+            filename =  path_eval(self.ds.filename_list[_i])
+            if (filename.startswith("s1")):
+                # Geocode S1 image               
+                polarisation = s1_polarisation(filename)
+                s1_geocode(self.ds.filename_list[_i], polarisation)
+                field_name = (group, ("S1_"+s1_polarisation(filename)))
+                filename="s1_"+polarisation+"_temp.tiff"
+                
+                
             with rasterio.open(self.ds.filename_list[_i], "r") as f:
                 group = 'bands'                
-                filename =  path_eval(self.ds.filename_list[_i])
-                if (filename.split(".")[1] == "jp2"):
-                    field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]))
-                elif (filename.split(".")[1] == "TIF") and ((filename.split("_")[0])[0:2] == "LC"):             
-                    field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[8]))
-                else:
-                    field_name = (group, filename)
-                #breakpoint()
-                self.field_list.append(field_name)
-                self.ds.field_units[field_name] = ""
+            
+            if (filename.split(".")[1] == "jp2"):
+                field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]))
+            elif (filename.split(".")[1] == "TIF") and ((filename.split("_")[0])[0:2] == "LC"):             
+                field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[8]))
+            else:
+                field_name = (group, filename)
 
-                # Count number of bands in image dataset
-                number_bands = (filename, f.count)
-                self.ds._number_bands.append(number_bands)
+            
+            self.field_list.append(field_name)
+            self.ds.field_units[field_name] = ""
 
-                self.ds._field_filename.update({field_name[1]: {'filename': filename, 'resolution': f.res[0]}})
+            # Count number of bands in image dataset
+            number_bands = (filename, f.count)
+            self.ds._number_bands.append(number_bands)
+
+            self.ds._field_filename.update({field_name[1]: {'filename': filename, 'resolution': f.res[0]}})
 
 
 class JPEG2000Hierarchy(GeoTiffHierarchy):
@@ -596,6 +614,7 @@ class RasterioGroupDataset(GeoTiffDataset):
     _index_class = RasterioGroupHierarchy
     _field_info_class = JPEG2000FieldInfo
 
+
     # list of all filenames in directory
     
     @classmethod
@@ -612,10 +631,7 @@ class RasterioGroupDataset(GeoTiffDataset):
                     valid = True
                     break
             if not valid:
-                return False
-
-        #breakpoint()        
-        # loop open all filenames in fn1 and fn2
+                return False        
         return True
 
     def __init__(self, *args, field_map=None):

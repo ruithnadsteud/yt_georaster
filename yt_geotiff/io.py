@@ -226,21 +226,15 @@ class rasterio_group(IOHandlerGeoTiff):
                    
                     ftype, fname = field
                     
-                    filename=self.ds.directory+'/'+self.ds._field_filename[fname]['filename']                    
-
+                    filename=self.ds.directory+'/'+self.ds._field_filename[fname]['filename']  
+                    
                     src = rasterio.open(filename, "r")#
 
                     # Calculate base window
                     base_window = g._get_rasterio_window(selector, self.ds.parameters['crs'], self.ds.parameters['transform'])
-                  
-                    # There is an issue when performing window reads in the Landsat CRS where
-                    # the base window dimensions appears to be different to the rasterio window.
-                    # Below might be required.
-                    #if (src.name == self.ds.parameter_filename):
-                    
+                                     
                     rasterio_window = g._get_rasterio_window(selector, src.crs, src.transform) # check elsewhere
-                    
-                    #breakpoint()                              
+                                                
                     # Round up rasterio window width and height
                     rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)                                   
 
@@ -260,9 +254,6 @@ class rasterio_group(IOHandlerGeoTiff):
                         data = self._resample(data, fname, scale_factor, src.res[0], load_resolution, order=0)
 
                     data = data[:int(base_window.width), :int(base_window.height)]
-
-                    print('base window =', base_window)
-                    print('rasterio window =', rasterio_window)
 
                     for dim in range(len(data.shape), 3):
                         data = np.expand_dims(data, dim)
