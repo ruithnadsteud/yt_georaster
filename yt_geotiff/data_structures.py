@@ -221,21 +221,22 @@ class RasterioGroupHierarchy(GeoTiffHierarchy):
             if (filename.startswith("s1")):
                 # Geocode S1 image               
                 polarisation = s1_polarisation(filename)
-                s1_geocode(self.ds.filename_list[_i], polarisation)
+                with rasterio.open(self.ds.filename_list[_i], "r") as f:
+                    group = 'bands'        
+                s1_crs, s1_transform = s1_geocode(self.ds.filename_list[_i], polarisation)
+                #self.ds.parameters['crs'] = s1_crs
+                #self.ds.parameters['crs'] = s1_transform
                 field_name = (group, ("S1_"+s1_polarisation(filename)))
-                filename="s1_"+polarisation+"_temp.tiff"
-                
-                
-            with rasterio.open(self.ds.filename_list[_i], "r") as f:
-                group = 'bands'                
+            else:             
+                with rasterio.open(self.ds.filename_list[_i], "r") as f:
+                    group = 'bands'                
             
-            if (filename.split(".")[1] == "jp2"):
-                field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]))
-            elif (filename.split(".")[1] == "TIF") and ((filename.split("_")[0])[0:2] == "LC"):             
-                field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[8]))
-            else:
-                field_name = (group, filename)
-
+                if (filename.split(".")[1] == "jp2"):
+                    field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]))
+                elif (filename.split(".")[1] == "TIF") and ((filename.split("_")[0])[0:2] == "LC"):             
+                    field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[8]))
+                else:
+                    field_name = (group, filename)
             
             self.field_list.append(field_name)
             self.ds.field_units[field_name] = ""
@@ -243,7 +244,7 @@ class RasterioGroupHierarchy(GeoTiffHierarchy):
             # Count number of bands in image dataset
             number_bands = (filename, f.count)
             self.ds._number_bands.append(number_bands)
-
+            
             self.ds._field_filename.update({field_name[1]: {'filename': filename, 'resolution': f.res[0]}})
 
 

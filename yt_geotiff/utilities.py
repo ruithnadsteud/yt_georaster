@@ -231,18 +231,19 @@ def s1_geocode(s1_file_path, polarisation):
     temp_file = "s1_"+polarisation+"_temp.tiff"
     output_path = path_to_sen1_tiff.parent / temp_file
 
-    with rasterio.Env():
-        # update the metadata
-        new_meta = meta.copy()
-        new_meta.update(
-            crs=crs,
-            transform=transform
-        )
-        #print("old: ", meta)
-        #print("new: ", new_meta)
-        # save to file
-        with rasterio.open(output_path, "w", **new_meta) as dst:
-            dst.write(array, 1)
+    return crs, transform
+    # with rasterio.Env():
+    #     # update the metadata
+    #     new_meta = meta.copy()
+    #     new_meta.update(
+    #         crs=crs,
+    #         transform=transform
+    #     )
+    #     #print("old: ", meta)
+    #     #print("new: ", new_meta)
+    #     # save to file
+    #     with rasterio.open(output_path, "w", **new_meta) as dst:
+    #         dst.write(array, 1)
     # reload that data to double check
     #with rasterio.open(output_path) as src:
     #    reloaded_meta = src.meta
