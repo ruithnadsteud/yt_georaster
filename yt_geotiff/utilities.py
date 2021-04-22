@@ -201,7 +201,7 @@ def validate_quantity(ds, value, units):
     and return a unyt_quantity.
     """
 
-    if isinstance(value, unyt_array):
+    if hasattr(value, "units") and not isinstance(value, unyt_quantity):
         raise ValueError("value must be a quantity, not an array. "
                          "Use ds.quan instead of ds.arr.")
     if isinstance(value, unyt_quantity):
