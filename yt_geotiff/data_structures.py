@@ -670,6 +670,9 @@ class RasterioGroupDataset(GeoTiffDataset):
     
     @classmethod
     def _is_valid(self, *args, **kwargs):
+        if len(args) == 1:
+            return False
+
         # for number of files
         for fn in args:    
         
