@@ -338,6 +338,11 @@ class GeoTiffDataset(Dataset):
         self.field_map = field_map
         super().__init__(filename, self._dataset_type, unit_system="mks")
         self.data = self.index.grids[0]
+        self._added_fields = []
+
+    def add_field(self, *args, **kwargs):
+        self._added_fields.append({"args": args, "kwargs": kwargs})
+        super().add_field(*args, **kwargs)
 
     @parallel_root_only
     def print_key_parameters(self):
@@ -709,6 +714,9 @@ class GeoTiffWindowDataset(GeoTiffDataset):
                     parent_ds.domain_left_edge)).d.astype(np.int32)
 
         super().__init__(parent_ds.parameter_filename, parent_ds.field_map)
+
+        for field in parent_ds._added_fields:
+            self.add_field(*field["args"], **field["kwargs"])
 
     def _parse_parameter_file(self):
         inh_attrs = ("current_time", "dimensionality",
