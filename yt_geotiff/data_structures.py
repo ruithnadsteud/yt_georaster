@@ -2,6 +2,7 @@ import glob
 import numpy as np
 import os
 import rasterio
+from rasterio import warp
 from rasterio.windows import from_bounds
 import re
 import stat
@@ -92,6 +93,13 @@ class GeoTiffGrid(YTGrid):
         rvalue = wgrid.count(selector)
         return rvalue
 
+    def _get_selector_mask(self, selector):
+        if isinstance(selector, GridSelector):
+            return super()._get_selector_mask(selector)
+        wgrid = self._get_window_grid(selector)
+        rvalue = wgrid._get_selector_mask(selector)
+        return rvalue
+
     def select_icoords(self, dobj):
         if isinstance(dobj.selector, GridSelector):
             return super().select_icoords(dobj)
@@ -104,6 +112,41 @@ class GeoTiffGrid(YTGrid):
             return super().select_fcoords(dobj)
         wgrid = self._get_window_grid(dobj.selector)
         rvalue = wgrid.select_fcoords(dobj)
+        return rvalue
+
+    def select_fwidth(self, dobj):
+        if isinstance(dobj.selector, GridSelector):
+            return super().select_fwidth(dobj)
+        wgrid = self._get_window_grid(dobj.selector)
+        rvalue = wgrid.select_fwidth(dobj)
+        return rvalue
+
+    def select_ires(self, dobj):
+        if isinstance(dobj.selector, GridSelector):
+            return super().select_ires(dobj)
+        wgrid = self._get_window_grid(dobj.selector)
+        rvalue = wgrid.select_ires(dobj)
+        return rvalue
+
+    def count_particles(self, dobj):
+        if isinstance(dobj.selector, GridSelector):
+            return super().count_particles(dobj)
+        wgrid = self._get_window_grid(dobj.selector)
+        rvalue = wgrid.count_particles(dobj)
+        return rvalue
+
+    def select_particles(self, dobj):
+        if isinstance(dobj.selector, GridSelector):
+            return super().select_particles(dobj)
+        wgrid = self._get_window_grid(dobj.selector)
+        rvalue = wgrid.select_particles(dobj)
+        return rvalue
+
+    def select_blocks(self, dobj):
+        if isinstance(dobj.selector, GridSelector):
+            return super().select_blocks(dobj)
+        wgrid = self._get_window_grid(dobj.selector)
+        rvalue = wgrid.select_blocks(dobj)
         return rvalue
 
     def _get_selector_mask(self, selector):
@@ -162,8 +205,10 @@ class GeoTiffGrid(YTGrid):
         """
         left_edge, right_edge = self._get_selection_window(selector)
         
-        transform_x, transform_y =rasterio.warp.transform(self.ds.parameters['crs'], dst_crs,[left_edge[0],\
-            right_edge[0]], [left_edge[1],right_edge[1]], zs=None)        
+        transform_x, transform_y = warp.transform(
+            self.ds.parameters['crs'], dst_crs,
+            [left_edge[0], right_edge[0]],
+            [left_edge[1],right_edge[1]], zs=None)
 
         window = from_bounds(transform_x[0], transform_y[0],
                              transform_x[1], transform_y[1],
@@ -293,6 +338,7 @@ class GeoTiffDataset(Dataset):
     fluid_types = ("bands", "index", "sentinel2")
     _periodicity = np.zeros(3, dtype=bool)
     cosmological_simulation = False
+    refine_by = 2
     _con_attrs = ()
 
 
@@ -540,6 +586,11 @@ class GeoTiffDataset(Dataset):
         >>> p = ds.plot(('bands', '1'), data_source=rec)
         >>> p.save()
         """
+
+        if center is not None:
+            center = validate_coord_array(
+                self, center, "center",
+                self.domain_center[2], "code_length")
         if width is not None:
             width = validate_quantity(self, width, "code_length")
         if height is not None:
@@ -562,10 +613,7 @@ class GeoTiffDataset(Dataset):
         with log_level(40):
             wds = GeoTiffWindowDataset(self, wleft, wright)
 
-        # construct shadow data source using window dataset
-        con_args = [getattr(data_source, arg) for arg in data_source._con_args]
-        type_name = data_source._type_name
-        w_data_source = getattr(wds, type_name)(*con_args)
+        w_data_source = wds._get_window_container(data_source)
 
         if center is None:
             center = wds.domain_center
@@ -674,6 +722,21 @@ class GeoTiffWindowDataset(GeoTiffDataset):
 
         self.parameters = self._parent_ds.parameters.copy()
 
+    def _get_window_container(self, dobj):
+        """
+        Generate a matching data container belonging to the window dataset.
+        """
+
+        con_args = {arg: getattr(dobj, arg) for arg in dobj._con_args}
+        # if object has a base object (like a cut_region), get that first
+        if "base_object" in con_args:
+            base_object = self._get_window_container(con_args["base_object"])
+            con_args["base_object"] = base_object
+
+        type_name = dobj._type_name
+        wobj = getattr(self, type_name)(*list(con_args.values()))
+        wobj.ds = self
+        return wobj
 
 class LandSatGeoTiffHierarchy(GeoTiffHierarchy):
     def _detect_output_fields(self):
