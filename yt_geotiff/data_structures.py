@@ -27,7 +27,6 @@ from yt.utilities.parallel_tools.parallel_analysis_interface import \
 from yt.visualization.api import SlicePlot
 
 from .fields import \
-    GeoTiffFieldInfo, \
     JPEG2000FieldInfo
 from .utilities import \
     left_aligned_coord_cal, \
@@ -147,13 +146,6 @@ class GeoTiffGrid(YTGrid):
             return super().select_blocks(dobj)
         wgrid = self._get_window_grid(dobj.selector)
         rvalue = wgrid.select_blocks(dobj)
-        return rvalue
-
-    def _get_selector_mask(self, selector):
-        if isinstance(selector, GridSelector):
-            return super()._get_selector_mask(selector)
-        wgrid = self._get_window_grid(selector)
-        rvalue = wgrid._get_selector_mask(selector)
         return rvalue
 
     def _get_window_grid(self, selector):

@@ -222,14 +222,14 @@ def s1_geocode(s1_file_path, polarisation):
     # open the file
     path_to_sen1_tiff = Path(path_leaf(s1_file_path)[0]+'/')/path_leaf(s1_file_path)[1]
     with rasterio.open(path_to_sen1_tiff) as src:
-        meta = src.meta
-        array = src.read(1)
+        # meta = src.meta
+        # array = src.read(1)
         gcps, crs = src.get_gcps()  # get crs and gcps
         transform = rasterio.transform.from_gcps(gcps)  # get transform
     
     
-    temp_file = "s1_"+polarisation+"_temp.tiff"
-    output_path = path_to_sen1_tiff.parent / temp_file
+    # temp_file = "s1_"+polarisation+"_temp.tiff"
+    # output_path = path_to_sen1_tiff.parent / temp_file
 
     return crs, transform
     # with rasterio.Env():
