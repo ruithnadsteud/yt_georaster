@@ -608,8 +608,13 @@ class GeoTiffDataset(Dataset):
                     center, width, height)
                 center = data_source.center
 
-        # construct a window data set
-        wleft, wright = self.data._get_selection_window(data_source.selector)
+        # construct a window data set using bounds from data_source
+        my_source = data_source
+        while hasattr(my_source, "base_object"):
+            my_source = my_source.base_object
+        my_selector = my_source.selector
+
+        wleft, wright = self.data._get_selection_window(my_selector)
         with log_level(40):
             wds = GeoTiffWindowDataset(self, wleft, wright)
 
