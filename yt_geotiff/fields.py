@@ -98,6 +98,7 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
             ("band_ratios", "S2_NDWI"),
             function=_ndwi,
             sampling_type="local",
+            take_log=False,
             units="")
 
         # Maximum chlorophyll index (MCI)
@@ -111,6 +112,7 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
             ("band_ratios", "S2_MCI"),
             function=_mci,
             sampling_type="local",
+            take_log=False,
             units="")
 
         # Colored Dissolved Organic Matter (CDOM)
@@ -123,6 +125,7 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
             ("band_ratios", "S2_CDOM"),
             function=_cdom,
             sampling_type="local",
+            take_log=False,
             units="")
 
         # Enhanced Vegetation Index (EVI)
@@ -136,6 +139,7 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
             ("band_ratios", "S2_EVI"),
             function=_evi,
             sampling_type="local",
+            take_log=False,
             units="")
 
         # Landsat Temperature
@@ -147,6 +151,7 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
             ("variables", "LS_temperature"),
             function=_LS_temperature,
             sampling_type="local",
+            take_log=False,
             units="K")
 
         # Area coverage of field
@@ -155,4 +160,6 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
             data["index", "dy"]
 
         self.add_field(("index", "area"), function=_area,
-            sampling_type="local", units="km**2")
+            sampling_type="local", 
+            take_log=False,
+            units="km**2")
