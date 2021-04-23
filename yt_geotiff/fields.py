@@ -160,6 +160,5 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
             data["index", "dy"]
 
         self.add_field(("index", "area"), function=_area,
-            sampling_type="local", 
-            take_log=False,
+            sampling_type="local",
             units="km**2")
