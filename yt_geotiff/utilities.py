@@ -11,6 +11,7 @@ from unyt import unyt_array, unyt_quantity, uconcatenate
 import yt.geometry.selection_routines as selector_shape
 from yt.utilities.logger import ytLogger
 
+import os
 
 def coord_cal(xcell, ycell, transform):
     """Function to calculate the position of cell (xcell, ycell) in terms of
@@ -199,6 +200,9 @@ def validate_quantity(ds, value, units):
     and return a unyt_quantity.
     """
 
+    if hasattr(value, "units") and not isinstance(value, unyt_quantity):
+        raise ValueError("value must be a quantity, not an array. "
+                         "Use ds.quan instead of ds.arr.")
     if isinstance(value, unyt_quantity):
         return value
     elif isinstance(value, (tuple, list)):
@@ -207,6 +211,58 @@ def validate_quantity(ds, value, units):
         value = ds.quan(value, units)
     return value
 
+def s1_geocode(path, filename):
+    """
+    A quick example of handling transforms from gcps with rasterio.
+    """
+    
+    """Main function."""
+    # open the file
+    with rasterio.open(os.path.join(path, filename)) as src:
+        #meta = src.meta
+        #array = src.read(1)
+        gcps, crs = src.get_gcps()  # get crs and gcps
+        transform = rasterio.transform.from_gcps(gcps)  # get transform
+    
+    
+    # temp_file = "s1_"+polarisation+"_temp.tiff"
+    # output_path = path_to_sen1_tiff.parent / temp_file
+
+    return crs, transform
+    # with rasterio.Env():
+    #     # update the metadata
+    #     new_meta = meta.copy()
+    #     new_meta.update(
+    #         crs=crs,
+    #         transform=transform
+    #     )
+    #     #print("old: ", meta)
+    #     #print("new: ", new_meta)
+    #     # save to file
+    #     with rasterio.open(output_path, "w", **new_meta) as dst:
+    #         dst.write(array, 1)
+    # reload that data to double check
+    #with rasterio.open(output_path) as src:
+    #    reloaded_meta = src.meta
+    #    new_array = src.read(1)
+    # does this change the data in anyway?
+    #print("meta the same? ", reloaded_meta == new_meta)
+    #print("data the same? ", (new_array == array).all())
+
+def s1_polarisation(filename):
+    if "vv" in filename: 
+        pol = "VV"
+    elif "vh" in filename:
+        pol="VH"
+    return pol
+
+def s1_data_manager(path, filename):
+    # Geocode S1 image      
+    s1_crs, s1_transform = s1_geocode(path, filename)
+    field_label = ('bands', ("S1_"+s1_polarisation(filename)))
+    #self.ds.parameters['crs'] = s1_crs
+    #self.ds.parameters['crs'] = s1_transform
+    return field_label
 
 class log_level():
     """

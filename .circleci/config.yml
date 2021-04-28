@@ -42,7 +42,7 @@ commands:
             export MAX_BUILD_CORES=2
             if [ << parameters.ytdev >> == 1 ]; then
                 if [ ! -f $YT_DIR/README.md ]; then
-                    git clone --branch=ytgeotiff https://github.com/brittonsmith/yt $YT_DIR
+                    git clone --branch=ytgeotiff https://github.com/ruithnadsteud/yt $YT_DIR
                 fi
                 pushd $YT_DIR
                 git pull origin ytgeotiff
@@ -141,14 +141,14 @@ jobs:
 
       - restore_cache:
           name: "Restore dependencies cache."
-          key: python-<< parameters.tag >>-<< parameters.ytdev >>-dependencies-v1
+          key: python-<< parameters.tag >>-<< parameters.ytdev >>-dependencies-2021-04-22
 
       - install:
           ytdev: << parameters.ytdev >>
 
       - save_cache:
           name: "Save dependencies cache."
-          key: python-<< parameters.tag >>-<< parameters.ytdev >>-dependencies-v1
+          key: python-<< parameters.tag >>-<< parameters.ytdev >>-dependencies-2021-04-22
           paths:
             - ~/.cache/pip
             - ~/venv

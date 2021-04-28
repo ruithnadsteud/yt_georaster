@@ -2,7 +2,9 @@ import glob
 import numpy as np
 import os
 import rasterio
+from rasterio import warp
 from rasterio.windows import from_bounds
+import re
 import stat
 
 from unyt import dimensions
@@ -24,14 +26,15 @@ from yt.utilities.parallel_tools.parallel_analysis_interface import \
 from yt.visualization.api import SlicePlot
 
 from .fields import \
-    GeoTiffFieldInfo
+    JPEG2000FieldInfo
 from .utilities import \
     left_aligned_coord_cal, \
     save_dataset_as_geotiff, \
     parse_awslandsat_metafile, \
     validate_coord_array, \
     validate_quantity, \
-    log_level
+    log_level, \
+    s1_data_manager
 
 
 class GeoTiffWindowGrid(YTGrid):
@@ -88,6 +91,13 @@ class GeoTiffGrid(YTGrid):
         rvalue = wgrid.count(selector)
         return rvalue
 
+    def _get_selector_mask(self, selector):
+        if isinstance(selector, GridSelector):
+            return super()._get_selector_mask(selector)
+        wgrid = self._get_window_grid(selector)
+        rvalue = wgrid._get_selector_mask(selector)
+        return rvalue
+
     def select_icoords(self, dobj):
         if isinstance(dobj.selector, GridSelector):
             return super().select_icoords(dobj)
@@ -102,11 +112,39 @@ class GeoTiffGrid(YTGrid):
         rvalue = wgrid.select_fcoords(dobj)
         return rvalue
 
-    def _get_selector_mask(self, selector):
-        if isinstance(selector, GridSelector):
-            return super()._get_selector_mask(selector)
-        wgrid = self._get_window_grid(selector)
-        rvalue = wgrid._get_selector_mask(selector)
+    def select_fwidth(self, dobj):
+        if isinstance(dobj.selector, GridSelector):
+            return super().select_fwidth(dobj)
+        wgrid = self._get_window_grid(dobj.selector)
+        rvalue = wgrid.select_fwidth(dobj)
+        return rvalue
+
+    def select_ires(self, dobj):
+        if isinstance(dobj.selector, GridSelector):
+            return super().select_ires(dobj)
+        wgrid = self._get_window_grid(dobj.selector)
+        rvalue = wgrid.select_ires(dobj)
+        return rvalue
+
+    def count_particles(self, dobj):
+        if isinstance(dobj.selector, GridSelector):
+            return super().count_particles(dobj)
+        wgrid = self._get_window_grid(dobj.selector)
+        rvalue = wgrid.count_particles(dobj)
+        return rvalue
+
+    def select_particles(self, dobj):
+        if isinstance(dobj.selector, GridSelector):
+            return super().select_particles(dobj)
+        wgrid = self._get_window_grid(dobj.selector)
+        rvalue = wgrid.select_particles(dobj)
+        return rvalue
+
+    def select_blocks(self, dobj):
+        if isinstance(dobj.selector, GridSelector):
+            return super().select_blocks(dobj)
+        wgrid = self._get_window_grid(dobj.selector)
+        rvalue = wgrid.select_blocks(dobj)
         return rvalue
 
     def _get_window_grid(self, selector):
@@ -152,15 +190,21 @@ class GeoTiffGrid(YTGrid):
         right_edge.clip(min=dle, max=dre, out=right_edge)
         return left_edge, right_edge
 
-    def _get_rasterio_window(self, selector, transform):
+    def _get_rasterio_window(self, selector, dst_crs, transform):
         """
         Calculate position, width, and height for a rasterio window read.
         """
-
         left_edge, right_edge = self._get_selection_window(selector)
-        window = from_bounds(left_edge[0], left_edge[1],
-                             right_edge[0], right_edge[1],
+        
+        transform_x, transform_y = warp.transform(
+            self.ds.parameters['crs'], dst_crs,
+            [left_edge[0], right_edge[0]],
+            [left_edge[1],right_edge[1]], zs=None)
+
+        window = from_bounds(transform_x[0], transform_y[0],
+                             transform_x[1], transform_y[1],
                              transform)
+
         return window
 
     def __repr__(self):
@@ -184,10 +228,51 @@ class GeoTiffHierarchy(YTGridHierarchy):
     def _count_grids(self):
         self.num_grids = 1
 
+class RasterioGroupHierarchy(GeoTiffHierarchy):
+
+    def _detect_output_fields(self):
+        # Follow example for GeoTiffHierarchy to populate the field list.
+        self.field_list = []
+        self.ds.field_units = self.ds.field_units or {}
+
+        # Filename dictionary
+        self.ds._field_filename = {}
+
+        # Number of bands in image dataset
+        self.ds._file_band_number = {}
+       
+        for fn in self.ds.filename_list:
+            path, filename =  os.path.split(fn)
+
+            if (filename.startswith("s1")):
+                field_name = s1_data_manager(path, filename)
+            else:             
+                with rasterio.open(fn, "r") as f:
+                    group = 'bands'                
+                    for _i in range(1, f.count + 1):
+                        if (filename.split(".")[1] == "jp2"):
+                            field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]))
+                            if (f.count > 1):
+                                field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]+"_BAND"+str(_i)))
+                        elif (filename.split(".")[1] == "TIF") and ((filename.split("_")[0])[0:2] == "LC"):          
+                            field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[8]))
+                            if (f.count > 1):
+                                field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[2]+"_BAND"+str(_i)))
+                        else:
+                            field_name = (group, filename)
+                            if (f.count > 1):
+                                field_name = (group, (filename+ "_BAND"+str(_i)))
+
+                        self.field_list.append(field_name)
+                        self.ds.field_units[field_name] = ""
+
+                        self.ds._file_band_number.update({field_name[1]: {'filename': fn, 'band': _i}})               
+            
+                self.ds._field_filename.update({field_name[1]: {'filename': fn, 'resolution': f.res[0]}})
+
 
 class JPEG2000Hierarchy(GeoTiffHierarchy):
-    grid = GeoTiffGrid   
-
+    
     def _detect_output_fields(self):
         # check data dir of the given jp2 file and grab all similarly named files.
 
@@ -222,7 +307,7 @@ class JPEG2000Hierarchy(GeoTiffHierarchy):
 class GeoTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
     _index_class = GeoTiffHierarchy
-    _field_info_class = GeoTiffFieldInfo
+    _field_info_class = JPEG2000FieldInfo
     _dataset_type = 'geotiff'
     _valid_extensions = ('.tif', '.tiff')
     _driver_type = "GTiff"
@@ -231,13 +316,19 @@ class GeoTiffDataset(Dataset):
     fluid_types = ("bands", "index", "sentinel2")
     _periodicity = np.zeros(3, dtype=bool)
     cosmological_simulation = False
+    refine_by = 2
     _con_attrs = ()
+
 
     def __init__(self, filename, field_map=None):
         self.field_map = field_map
-        super(GeoTiffDataset, self).__init__(
-            filename, self._dataset_type, unit_system="mks")
+        super().__init__(filename, self._dataset_type, unit_system="mks")
         self.data = self.index.grids[0]
+        self._added_fields = []
+
+    def add_field(self, *args, **kwargs):
+        self._added_fields.append({"args": args, "kwargs": kwargs})
+        super().add_field(*args, **kwargs)
 
     @parallel_root_only
     def print_key_parameters(self):
@@ -259,13 +350,14 @@ class GeoTiffDataset(Dataset):
                 v = f.meta[key]
                 self.parameters[key] = v
             self.parameters['res'] = f.res
+            self.parameters['src'] = f.crs
         self.current_time = 0
 
         width = self.parameters['width']
         height = self.parameters['height']
         transform = self.parameters['transform']
         self.dimensionality = 3
-        self.domain_dimensions = np.array([height, width, 1], dtype=np.int32)
+        self.domain_dimensions = np.array([width, height, 1], dtype=np.int32)
 
         rast_left = np.concatenate([transform * (0, 0), [0]])
         rast_right = np.concatenate([transform * (width, height), [1]])
@@ -303,7 +395,7 @@ class GeoTiffDataset(Dataset):
     def __repr__(self):
         fn = self.basename
         for ext in self._valid_extensions:
-            if fn.endswith(ext) or fn.endswith(ext.upper()):
+            if re.search(f"{ext}$", fn, flags=re.IGNORECASE):
                 fn = fn[:-len(ext)]
                 break
         return fn
@@ -477,6 +569,11 @@ class GeoTiffDataset(Dataset):
         >>> p = ds.plot(('bands', '1'), data_source=rec)
         >>> p.save()
         """
+
+        if center is not None:
+            center = validate_coord_array(
+                self, center, "center",
+                self.domain_center[2], "code_length")
         if width is not None:
             width = validate_quantity(self, width, "code_length")
         if height is not None:
@@ -494,15 +591,17 @@ class GeoTiffDataset(Dataset):
                     center, width, height)
                 center = data_source.center
 
-        # construct a window data set
-        wleft, wright = self.data._get_selection_window(data_source.selector)
+        # construct a window data set using bounds from data_source
+        my_source = data_source
+        while hasattr(my_source, "base_object"):
+            my_source = my_source.base_object
+        my_selector = my_source.selector
+
+        wleft, wright = self.data._get_selection_window(my_selector)
         with log_level(40):
             wds = GeoTiffWindowDataset(self, wleft, wright)
 
-        # construct shadow data source using window dataset
-        con_args = [getattr(data_source, arg) for arg in data_source._con_args]
-        type_name = data_source._type_name
-        w_data_source = getattr(wds, type_name)(*con_args)
+        w_data_source = wds._get_window_container(data_source)
 
         if center is None:
             center = wds.domain_center
@@ -522,10 +621,12 @@ class GeoTiffDataset(Dataset):
 
     @classmethod
     def _is_valid(self, *args, **kwargs):
+        if len(args)>1:
+            return False
         fn = args[0]
         valid = False
         for ext in self._valid_extensions:
-            if fn.endswith(ext) or fn.endswith(ext.upper()):
+            if re.search(f"{ext}$", fn, flags=re.IGNORECASE):
                 valid = True
                 break
         if not valid:
@@ -539,9 +640,43 @@ class GeoTiffDataset(Dataset):
 
 class JPEG2000Dataset(GeoTiffDataset):
     _index_class = JPEG2000Hierarchy
-    _valid_extensions = ('.jp2')
+    _field_info_class = JPEG2000FieldInfo
+    _valid_extensions = ('.jp2',)
     _driver_type = "JP2OpenJPEG"
     _dataset_type = "JPEG2000"
+
+class RasterioGroupDataset(GeoTiffDataset):
+    _dataset_type = "RasterioGroup"
+    _valid_extensions = ('.tif','.tiff','.jp2')
+    _index_class = RasterioGroupHierarchy
+    _field_info_class = JPEG2000FieldInfo
+
+
+    # list of all filenames in directory
+    
+    @classmethod
+    def _is_valid(self, *args, **kwargs):
+        if len(args) == 1:
+            return False
+
+        # for number of files
+        for fn in args:    
+
+            valid = False
+            for ext in self._valid_extensions:
+                if re.search(f"{ext}$", fn, flags=re.IGNORECASE): 
+                    valid = True
+                    break
+            if not valid:
+                return False        
+        return True
+
+    def __init__(self, *args, field_map=None):
+        self.filename_list = args
+        filename = args[0] 
+        super().__init__(filename, field_map=field_map)
+        self.data = self.index.grids[0]
+        
 
 class GeoTiffWindowDataset(GeoTiffDataset):
     """
@@ -566,15 +701,33 @@ class GeoTiffWindowDataset(GeoTiffDataset):
 
         super().__init__(parent_ds.parameter_filename, parent_ds.field_map)
 
+        for field in parent_ds._added_fields:
+            self.add_field(*field["args"], **field["kwargs"])
+
     def _parse_parameter_file(self):
         inh_attrs = ("current_time", "dimensionality",
                      "num_particles", "_flip_axes",
-                     "resolution")
+                     "resolution", "filename_list")
         for attr in inh_attrs:
-            setattr(self, attr, getattr(self._parent_ds, attr))
+            setattr(self, attr, getattr(self._parent_ds, attr, None))
 
         self.parameters = self._parent_ds.parameters.copy()
 
+    def _get_window_container(self, dobj):
+        """
+        Generate a matching data container belonging to the window dataset.
+        """
+
+        con_args = {arg: getattr(dobj, arg) for arg in dobj._con_args}
+        # if object has a base object (like a cut_region), get that first
+        if "base_object" in con_args:
+            base_object = self._get_window_container(con_args["base_object"])
+            con_args["base_object"] = base_object
+
+        type_name = dobj._type_name
+        wobj = getattr(self, type_name)(*list(con_args.values()))
+        wobj.ds = self
+        return wobj
 
 class LandSatGeoTiffHierarchy(GeoTiffHierarchy):
     def _detect_output_fields(self):
