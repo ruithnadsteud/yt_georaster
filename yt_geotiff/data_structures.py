@@ -266,11 +266,7 @@ class RasterioGroupHierarchy(GeoTiffHierarchy):
                         self.field_list.append(field_name)
                         self.ds.field_units[field_name] = ""
 
-                        self.ds._file_band_number.update({field_name[1]: {'filename': fn, 'band': _i}})
-
-                # Count number of bands in image dataset
-                number_bands = (filename, f.count)
-                
+                        self.ds._file_band_number.update({field_name[1]: {'filename': fn, 'band': _i}})               
             
                 self.ds._field_filename.update({field_name[1]: {'filename': fn, 'resolution': f.res[0]}})
 

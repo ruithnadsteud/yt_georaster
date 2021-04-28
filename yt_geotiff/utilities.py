@@ -11,7 +11,6 @@ from unyt import unyt_array, unyt_quantity, uconcatenate
 import yt.geometry.selection_routines as selector_shape
 from yt.utilities.logger import ytLogger
 
-from pathlib import Path
 import os
 
 def coord_cal(xcell, ycell, transform):
@@ -220,8 +219,8 @@ def s1_geocode(path, filename):
     """Main function."""
     # open the file
     with rasterio.open(os.path.join(path, filename)) as src:
-        meta = src.meta
-        array = src.read(1)
+        #meta = src.meta
+        #array = src.read(1)
         gcps, crs = src.get_gcps()  # get crs and gcps
         transform = rasterio.transform.from_gcps(gcps)  # get transform
     
@@ -258,8 +257,7 @@ def s1_polarisation(filename):
     return pol
 
 def s1_data_manager(path, filename):
-    # Geocode S1 image               
-    polarisation = s1_polarisation(filename)           
+    # Geocode S1 image      
     s1_crs, s1_transform = s1_geocode(path, filename)
     field_label = ('bands', ("S1_"+s1_polarisation(filename)))
     #self.ds.parameters['crs'] = s1_crs
