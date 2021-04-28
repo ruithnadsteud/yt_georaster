@@ -46,8 +46,8 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                 rv.update(gf)
 
             if len(rv) == len(fields):
-                return rv        
-
+                return rv
+            
             src = rasterio.open(g.filename, "r")
             rasterio_window = g._get_rasterio_window(selector, src.crs, src.transform)
 
@@ -127,7 +127,7 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
     
         return rv
 
-class rasterio_group(IOHandlerGeoTiff):
+class IOHandlerRasterioGroup(IOHandlerGeoTiff):
     _dataset_type = "RasterioGroup"
 
     # copy _read_fluid_selection
@@ -158,7 +158,8 @@ class rasterio_group(IOHandlerGeoTiff):
                 self._misses += 1
                 ftype, fname = field 
                 
-                filename=self.ds.directory+'/'+self.ds._field_filename[fname]['filename']                              
+                filename=self.ds._file_band_number[fname]['filename']      
+                band_number= self.ds._file_band_number[fname]['band']                        
 
                 src = rasterio.open(filename, "r")
                 rasterio_window = g._get_rasterio_window(selector, src.crs, src.transform)
@@ -167,7 +168,8 @@ class rasterio_group(IOHandlerGeoTiff):
                 rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)
 
                 # Read in the band/field
-                data = src.read(1, window=rasterio_window).astype(
+
+                data = src.read(band_number, window=rasterio_window).astype(
                     self._field_dtype) # could be multiband
                 data = self._transform_data(data)
                 
@@ -226,7 +228,8 @@ class rasterio_group(IOHandlerGeoTiff):
                    
                     ftype, fname = field
                     
-                    filename=self.ds.directory+'/'+self.ds._field_filename[fname]['filename']  
+                    filename= self.ds._file_band_number[fname]['filename']  
+                    band_number = self.ds._file_band_number[fname]['band']
                     
                     src = rasterio.open(filename, "r")#
 
@@ -239,7 +242,7 @@ class rasterio_group(IOHandlerGeoTiff):
                     rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)                                   
 
                     # Perform Rasterio window read
-                    data = src.read(1, window=rasterio_window).astype(
+                    data = src.read(band_number, window=rasterio_window).astype(
                             self._field_dtype)    
                   
                     data = self._transform_data(data)
@@ -296,8 +299,9 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
                 self._misses += 1
                 ftype, fname = field 
                   
-                filename=self.ds._field_filename[fname]['filename']
-
+                filename=self.ds._file_band_number[fname]['filename']
+                band_number = self.ds._file_band_number[fname]['band']  
+                
                 src = rasterio.open(filename, "r")
                 rasterio_window = g._get_rasterio_window(selector, src.crs, src.transform)
 
@@ -305,7 +309,7 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
                 rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)
 
                 # Read in the band/field
-                data = src.read(1, window=rasterio_window).astype(
+                data = src.read(band_number, window=rasterio_window).astype(
                     self._field_dtype)
 
                 data = self._transform_data(data)
@@ -366,7 +370,8 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
 
                     ftype, fname = field
                     
-                    filename=self.ds._field_filename[fname]['filename']
+                    filename=self.ds._file_band_number[fname]['filename']  
+                    band_number = self.ds._file_band_number[fname]['band']
 
                     src = rasterio.open(filename, "r")
 
@@ -377,7 +382,7 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
                     rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)
                     
                     # Perform Rasterio window read
-                    data = src.read(1, window=rasterio_window).astype(
+                    data = src.read(band_number, window=rasterio_window).astype(
                         self._field_dtype)                   
 
                     data = self._transform_data(data)

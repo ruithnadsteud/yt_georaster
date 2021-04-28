@@ -12,7 +12,7 @@ import yt.geometry.selection_routines as selector_shape
 from yt.utilities.logger import ytLogger
 
 from pathlib import Path
-import ntpath
+import os
 
 def coord_cal(xcell, ycell, transform):
     """Function to calculate the position of cell (xcell, ycell) in terms of
@@ -212,21 +212,16 @@ def validate_quantity(ds, value, units):
         value = ds.quan(value, units)
     return value
 
-def s1_geocode(s1_file_path, polarisation):
+def s1_geocode(path, filename):
     """
     A quick example of handling transforms from gcps with rasterio.
     """
-
-    def path_leaf(s1_file_path):
-        head, tail = ntpath.split(s1_file_path)
-        return (head, tail, ntpath.basename(head))
     
     """Main function."""
     # open the file
-    path_to_sen1_tiff = Path(path_leaf(s1_file_path)[0]+'/')/path_leaf(s1_file_path)[1]
-    with rasterio.open(path_to_sen1_tiff) as src:
-        # meta = src.meta
-        # array = src.read(1)
+    with rasterio.open(os.path.join(path, filename)) as src:
+        meta = src.meta
+        array = src.read(1)
         gcps, crs = src.get_gcps()  # get crs and gcps
         transform = rasterio.transform.from_gcps(gcps)  # get transform
     
@@ -255,7 +250,21 @@ def s1_geocode(s1_file_path, polarisation):
     #print("meta the same? ", reloaded_meta == new_meta)
     #print("data the same? ", (new_array == array).all())
 
+def s1_polarisation(filename):
+    if "vv" in filename: 
+        pol = "VV"
+    elif "vh" in filename:
+        pol="VH"
+    return pol
 
+def s1_data_manager(path, filename):
+    # Geocode S1 image               
+    polarisation = s1_polarisation(filename)           
+    s1_crs, s1_transform = s1_geocode(path, filename)
+    field_label = ('bands', ("S1_"+s1_polarisation(filename)))
+    #self.ds.parameters['crs'] = s1_crs
+    #self.ds.parameters['crs'] = s1_transform
+    return field_label
 
 class log_level():
     """

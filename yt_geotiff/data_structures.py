@@ -6,7 +6,6 @@ from rasterio import warp
 from rasterio.windows import from_bounds
 import re
 import stat
-import ntpath
 
 from unyt import dimensions
 
@@ -35,7 +34,7 @@ from .utilities import \
     validate_coord_array, \
     validate_quantity, \
     log_level, \
-    s1_geocode
+    s1_data_manager
 
 
 class GeoTiffWindowGrid(YTGrid):
@@ -240,49 +239,40 @@ class RasterioGroupHierarchy(GeoTiffHierarchy):
         self.ds._field_filename = {}
 
         # Number of bands in image dataset
-        self.ds._number_bands = []
+        self.ds._file_band_number = {}
+       
+        for fn in self.ds.filename_list:
+            path, filename =  os.path.split(fn)
 
-        def path_eval(path):
-            head, tail = ntpath.split(path)
-            return tail or ntpath.basename(head)
-
-        def s1_polarisation(filename):
-            if "vv" in filename: 
-                pol = "VV"
-            elif "vh" in filename:
-                pol="VH"
-            return pol
-        
-        for _i in range(len(self.ds.filename_list)):
-            filename =  path_eval(self.ds.filename_list[_i])
             if (filename.startswith("s1")):
-                # Geocode S1 image               
-                polarisation = s1_polarisation(filename)
-                with rasterio.open(self.ds.filename_list[_i], "r") as f:
-                    group = 'bands'        
-                s1_crs, s1_transform = s1_geocode(self.ds.filename_list[_i], polarisation)
-                #self.ds.parameters['crs'] = s1_crs
-                #self.ds.parameters['crs'] = s1_transform
-                field_name = (group, ("S1_"+s1_polarisation(filename)))
+                field_name = s1_data_manager(path, filename)
             else:             
-                with rasterio.open(self.ds.filename_list[_i], "r") as f:
+                with rasterio.open(fn, "r") as f:
                     group = 'bands'                
-            
-                if (filename.split(".")[1] == "jp2"):
-                    field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]))
-                elif (filename.split(".")[1] == "TIF") and ((filename.split("_")[0])[0:2] == "LC"):             
-                    field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[8]))
-                else:
-                    field_name = (group, filename)
-            
-            self.field_list.append(field_name)
-            self.ds.field_units[field_name] = ""
+                    for _i in range(1, f.count + 1):
+                        if (filename.split(".")[1] == "jp2"):
+                            field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]))
+                            if (f.count > 1):
+                                field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]+"_BAND"+str(_i)))
+                        elif (filename.split(".")[1] == "TIF") and ((filename.split("_")[0])[0:2] == "LC"):          
+                            field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[8]))
+                            if (f.count > 1):
+                                field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[2]+"_BAND"+str(_i)))
+                        else:
+                            field_name = (group, filename)
+                            if (f.count > 1):
+                                field_name = (group, (filename+ "_BAND"+str(_i)))
 
-            # Count number of bands in image dataset
-            number_bands = (filename, f.count)
-            self.ds._number_bands.append(number_bands)
+                        self.field_list.append(field_name)
+                        self.ds.field_units[field_name] = ""
+
+                        self.ds._file_band_number.update({field_name[1]: {'filename': fn, 'band': _i}})
+
+                # Count number of bands in image dataset
+                number_bands = (filename, f.count)
+                
             
-            self.ds._field_filename.update({field_name[1]: {'filename': filename, 'resolution': f.res[0]}})
+                self.ds._field_filename.update({field_name[1]: {'filename': fn, 'resolution': f.res[0]}})
 
 
 class JPEG2000Hierarchy(GeoTiffHierarchy):
@@ -655,7 +645,7 @@ class GeoTiffDataset(Dataset):
 class JPEG2000Dataset(GeoTiffDataset):
     _index_class = JPEG2000Hierarchy
     _field_info_class = JPEG2000FieldInfo
-    #_valid_extensions = ('.jp2',)
+    _valid_extensions = ('.jp2',)
     _driver_type = "JP2OpenJPEG"
     _dataset_type = "JPEG2000"
 
@@ -675,10 +665,7 @@ class RasterioGroupDataset(GeoTiffDataset):
 
         # for number of files
         for fn in args:    
-        
-            # if not instance fnlist
-            #    return false
-            
+
             valid = False
             for ext in self._valid_extensions:
                 if re.search(f"{ext}$", fn, flags=re.IGNORECASE): 
