@@ -26,7 +26,7 @@ from yt.utilities.parallel_tools.parallel_analysis_interface import \
 from yt.visualization.api import SlicePlot
 
 from .fields import \
-    JPEG2000FieldInfo
+    GeoRasterFieldInfo
 from .utilities import \
     left_aligned_coord_cal, \
     parse_awslandsat_metafile, \
@@ -306,7 +306,7 @@ class JPEG2000Hierarchy(GeoTiffHierarchy):
 class GeoTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
     _index_class = GeoTiffHierarchy
-    _field_info_class = JPEG2000FieldInfo
+    _field_info_class = GeoRasterFieldInfo
     _dataset_type = 'geotiff'
     _valid_extensions = ('.tif', '.tiff')
     _driver_type = "GTiff"
@@ -635,7 +635,7 @@ class GeoTiffDataset(Dataset):
 
 class JPEG2000Dataset(GeoTiffDataset):
     _index_class = JPEG2000Hierarchy
-    _field_info_class = JPEG2000FieldInfo
+    _field_info_class = GeoRasterFieldInfo
     _valid_extensions = ('.jp2',)
     _driver_type = "JP2OpenJPEG"
     _dataset_type = "JPEG2000"
@@ -644,7 +644,7 @@ class RasterioGroupDataset(GeoTiffDataset):
     _dataset_type = "RasterioGroup"
     _valid_extensions = ('.tif','.tiff','.jp2')
     _index_class = RasterioGroupHierarchy
-    _field_info_class = JPEG2000FieldInfo
+    _field_info_class = GeoRasterFieldInfo
 
 
     # list of all filenames in directory

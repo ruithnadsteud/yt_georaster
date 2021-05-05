@@ -18,23 +18,7 @@ _landsat_fields = {
     "TIRS_1": "LS_B10"
 }
 
-
-class GeoTiffFieldInfo(FieldInfoContainer):
-    known_other_fields = ()
-    known_particle_fields = ()
-
-    def __init__(self, ds, field_list):
-        super().__init__(ds, field_list)
-
-        if self.ds.field_map is not None:
-            with open(self.ds.field_map, 'r') as f:
-                fmap = yaml.load(f, Loader=yaml.FullLoader)
-
-            for dfield, afield in fmap['field_map'].items():
-                self.alias((fmap['field_type'], afield), ('bands', dfield))
-
-
-class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDataset(GeoTiffDataset)
+class GeoRasterFieldInfo(FieldInfoContainer):
     known_other_fields = ()
     known_particle_fields = ()
 
@@ -44,6 +28,14 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
         self._create_sentinel2_aliases()
         self._create_landsat_aliases()
         self._setup_geo_fields()
+
+        if self.ds.field_map is not None:
+            with open(self.ds.field_map, 'r') as f:
+                fmap = yaml.load(f, Loader=yaml.FullLoader)
+
+            for dfield, afield in fmap.items():
+                self.alias((afield['field_type'], afield['field_name']),
+                           ('bands', dfield))
 
     def _create_band_aliases(self):
         """
