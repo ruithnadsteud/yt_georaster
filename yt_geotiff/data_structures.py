@@ -29,7 +29,6 @@ from .fields import \
     JPEG2000FieldInfo
 from .utilities import \
     left_aligned_coord_cal, \
-    save_dataset_as_geotiff, \
     parse_awslandsat_metafile, \
     validate_coord_array, \
     validate_quantity, \
@@ -387,10 +386,6 @@ class GeoTiffDataset(Dataset):
             self.unit_registry.add("pixels", res[0], dimensions.length)
         else:
             mylog.warn("x and y pixels have different sizes.")
-
-    def save_as(self, filename):
-        # TODO: generalize this to save any dataset type as GeoTiff.
-        return save_dataset_as_geotiff(self, filename)
 
     def __repr__(self):
         fn = self.basename

@@ -82,8 +82,9 @@ def parse_awslandsat_metafile(filename, flatdict=True):
     return data
 
 
-def save_dataset_as_geotiff(ds, filename):
-    r"""Export georeferenced dataset to a reloadable geotiff.
+def save_as_geotiff(ds, filename, fields=None, data_source=None):
+    r"""
+    Export georeferenced data to a reloadable geotiff.
 
     This function is a wrapper for rasterio's geotiff writing capability. The
     dataset used must be of the geotiff class (or made to be similar). The
@@ -103,28 +104,40 @@ def save_dataset_as_geotiff(ds, filename):
     filename : str
         The name of the file that has been created.
     """
-    # create a 3d numpy array which is structured as (bands, rows, columns)
-    # cycle through each field(/band).
-    count = ds.parameters['count']
-    bands = range(1, count + 1)
-    output_array = np.array([np.array(ds.index.grids[0]
-                            [('bands', str(b))])[:, :, 0] for b in bands])
-    dtype = output_array[0].dtype
+
+    if fields is None:
+        fields = ds.field_list
+
+    if data_source is None:
+        my_data_source = ds.all_data()
+    elif hasattr(data_source, "left_edge"):
+        my_data_source = data_source
+    else:
+        left_edge, right_edge = data_source.get_bbox()
+        my_data_source = ds.box(left_edge, right_edge)
+
+    ytLogger.info(f"Saving {len(fields)} fields to {filename}.")
+
+    width, height = \
+      ((my_data_source.right_edge - my_data_source.left_edge)[:2] /
+       ds.resolution).astype(int).d
+    dtype = my_data_source[fields[0]].dtype
 
     with rasterio.open(filename,
                        'w',
                        driver='GTiff',
-                       height=ds.parameters['height'],
-                       width=ds.parameters['width'],
-                       count=count,
+                       height=height,
+                       width=width,
+                       count=len(fields),
                        dtype=dtype,
                        crs=ds.parameters['crs'],
                        transform=ds.parameters['transform'],
                        ) as dst:
-        dst.write(output_array)
+        for i, field in enumerate(fields):
+            ytLogger.info(f"Saving {field} to band {i}/{len(fields)}.")
+            dst.write(np.reshape(my_data_source[field].d, (width, height)), (i+1))
 
     return filename
-
 
 def merge_dicts(*dict_args):
     """
