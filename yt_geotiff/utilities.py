@@ -131,6 +131,11 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
     >>>
     >>> ds_new = yt.load(new_fn, field_map=new_fmap)
 
+    >>> circle = ds.circle(ds.domain_center, (10, 'km'))
+    >>> fields = [("bands", "LS_B1"),
+    ...           ("bands", "S2_B06"),
+    ...           ("band_ratios", "S2_NDWI")]
+    >>> save_as_geotiff(ds, "my_data.tiff", fields=fields, data_source=circle)
     """
 
     if fields is None:
