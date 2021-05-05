@@ -177,7 +177,13 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
             band = i + 1
             ytLogger.info(f"Saving {field} to band {band}/{len(fields)}.")
             field_info[str(band)] = {"field_type": field[0], "field_name": field[1]}
-            dst.write(np.reshape(my_data_source[field].d, (width, height)), band)
+            for attr in ["take_log", "units"]:
+                field_info[str(band)][attr] = getattr(ds.field_info[field], attr)
+            data = np.reshape(my_data_source[field].d, (width, height), order="C")
+            if ds._flip_axes:
+                data = np.flip(data, axis=ds._flip_axes)
+            data = data.T
+            dst.write(data, band)
 
     yfn = f"{filename[:filename.rfind('.')]}_fields.yaml"
     with open(yfn, mode="w") as f:

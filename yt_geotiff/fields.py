@@ -24,18 +24,25 @@ class GeoRasterFieldInfo(FieldInfoContainer):
 
     def __init__(self, ds, field_list):
         super().__init__(ds, field_list)
+        self._create_field_map_aliases()
         self._create_band_aliases()
         self._create_sentinel2_aliases()
         self._create_landsat_aliases()
         self._setup_geo_fields()
 
-        if self.ds.field_map is not None:
-            with open(self.ds.field_map, 'r') as f:
-                fmap = yaml.load(f, Loader=yaml.FullLoader)
+    def _create_field_map_aliases(self):
+        """
+        Read the field map and create aliases.
+        """
 
-            for dfield, afield in fmap.items():
-                self.alias((afield['field_type'], afield['field_name']),
-                           ('bands', dfield))
+        if self.ds.field_map is None:
+            return
+
+        with open(self.ds.field_map, 'r') as f:
+            fmap = yaml.load(f, Loader=yaml.FullLoader)
+
+        for dfield, afield in fmap.items():
+            add_field_map_band_alias(self, dfield, afield)
 
     def _create_band_aliases(self):
         """
@@ -43,7 +50,7 @@ class GeoRasterFieldInfo(FieldInfoContainer):
         """
 
         fres = defaultdict(list)
-        reg = re.compile("(.+)_(\d+)m$")
+        reg = re.compile(r"(.+)_(\d+)m$")
         for field in self.field_list:
             ftype, fname = field
             match = reg.search(fname)
@@ -154,3 +161,14 @@ class GeoRasterFieldInfo(FieldInfoContainer):
         self.add_field(("index", "area"), function=_area,
             sampling_type="local",
             units="km**2")
+
+def add_field_map_band_alias(fic, band, afield):
+    units = afield.get("units", "")
+    def my_field(field, data):
+        return data.ds.arr(data["bands", band], units)
+    fic.add_field(
+        (afield['field_type'], afield['field_name']),
+        function=my_field, sampling_type="local",
+        force_override=True,
+        take_log=afield.get("take_log", True),
+        units=units)
