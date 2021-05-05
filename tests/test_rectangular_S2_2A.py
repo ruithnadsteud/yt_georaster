@@ -9,7 +9,7 @@ s2_data = "Sentinel-2_sample_L2A/T30UVG_20200601T113331_B02_20m.jp2"
 
 @requires_file(s2_data)
 def test_rectangular():
-	ds = yt.load(s2_data)
+    ds = yt.load(s2_data)
     width = ds.quan(500., 'm')
     height = ds.quan(500.,'m')
     rectangle_centre = ds.arr([488012,6199162],'m')
