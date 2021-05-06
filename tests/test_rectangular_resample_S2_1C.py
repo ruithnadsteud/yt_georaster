@@ -8,7 +8,8 @@ from yt_geotiff.testing import requires_file
 s2_data_1 = "Sentinel-2_sample_L1C/T36MVE_20210315T075701_B02.jp2"
 s2_data_2 = "Sentinel-2_sample_L1C/T36MVE_20210315T075701_B01.jp2"
 
-@requires_file(s2_data_1, s2_data_2)
+@requires_file(s2_data_1)
+@requires_file(s2_data_2)
 def test_rectangular():
     ds = yt.load(s2_data_1, s2_data_2)
     width = ds.quan(20., 'km')
