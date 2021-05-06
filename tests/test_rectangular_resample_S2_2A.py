@@ -7,7 +7,6 @@ from yt_geotiff.testing import requires_file
 
 s2_data_1 = "Sentinel-2_sample_L2A/T30UVG_20200601T113331_B02_20m.jp2"
 s2_data_2 = "Sentinel-2_sample_L2A/T30UVG_20200601T113331_B01_60m.jp2"
-
 @requires_file(s2_data_1)
 @requires_file(s2_data_2)
 def test_rectangular():
