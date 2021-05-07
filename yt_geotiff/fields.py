@@ -18,32 +18,31 @@ _landsat_fields = {
     "TIRS_1": "LS_B10"
 }
 
-
-class GeoTiffFieldInfo(FieldInfoContainer):
+class GeoRasterFieldInfo(FieldInfoContainer):
     known_other_fields = ()
     known_particle_fields = ()
 
     def __init__(self, ds, field_list):
         super().__init__(ds, field_list)
-
-        if self.ds.field_map is not None:
-            with open(self.ds.field_map, 'r') as f:
-                fmap = yaml.load(f, Loader=yaml.FullLoader)
-
-            for dfield, afield in fmap['field_map'].items():
-                self.alias((fmap['field_type'], afield), ('bands', dfield))
-
-
-class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDataset(GeoTiffDataset)
-    known_other_fields = ()
-    known_particle_fields = ()
-
-    def __init__(self, ds, field_list):
-        super().__init__(ds, field_list)
+        self._create_field_map_aliases()
         self._create_band_aliases()
         self._create_sentinel2_aliases()
         self._create_landsat_aliases()
         self._setup_geo_fields()
+
+    def _create_field_map_aliases(self):
+        """
+        Read the field map and create aliases.
+        """
+
+        if self.ds.field_map is None:
+            return
+
+        with open(self.ds.field_map, 'r') as f:
+            fmap = yaml.load(f, Loader=yaml.FullLoader)
+
+        for dfield, afield in fmap.items():
+            add_field_map_band_alias(self, dfield, afield)
 
     def _create_band_aliases(self):
         """
@@ -51,7 +50,7 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
         """
 
         fres = defaultdict(list)
-        reg = re.compile("(.+)_(\d+)m$")
+        reg = re.compile(r"(.+)_(\d+)m$")
         for field in self.field_list:
             ftype, fname = field
             match = reg.search(fname)
@@ -162,3 +161,14 @@ class JPEG2000FieldInfo(FieldInfoContainer): # Now also used in RasterioGroupDat
         self.add_field(("index", "area"), function=_area,
             sampling_type="local",
             units="km**2")
+
+def add_field_map_band_alias(fic, band, afield):
+    units = afield.get("units", "")
+    def my_field(field, data):
+        return data.ds.arr(data["bands", band], units)
+    fic.add_field(
+        (afield['field_type'], afield['field_name']),
+        function=my_field, sampling_type="local",
+        force_override=True,
+        take_log=afield.get("take_log", True),
+        units=units)

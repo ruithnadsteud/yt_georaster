@@ -219,3 +219,46 @@ Example plot script of a derivable fields:
 >>> p.set_cmap(('band_ratios', 'S2_NDVI'), 'RdYlGn')
 >>> p.show()
 ```
+
+### Saving to a new GeoTiff file
+
+The `save_as_geotiff` function allows one to output multiple fields
+into a single multi-band GeoTiff file. This can be done for either the
+entire image or for a subset represented by geometric data container.
+
+```
+>>> import glob
+>>> import yt
+>>> from yt.extensions.geotiff import save_as_geotiff
+>>>
+>>> fns = glob.glob("*.jp2") + glob.glob("*.TIF")
+>>> ds = yt.load(*fns)
+>>> ds_fn, field_map = save_as_geotiff(ds, "my_data.tif")
+>>> ds_new = yt.load(ds_fn, field_map=field_map)
+```
+
+A supplementary yaml file containing a map between band numbers and
+field names will also be written.
+
+By default, all available on-disk fields will be saved, but a list,
+including derived fields can provided. As well, a data container can
+be provided for which data will only be saved for the rectangular
+bounding box enclosing the container.
+
+```
+>>> import glob
+>>> import yt
+>>> from yt.extensions.geotiff import save_as_geotiff
+>>>
+>>> fns = glob.glob("*.jp2") + glob.glob("*.TIF")
+>>> ds = yt.load(*fns)
+>>> circle = ds.circle(ds.domain_center, (10, 'km'))
+>>> fields = [("bands", "LS_B1"),
+...           ("bands", "S2_B06"),
+...           ("band_ratios", "S2_NDWI"),
+...           ("variables", "LS_temperature")]
+>>> ds_fn, field_map = save_as_geotiff(
+...        ds, "my_data.tiff",
+...        fields=fields, data_source=circle)
+>>> ds_new = yt.load(ds_fn, field_map=field_map)
+```

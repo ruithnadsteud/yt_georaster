@@ -6,6 +6,10 @@ Testing functions.
 """
 
 import os
+import shutil
+import tempfile
+from unittest import \
+    TestCase
 from yt.config import ytcfg
 
 def check_path(filename):
@@ -47,3 +51,18 @@ def requires_file(filename):
     except IOError:
         return ffalse
     return ftrue
+
+class TempDirTest(TestCase):
+    """
+    A test class that runs in a temporary directory and
+    removes it afterward.
+    """
+
+    def setUp(self):
+        self.curdir = os.getcwd()
+        self.tmpdir = tempfile.mkdtemp()
+        os.chdir(self.tmpdir)
+
+    def tearDown(self):
+        os.chdir(self.curdir)
+        shutil.rmtree(self.tmpdir)

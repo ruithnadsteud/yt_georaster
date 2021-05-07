@@ -7,6 +7,7 @@ Utility functions for yt_geotiff.
 import numpy as np
 import rasterio
 from unyt import unyt_array, unyt_quantity, uconcatenate
+import yaml
 
 import yt.geometry.selection_routines as selector_shape
 from yt.utilities.logger import ytLogger
@@ -82,49 +83,116 @@ def parse_awslandsat_metafile(filename, flatdict=True):
     return data
 
 
-def save_dataset_as_geotiff(ds, filename):
-    r"""Export georeferenced dataset to a reloadable geotiff.
+def save_as_geotiff(ds, filename, fields=None, data_source=None):
+    r"""
+    Export georeferenced data to a reloadable geotiff.
 
-    This function is a wrapper for rasterio's geotiff writing capability. The
-    dataset used must be of the geotiff class (or made to be similar). The
-    transform and other metadata are then taken from the dataset parameters.
-    This resulting file is a multi- (or single-) band geotiff which can then be
-    loaded by yt or other packages.
+    Data will be exported as a geotiff file that can be reloaded with
+    yt. The output data will be resampled to the resolution of the
+    dataset's base image (i.e., the first in the list of filenames
+    passed to yt.load). By default, the physical bounds of the saved
+    data will be the bounds of the loaded dataset (i.e., from
+    domain_left_edge to domain_right_edge). Optionally, a data container
+    can be provided and only data contained within the rectangular
+    bounding box surrounding the container will be saved. A
+    supplementary yaml file will be written with a map from GeoTiff
+    band number to field names.
 
     Parameters
     ----------
     ds : dataset
-        The georeferenced dataset to be saved to file.
-    filename: str
+        The georeferenced dataset to be saved.
+    filename : str
         The name of the file to be written.
+    fields : optional, list of tuples
+        List of fields to be saved. If none provided, all on-disk
+        fields will be saved.
+    data_source : optional, :class:`~yt.data_objects.data_containers.YTDataContainer`
+        The data container from which data will be selected for saving.
+        All data contained within the rectangular bounding box (for
+        example, if the data container is a sphere) will be saved. If
+        none provided, all data within the dataset's domain will be saved.
 
     Returns
     -------
-    filename : str
-        The name of the file that has been created.
-    """
-    # create a 3d numpy array which is structured as (bands, rows, columns)
-    # cycle through each field(/band).
-    count = ds.parameters['count']
-    bands = range(1, count + 1)
-    output_array = np.array([np.array(ds.index.grids[0]
-                            [('bands', str(b))])[:, :, 0] for b in bands])
-    dtype = output_array[0].dtype
+    (data_filename, filemap_filename) : tuple of strings
+        The names of the data file and field map file.
 
+    Examples
+    --------
+
+    >>> import yt
+    >>> from yt.extensions.geotiff import save_as_geotiff
+    >>>
+    >>> fns = glob.glob("*.jp2") + glob.glob("*.TIF")
+    >>> ds = yt.load(fns)
+    >>>
+    >>> new_fn, new_fmap = save_as_dataset(ds, "one_file_to_rule_them_all.tif")
+    >>>
+    >>> ds_new = yt.load(new_fn, field_map=new_fmap)
+
+    >>> circle = ds.circle(ds.domain_center, (10, 'km'))
+    >>> fields = [("bands", "LS_B1"),
+    ...           ("bands", "S2_B06"),
+    ...           ("band_ratios", "S2_NDWI")]
+    >>> save_as_geotiff(ds, "my_data.tiff", fields=fields, data_source=circle)
+    """
+
+    if fields is None:
+        fields = ds.field_list
+
+    if data_source is None:
+        my_data_source = ds.all_data()
+    elif hasattr(data_source, "left_edge"):
+        my_data_source = data_source
+    else:
+        left_edge, right_edge = data_source.get_bbox()
+        dle = ds.domain_left_edge.to("code_length")
+        dre = ds.domain_right_edge.to("code_length")
+        left_edge.clip(dle, dre, out=left_edge)
+        right_edge.clip(dle, dre, out=right_edge)
+        my_data_source = ds.box(left_edge, right_edge)
+
+    width, height = \
+      ((my_data_source.right_edge - my_data_source.left_edge)[:2] /
+       ds.resolution).astype(int).d
+    ytLogger.info(f"Saving {len(fields)} fields to {filename}.")
+    ytLogger.info(f"Bounding box: {my_data_source.left_edge[:2]} - "
+                  f"{my_data_source.right_edge[:2]} with shape {width,height}.")
+
+    dtype = my_data_source[fields[0]].dtype
+
+    field_info = {}
     with rasterio.open(filename,
                        'w',
                        driver='GTiff',
-                       height=ds.parameters['height'],
-                       width=ds.parameters['width'],
-                       count=count,
+                       height=height,
+                       width=width,
+                       count=len(fields),
                        dtype=dtype,
                        crs=ds.parameters['crs'],
                        transform=ds.parameters['transform'],
                        ) as dst:
-        dst.write(output_array)
+        for i, field in enumerate(fields):
+            band = i + 1
+            ytLogger.info(f"Saving {field} to band {band}/{len(fields)}.")
+            field_info[str(band)] = {"field_type": field[0], "field_name": field[1]}
+            for attr in ["take_log", "units"]:
+                field_info[str(band)][attr] = getattr(ds.field_info[field], attr)
+            data = np.reshape(my_data_source[field].d, (width, height), order="C")
+            if ds._flip_axes:
+                data = np.flip(data, axis=ds._flip_axes)
+            data = data.T
+            dst.write(data, band)
 
-    return filename
+    yfn = f"{filename[:filename.rfind('.')]}_fields.yaml"
+    with open(yfn, mode="w") as f:
+        yaml.dump(field_info, stream=f)
+    ytLogger.info(f"Field map saved to {yfn}.")
+    ytLogger.info(f"Save complete. Reload data with:\n"
+                  f"ds = yt.load(\"{filename}\", field_map=\"{yfn}\")")
 
+    return (filename, yfn)
 
 def merge_dicts(*dict_args):
     """
