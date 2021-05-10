@@ -4,6 +4,9 @@ from yt.data_objects.static_output import Dataset
 from yt.funcs import validate_object
 from yt.geometry.selection_routines import SelectorObject
 
+import fiona
+from shapely.geometry import Polygon
+
 class YTGeoPolygon(YTSelectionContainer3D):
     """
     Data container for a polygon described by a set of coordinates.
@@ -20,9 +23,18 @@ class YTGeoPolygon(YTSelectionContainer3D):
         validate_object(ds, Dataset)
         validate_object(field_parameters, dict)
 
-        center = # define a center somehow...
+        # read shapefile with fiona
+        with fiona.open(shpfile_path, "r") as shapefile:
+            shapes_from_file = [feature["geometry"] for feature in shapefile]
+
+        # define a polygon with shapely using the list of coordinates
+        self.shape = Polygon(shapes_from_file[0]["coordinates"][0])
+
+        # define coordinates of center
+        self.center = [self.shape.centroid.coords.xy[0][0], self.shape.centroid.coords.xy[1][0]]        
         
         data_source = None
+
         super().__init__(center, ds, field_parameters, data_source)
 
     def _get_bbox(self):
@@ -30,8 +42,9 @@ class YTGeoPolygon(YTSelectionContainer3D):
         Return the minimum bounding box for the polygon.
         """
 
-        left_edge = ...
-        right_edge = ...
+        left_edge = [self.shape.bounds[0], self.shape.bounds[1]]
+        right_edge = [self.shape.bounds[2], self.shape.bounds[4]]
+
         return left_edge, right_edge
 
 class PolygonSelector(SelectorObject):
