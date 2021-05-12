@@ -1,3 +1,4 @@
+import functools
 import glob
 import numpy as np
 import os
@@ -6,6 +7,7 @@ from rasterio import warp
 from rasterio.windows import from_bounds
 import re
 import stat
+import weakref
 
 from unyt import dimensions
 
@@ -24,6 +26,8 @@ from yt.frontends.ytdata.data_structures import \
 from yt.utilities.parallel_tools.parallel_analysis_interface import \
     parallel_root_only
 from yt.visualization.api import SlicePlot
+
+from yt_geotiff.polygon import YTPolygon
 
 from .fields import \
     GeoRasterFieldInfo
@@ -373,6 +377,10 @@ class GeoTiffDataset(Dataset):
         self.domain_right_edge =\
             self.arr(np.max([rast_left, rast_right], axis=0), 'm')
         self.resolution = self.arr(self.parameters['res'], 'm')
+
+    def _setup_classes(self):
+        super()._setup_classes()
+        self.polygon = functools.partial(YTPolygon, ds=weakref.proxy(self))
 
     def _set_code_unit_attributes(self):
         attrs = ('length_unit', 'mass_unit', 'time_unit',
