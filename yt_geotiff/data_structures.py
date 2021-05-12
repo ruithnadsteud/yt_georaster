@@ -26,10 +26,9 @@ from yt.utilities.parallel_tools.parallel_analysis_interface import \
 from yt.visualization.api import SlicePlot
 
 from .fields import \
-    JPEG2000FieldInfo
+    GeoRasterFieldInfo
 from .utilities import \
     left_aligned_coord_cal, \
-    save_dataset_as_geotiff, \
     parse_awslandsat_metafile, \
     validate_coord_array, \
     validate_quantity, \
@@ -287,6 +286,9 @@ class JPEG2000Hierarchy(GeoTiffHierarchy):
         # Filename dictionary
         self.ds._field_filename = {}
 
+        # Number of bands in image dataset
+        self.ds._file_band_number = {}
+
         # Extract s2 band name from file name.
         def get_band_name(band_file_list):
             band_file = band_file_list.split("_",2)
@@ -298,16 +300,19 @@ class JPEG2000Hierarchy(GeoTiffHierarchy):
             filename = os.path.join(self.ds.directory,s2_band_file_list[_i])
             with rasterio.open(os.path.join(filename), "r") as f:
                 group = 'bands'
-                field_name = (group, band_names[_i].split(".")[0])
-                self.field_list.append(field_name)
-                self.ds.field_units[field_name] = ""
-                self.ds._field_filename.update({field_name[1]: {'filename': filename, 'resolution': f.res[0]}})
+                for _j in range(1, f.count + 1):
+                    field_name = (group, (band_names[_i].split(".")[0]))
+                    self.field_list.append(field_name)
+                    self.ds.field_units[field_name] = ""
+                    self.ds._file_band_number.update({field_name[1]: {'filename': filename, 'band': _j}})
+
+            self.ds._field_filename.update({field_name[1]: {'filename': filename, 'resolution': f.res[0]}})
 
 
 class GeoTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
     _index_class = GeoTiffHierarchy
-    _field_info_class = JPEG2000FieldInfo
+    _field_info_class = GeoRasterFieldInfo
     _dataset_type = 'geotiff'
     _valid_extensions = ('.tif', '.tiff')
     _driver_type = "GTiff"
@@ -387,10 +392,6 @@ class GeoTiffDataset(Dataset):
             self.unit_registry.add("pixels", res[0], dimensions.length)
         else:
             mylog.warn("x and y pixels have different sizes.")
-
-    def save_as(self, filename):
-        # TODO: generalize this to save any dataset type as GeoTiff.
-        return save_dataset_as_geotiff(self, filename)
 
     def __repr__(self):
         fn = self.basename
@@ -640,7 +641,7 @@ class GeoTiffDataset(Dataset):
 
 class JPEG2000Dataset(GeoTiffDataset):
     _index_class = JPEG2000Hierarchy
-    _field_info_class = JPEG2000FieldInfo
+    _field_info_class = GeoRasterFieldInfo
     _valid_extensions = ('.jp2',)
     _driver_type = "JP2OpenJPEG"
     _dataset_type = "JPEG2000"
@@ -649,7 +650,7 @@ class RasterioGroupDataset(GeoTiffDataset):
     _dataset_type = "RasterioGroup"
     _valid_extensions = ('.tif','.tiff','.jp2')
     _index_class = RasterioGroupHierarchy
-    _field_info_class = JPEG2000FieldInfo
+    _field_info_class = GeoRasterFieldInfo
 
 
     # list of all filenames in directory
