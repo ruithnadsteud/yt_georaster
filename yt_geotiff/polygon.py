@@ -47,6 +47,13 @@ class YTPolygon(YTSelectionContainer3D):
         right_edge = [self.shape.bounds[2], self.shape.bounds[3]]
         return left_edge, right_edge
 
+    _selector = None
+    @property
+    def selector(self):
+        if self._selector is None:
+            self._selector = PolygonSelector(self)
+        return self._selector
+
 class PolygonSelector(SelectorObject):
     def __init__(self, dobj):
         # set a bounding box, do any initialization
