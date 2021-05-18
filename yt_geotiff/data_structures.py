@@ -185,6 +185,9 @@ class GeoTiffGrid(YTGrid):
             left_edge = np.array(selector.left_edge)
             right_edge = np.array(selector.right_edge)
 
+        # elif isinstance(selector, PolygonSelector):
+            # left_edge (call bounding box)
+            # right_edge
         else:
             left_edge = dle
             right_edge = dre

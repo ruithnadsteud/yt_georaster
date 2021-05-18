@@ -5,7 +5,12 @@ from yt.funcs import validate_object
 from yt.geometry.selection_routines import SelectorObject
 
 import fiona
-from shapely.geometry import Polygon
+import rasterio
+import numpy as np
+from rasterio.features import rasterize
+from shapely.geometry import Polygon, Point, box, MultiPolygon
+from shapely.ops import unary_union
+
 
 class YTPolygon(YTSelectionContainer3D):
     """
@@ -28,23 +33,35 @@ class YTPolygon(YTSelectionContainer3D):
         with fiona.open(shpfile_path, "r") as shapefile:
             shapes_from_file = [feature["geometry"] for feature in shapefile]
 
-        # define a polygon with shapely using the list of coordinates
-        self.shape = Polygon(shapes_from_file[0]["coordinates"][0])
+        print(f"Number of features in file: {len(shapes_from_file)}")       
 
+        # save number of polygons
+        self._number_features = len(shapes_from_file)
+
+        # convert all polyogn features in shapefile to list of shapely polygons
+        polygons = [Polygon(shapes_from_file[i]["coordinates"][0]) for i in range(len(shapes_from_file))]
+
+        #  fix invalid MultiPolygons
+        m = MultiPolygon(polygons)
+
+        # join all shapely polygons to a single layer
+        self.polygon = unary_union(m)
+        
         # define coordinates of center
-        self.center = [self.shape.centroid.coords.xy[0][0],
-                       self.shape.centroid.coords.xy[1][0]]
+        self.center = [self.polygon.centroid.coords.xy[0][0],
+                       self.polygon.centroid.coords.xy[1][0]]
 
         data_source = None
-        super().__init__(center, ds, field_parameters, data_source)
+        super().__init__(self.center, ds, field_parameters, data_source)
 
     def _get_bbox(self):
         """
         Return the minimum bounding box for the polygon.
         """
 
-        left_edge = [self.shape.bounds[0], self.shape.bounds[1]]
-        right_edge = [self.shape.bounds[2], self.shape.bounds[3]]
+        left_edge = [self.polygon.bounds[0], self.polygon.bounds[1]]
+        right_edge = [self.polygon.bounds[2], self.polygon.bounds[3]]
+        
         return left_edge, right_edge
 
     _selector = None
@@ -56,37 +73,135 @@ class YTPolygon(YTSelectionContainer3D):
 
 class PolygonSelector(SelectorObject):
     def __init__(self, dobj):
-        # set a bounding box, do any initialization
-        pass
+        
+        # Britton: set a bounding box, do any initialization
+
+        self.dobj = dobj
+
+        # Returns lower left-edge and upper-right edge coordinates (x,y)
+        left_edge, right_edge  =self.dobj._get_bbox()
+        
+        return
 
     def select_cell(self, pos, dx):
         # this routine accepts a position and a width, and returns either
         # zero or one for whether or not that cell is included in the selector.
-        pass
+
+        # Get location of corners
+        min_x = pos[0] - (dx/2.)
+        min_y = pos[1] - (dx/2.)
+        max_x = pos[0] + (dx/2.)
+        max_y = pos[1] + (dx/2.)        
+
+        # tuple of bounds
+        bbox = (min_x, min_y, max_x,max_y)
+
+        # convert bbox to shapely polygon
+        cell_polygon = box(*bbox, ccw=True)
+
+        # Determine if grid cell polygon is within polygon
+        if cell_polygon.within(self.dobj.polygon):
+            binary = 1
+        else:
+            binary = 0
+        
+        return binary
 
     def select_point(self, pos):
         # this identifies whether or not a point is included in the selector.
         # It should be identical to selecting a cell or a sphere with zero extent.
-        pass
+        
+        # Determine if point within polygon 
+        if Point(pos).within(self.dobj.polygon):
+            binary = 1
+        else:
+            binary = 0
+
+        return binary
 
     def select_bbox(self, left_edge, right_edge):
         # this returns whether or not a bounding box (i.e., grid) is included
         # in the selector.
-        pass
+
+        # tuple of bounds
+        bbox = (left_edge[0], left_edge[1], right_edge[0], right_edge[1])
+
+        # convert bbox to shapely polygon
+        bbox_polygon = box(*bbox, ccw=True)
+
+        # Determine if bbox polygon is within polygon
+        if bbox_polygon.within(self.dobj.polygon):
+            binary = 1
+        else:
+            binary = 0
+        
+        return binary
 
     def select_sphere(self, center, radius):
         # this routine accepts a position and a width, and returns either zero
         # or one for whether or not that cell is included in the selector.
-        pass
+
+        # construct sphere/circle using a point buffer operation
+        sphere_polygon = Point(center).buffer(radius)
+
+        # Determine if bbox polygon is within polygon
+        if sphere_polygon.within(self.dobj.polygon):
+            binary = 1
+        else:
+            binary = 0
+        
+        return binary
 
     def fill_mask(self, grid):
         # this takes a grid object and fills a mask of which zones should be
         # included. It must take into account the child mask of the grid.
-        pass
+
+        #Generate polygon
+        def poly_from_utm(polygon, transform):
+            poly_pts = []
+    
+            poly = unary_union(polygon)
+            for i in np.array(poly.exterior.coords):
+        
+                # Convert polygons to the image CRS
+                poly_pts.append(~transform * tuple(i))
+        
+            # Generate a polygon object
+            new_poly = Polygon(poly_pts)
+            return new_poly
+
+
+        # Get filename from band alias
+        fname = self.dobj.ds._file_band_number[grid[0][1]]['filename']
+
+        # Open file in Rasterio
+        with rasterio.open(fname, "r") as src:
+            raster_img = src.read()
+            raster_meta = src.meta
+
+        # Shapely polygon dataset 
+        shape_file = self.dobj.polygon 
+
+        poly_shp = []
+
+        # Generate Binary maks
+        im_size = (src.meta['height'], src.meta['width'])
+
+        for x in range(self.dobj._number_features):
+            poly = poly_from_utm(shape_file[x], src.meta['transform'])               
+            poly_shp.append(poly)
+
+        fill_mask = rasterize(shapes=poly_shp,
+                 out_shape=im_size)
+        
+        return fill_mask
 
     def _hash_vals(self):
         # this must return some combination of parameters that semi-uniquely
         # identifies the selector.
 
-        ### Maybe return the list of x,y points?
-        pass
+        #breakpoint()
+        coords_list = [(self.dobj.polygon[x]).exterior.coords for x in \
+        range(self.dobj._number_features)]
+
+        return coords_list
