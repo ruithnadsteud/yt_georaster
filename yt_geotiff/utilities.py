@@ -163,17 +163,12 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
 
     dtype = my_data_source[fields[0]].dtype
 
-    # update transform (dx, roty, xmin, rotx, -dy, ymax)
+    # update xmin and ymax
+    # these are transform properties (dx, roty, xmin, rotx, -dy, ymax)
     transform = np.array(ds.parameters['transform'][:6])
 
-    transform[0] = (
-        my_data_source.right_edge[0] - my_data_source.left_edge[0]
-    ) / width  # dx
     transform[2] = my_data_source.left_edge[0]  # xmin
 
-    transform[4] = (
-        my_data_source.left_edge[1] - my_data_source.right_edge[1]
-    ) / height  # dy
     transform[5] = my_data_source.right_edge[1]  # ymax
 
     # no change to rotation terms as we do not change crs following read
