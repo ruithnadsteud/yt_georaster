@@ -71,17 +71,31 @@ class YTPolygon(YTSelectionContainer3D):
             self._selector = PolygonSelector(self)
         return self._selector
 
-class PolygonSelector(SelectorObject):
+class PolygonSelector:
     def __init__(self, dobj):
-        
-        # Britton: set a bounding box, do any initialization
-
         self.dobj = dobj
 
-        # Returns lower left-edge and upper-right edge coordinates (x,y)
-        left_edge, right_edge  =self.dobj._get_bbox()
-        
-        return
+        min_level = getattr(dobj, "min_level", None)
+        max_level = getattr(dobj, "max_level", None)
+        if min_level is None:
+            min_level = 0
+        if max_level is None:
+            max_level = 99
+        self.min_level = min_level
+        self.max_level = max_level
+
+    def select_grids(self, left_edges, right_edges, levels):
+        ng = left_edges.shape[0]
+        gridi = np.zeros(ng, dtype=bool)
+        for i in range(ng):
+            gridi[i] = self.select_grid(
+                left_edges[i], right_edges[i], levels[i, 0])
+        return gridi
+
+    def select_grid(self, left_edge, right_edge, level):
+        if level < self.min_level or level > self.max_level:
+            return False
+        return self.select_bbox(left_edge, right_edge)
 
     def select_cell(self, pos, dx):
         # this routine accepts a position and a width, and returns either
@@ -122,6 +136,8 @@ class PolygonSelector(SelectorObject):
     def select_bbox(self, left_edge, right_edge):
         # this returns whether or not a bounding box (i.e., grid) is included
         # in the selector.
+
+        breakpoint()
 
         # tuple of bounds
         bbox = (left_edge[0], left_edge[1], right_edge[0], right_edge[1])
