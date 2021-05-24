@@ -196,8 +196,11 @@ class PolygonSelector:
             poly_shp.append(poly)
 
         fill_mask = rasterize(shapes=poly_shp,
-                 out_shape=im_size)        
-        
+                 out_shape=im_size)
+        fill_mask = fill_mask.astype(bool)
+        fill_mask = fill_mask.T
+        fill_mask = np.expand_dims(fill_mask, 2)
+
         return fill_mask
 
     def _hash_vals(self):

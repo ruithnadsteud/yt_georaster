@@ -191,14 +191,14 @@ class IOHandlerRasterioGroup(IOHandlerGeoTiff):
                 self._cached_fields.setdefault(g.id, {})
                 self._cached_fields[g.id].update(rv)
             return rv
-      
+
         if size is None:
             size = sum((g.count(selector) for chunk in chunks
                         for g in chunk.objs))
         for field in fields:
             ftype, fname = field
             fsize = size
-            rv[field] = np.empty(fsize, dtype="float64")
+            rv[field] = np.empty(int(fsize), dtype="float64")
         ind = 0
                 
         for chunk in chunks:
