@@ -58,7 +58,6 @@ class YTPolygon(YTSelectionContainer3D):
         """
         Return the minimum bounding box for the polygon.
         """
-
         left_edge = [self.polygon.bounds[0], self.polygon.bounds[1]]
         right_edge = [self.polygon.bounds[2], self.polygon.bounds[3]]
         
@@ -137,8 +136,6 @@ class PolygonSelector:
         # this returns whether or not a bounding box (i.e., grid) is included
         # in the selector.
 
-        breakpoint()
-
         # tuple of bounds
         bbox = (left_edge[0], left_edge[1], right_edge[0], right_edge[1])
 
@@ -146,7 +143,7 @@ class PolygonSelector:
         bbox_polygon = box(*bbox, ccw=True)
 
         # Determine if bbox polygon is within polygon
-        if bbox_polygon.within(self.dobj.polygon):
+        if (self.dobj.polygon).within(bbox_polygon):
             binary = 1
         else:
             binary = 0
@@ -186,29 +183,20 @@ class PolygonSelector:
             new_poly = Polygon(poly_pts)
             return new_poly
 
-
-        # Get filename from band alias
-        fname = self.dobj.ds._file_band_number[grid[0][1]]['filename']
-
-        # Open file in Rasterio
-        with rasterio.open(fname, "r") as src:
-            raster_img = src.read()
-            raster_meta = src.meta
-
         # Shapely polygon dataset 
         shape_file = self.dobj.polygon 
 
         poly_shp = []
 
         # Generate Binary maks
-        im_size = (src.meta['height'], src.meta['width'])
+        im_size = (grid.ds.parameters['height'], grid.ds.parameters['width'])
 
         for x in range(self.dobj._number_features):
-            poly = poly_from_utm(shape_file[x], src.meta['transform'])               
+            poly = poly_from_utm(shape_file[x], grid.ds.parameters['transform'])               
             poly_shp.append(poly)
 
         fill_mask = rasterize(shapes=poly_shp,
-                 out_shape=im_size)
+                 out_shape=im_size)        
         
         return fill_mask
 
@@ -216,7 +204,6 @@ class PolygonSelector:
         # this must return some combination of parameters that semi-uniquely
         # identifies the selector.
 
-        #breakpoint()
         coords_list = [(self.dobj.polygon[x]).exterior.coords for x in \
         range(self.dobj._number_features)]
 
