@@ -115,7 +115,7 @@ class PolygonSelector:
         cell_polygon = box(*bbox, ccw=True)
 
         # Determine if grid cell polygon is within polygon
-        if cell_polygon.within(self.dobj.polygon):
+        if cell_polygon.intersects(self.dobj.polygon):
             binary = 1
         else:
             binary = 0
@@ -145,7 +145,7 @@ class PolygonSelector:
         bbox_polygon = box(*bbox, ccw=True)
 
         # Determine if bbox polygon is within polygon
-        if (self.dobj.polygon).within(bbox_polygon):
+        if (self.dobj.polygon).intersects(bbox_polygon):
             binary = 1
         else:
             binary = 0
@@ -160,7 +160,7 @@ class PolygonSelector:
         sphere_polygon = Point(center).buffer(radius)
 
         # Determine if bbox polygon is within polygon
-        if sphere_polygon.within(self.dobj.polygon):
+        if sphere_polygon.intersects(self.dobj.polygon):
             binary = 1
         else:
             binary = 0
