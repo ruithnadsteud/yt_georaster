@@ -27,7 +27,7 @@ from yt.utilities.parallel_tools.parallel_analysis_interface import \
     parallel_root_only
 from yt.visualization.api import SlicePlot
 
-from yt_geotiff.polygon import YTPolygon
+from yt_geotiff.polygon import YTPolygon, PolygonSelectorP
 
 from .fields import \
     GeoRasterFieldInfo
@@ -150,7 +150,7 @@ class GeoTiffGrid(YTGrid):
         rvalue = wgrid.select_blocks(dobj)
         return rvalue
 
-    def _get_window_grid(self, selector):
+    def _get_window_grid(self, selector, snap=False):
         """
         Return a GeoTiffWindowGrid for a given selector.
         """
@@ -185,12 +185,19 @@ class GeoTiffGrid(YTGrid):
             left_edge = np.array(selector.left_edge)
             right_edge = np.array(selector.right_edge)
 
-        # elif isinstance(selector, PolygonSelector):
-            # left_edge (call bounding box)
-            # right_edge
+        elif isinstance(selector, PolygonSelectorP):
+            left_edge, right_edge = selector.dobj._get_bbox()
+            left_edge = left_edge.d
+            right_edge = right_edge.d
+
         else:
             left_edge = dle
             right_edge = dre
+
+        # round to enclosing pixel edges
+        dds = self.dds.d
+        left_edge = np.floor((left_edge - dle) / dds) * dds + dle
+        right_edge = np.ceil((right_edge - dle) / dds) * dds + dle
 
         left_edge.clip(min=dle, max=dre, out=left_edge)
         right_edge.clip(min=dle, max=dre, out=right_edge)

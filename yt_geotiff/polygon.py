@@ -11,6 +11,7 @@ from rasterio.features import rasterize
 from shapely.geometry import Polygon, Point, box, MultiPolygon
 from shapely.ops import unary_union
 
+from yt_geotiff.polygon_selector import PolygonSelector
 
 class YTPolygon(YTSelectionContainer3D):
     """
@@ -60,19 +61,21 @@ class YTPolygon(YTSelectionContainer3D):
         """
         Return the minimum bounding box for the polygon.
         """
-        left_edge = [self.polygon.bounds[0], self.polygon.bounds[1]]
-        right_edge = [self.polygon.bounds[2], self.polygon.bounds[3]]
-        
+
+        left_edge = self.ds.domain_left_edge.copy()
+        left_edge[:2] = self.polygon.bounds[:2]
+        right_edge = self.ds.domain_right_edge.copy()
+        right_edge[:2] = self.polygon.bounds[2:]
         return left_edge, right_edge
 
     _selector = None
     @property
     def selector(self):
         if self._selector is None:
-            self._selector = PolygonSelector(self)
+            self._selector = PolygonSelectorP(self)
         return self._selector
 
-class PolygonSelector:
+class PolygonSelectorP:
     def __init__(self, dobj):
         self.dobj = dobj
 
@@ -171,36 +174,23 @@ class PolygonSelector:
         # this takes a grid object and fills a mask of which zones should be
         # included. It must take into account the child mask of the grid.
 
-        #Generate polygon
-        def poly_from_utm(polygon, transform):
-            poly_pts = []
-    
-            poly = unary_union(polygon)
-            for i in np.array(poly.exterior.coords):
-        
-                # Convert polygons to the image CRS
-                poly_pts.append(~transform * tuple(i))
-        
-            # Generate a polygon object
-            new_poly = Polygon(poly_pts)
-            return new_poly
-
         # Shapely polygon dataset 
         shape_file = self.dobj.polygon 
 
-        poly_shp = []
+        transform = grid.ds.parameters['transform']
+        tvals = list(transform[:6])
+        for i in range(2):
+            if i in grid.ds._flip_axes:
+                val = grid.RightEdge[i].d
+            else:
+                val = grid.LeftEdge[i].d
+            tvals[3*i + 2] = val
+        new_transform = rasterio.Affine(*tvals)
 
-        # Generate Binary maks
-        im_size = (grid.ds.parameters['height'], grid.ds.parameters['width'])
-
-        for x in range(self.dobj._number_features):
-            poly = poly_from_utm(shape_file[x], grid.ds.parameters['transform'])               
-            poly_shp.append(poly)
-
-        fill_mask = rasterize(shapes=poly_shp,
-                 out_shape=im_size)
+        fill_mask = rasterize(shapes=self.dobj.polygon,
+                              transform=new_transform,
+                              out_shape=grid.ActiveDimensions[:2])
         fill_mask = fill_mask.astype(bool)
-        fill_mask = fill_mask.T
         fill_mask = np.expand_dims(fill_mask, 2)
 
         return fill_mask
@@ -213,3 +203,16 @@ class PolygonSelector:
         range(self.dobj._number_features)]
 
         return coords_list
+
+def poly_from_utm(polygon, transform):
+    poly_pts = []
+
+    poly = unary_union(polygon)
+    for i in np.array(poly.exterior.coords):
+
+        # Convert polygons to the image CRS
+        poly_pts.append(~transform * tuple(i))
+
+    # Generate a polygon object
+    new_poly = Polygon(poly_pts)
+    return new_poly
