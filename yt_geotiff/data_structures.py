@@ -150,7 +150,7 @@ class GeoTiffGrid(YTGrid):
         rvalue = wgrid.select_blocks(dobj)
         return rvalue
 
-    def _get_window_grid(self, selector, snap=False):
+    def _get_window_grid(self, selector):
         """
         Return a GeoTiffWindowGrid for a given selector.
         """
