@@ -72,7 +72,7 @@ class YTPolygon(YTSelectionContainer3D):
     @property
     def selector(self):
         if self._selector is None:
-            self._selector = PolygonSelectorP(self)
+            self._selector = PolygonSelector(self)
         return self._selector
 
 class PolygonSelectorP:

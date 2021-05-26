@@ -3,6 +3,7 @@ import numpy as np
 
 from yt.geometry.selection_routines cimport SelectorObject
 
+import rasterio
 from rasterio.features import rasterize
 from shapely.geometry import Polygon, Point, box
 from shapely.ops import unary_union
@@ -112,36 +113,23 @@ cdef class PolygonSelector(SelectorObject):
         # this takes a grid object and fills a mask of which zones should be
         # included. It must take into account the child mask of the grid.
 
-        #Generate polygon
-        def poly_from_utm(polygon, transform):
-            poly_pts = []
-    
-            poly = unary_union(polygon)
-            for i in np.array(poly.exterior.coords):
-        
-                # Convert polygons to the image CRS
-                poly_pts.append(~transform * tuple(i))
-        
-            # Generate a polygon object
-            new_poly = Polygon(poly_pts)
-            return new_poly
-
         # Shapely polygon dataset 
         shape_file = self.dobj.polygon 
 
-        poly_shp = []
+        transform = grid.ds.parameters['transform']
+        tvals = list(transform[:6])
+        for i in range(2):
+            if i in grid.ds._flip_axes:
+                val = grid.RightEdge[i].d
+            else:
+                val = grid.LeftEdge[i].d
+            tvals[3*i + 2] = val
+        new_transform = rasterio.Affine(*tvals)
 
-        # Generate Binary maks
-        im_size = (grid.ds.parameters['height'], grid.ds.parameters['width'])
-
-        for x in range(self.dobj._number_features):
-            poly = poly_from_utm(shape_file[x], grid.ds.parameters['transform'])
-            poly_shp.append(poly)
-
-        fill_mask = rasterize(shapes=poly_shp,
-                 out_shape=im_size)
+        fill_mask = rasterize(shapes=self.dobj.polygon,
+                              transform=new_transform,
+                              out_shape=grid.ActiveDimensions[:2])
         fill_mask = fill_mask.astype(bool)
-        fill_mask = fill_mask.T
         fill_mask = np.expand_dims(fill_mask, 2)
 
         return fill_mask

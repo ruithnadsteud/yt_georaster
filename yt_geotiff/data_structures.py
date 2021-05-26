@@ -27,7 +27,7 @@ from yt.utilities.parallel_tools.parallel_analysis_interface import \
     parallel_root_only
 from yt.visualization.api import SlicePlot
 
-from yt_geotiff.polygon import YTPolygon, PolygonSelectorP
+from yt_geotiff.polygon import YTPolygon, PolygonSelector, PolygonSelectorP
 
 from .fields import \
     GeoRasterFieldInfo
@@ -185,7 +185,7 @@ class GeoTiffGrid(YTGrid):
             left_edge = np.array(selector.left_edge)
             right_edge = np.array(selector.right_edge)
 
-        elif isinstance(selector, PolygonSelectorP):
+        elif isinstance(selector, (PolygonSelector, PolygonSelectorP)):
             left_edge, right_edge = selector.dobj._get_bbox()
             left_edge = left_edge.d
             right_edge = right_edge.d
