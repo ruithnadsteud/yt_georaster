@@ -22,12 +22,14 @@ class YTPolygon(YTSelectionContainer3D):
     
     # What parameters are used to define a polygon?
     # For example, a sphere is center and radius.
-    _con_args = ()
+    _con_args = ("shpfile_path",)
 
     # add more arguments, like path to a shape file or a shapely Polygon object
     def __init__(self, shpfile_path, ds=None, field_parameters=None):
         validate_object(ds, Dataset)
         validate_object(field_parameters, dict)
+
+        self.shpfile_path = shpfile_path
 
         # read shapefile with fiona
         with fiona.open(shpfile_path, "r") as shapefile:
