@@ -126,9 +126,11 @@ cdef class PolygonSelector(SelectorObject):
             tvals[3*i + 2] = val
         new_transform = rasterio.Affine(*tvals)
 
+        dims = np.flip(grid.ActiveDimensions[:2])
         fill_mask = rasterize(shapes=self.dobj.polygon,
                               transform=new_transform,
-                              out_shape=grid.ActiveDimensions[:2])
+                              out_shape=dims)
+        fill_mask = fill_mask.T
         fill_mask = fill_mask.astype(bool)
         fill_mask = np.expand_dims(fill_mask, 2)
 
