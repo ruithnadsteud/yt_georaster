@@ -264,26 +264,26 @@ class RasterioGroupHierarchy(GeoTiffHierarchy):
                     group = 'bands'                
                     for _i in range(1, f.count + 1):
                         if (filename.split(".")[1] == "jp2"):
-                            field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2])+'_'+str(f.res[0])+'m')
+                            field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2])+'_'+str(int(f.res[0]))+'m')
                             if (f.count > 1):
                                 field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]+'_'+
-                                    str(f.res[0])+'m'+"_BAND"+str(_i)))
+                                    str(int(f.res[0]))+'m'+"_BAND"+str(_i)))
                         elif (filename.split(".")[1] == "TIF") and ((filename.split("_")[0])[0:2] == "LC"):          
-                            field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[8]+'_'+str(f.res[0])+'m'))
+                            field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[8]+'_'+str(int(f.res[0]))+'m'))
                             if (f.count > 1):
                                 field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[2]+
-                                    '_'+str(f.res[0])+'m'+"_BAND"+str(_i)))
+                                    '_'+str(int(f.res[0]))+'m'+"_BAND"+str(_i)))
                         else:
-                            field_name = (group, filename)
+                            field_name = (group, (filename +'_'+str(int(f.res[0]))+'m'))
                             if (f.count > 1):
-                                field_name = (group, (filename +'_'+str(f.res[0])+'m'+"_BAND"+str(_i)))
+                                field_name = (group, (filename +'_'+str(int(f.res[0]))+'m'+"_BAND"+str(_i)))
 
                         self.field_list.append(field_name)
                         self.ds.field_units[field_name] = ""
 
                         self.ds._file_band_number.update({field_name[1]: {'filename': fn, 'band': _i}})               
             
-                self.ds._field_filename.update({field_name[1]: {'filename': fn, 'resolution': f.res[0]}})
+                self.ds._field_filename.update({field_name[1]: {'filename': fn, 'resolution': str(int(f.res[0]))}})
 
 
 class JPEG2000Hierarchy(GeoTiffHierarchy):
