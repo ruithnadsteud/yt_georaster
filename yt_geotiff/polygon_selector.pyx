@@ -14,15 +14,6 @@ cdef class PolygonSelector(SelectorObject):
     def __init__(self, dobj):
         self.dobj = dobj
 
-        # min_level = getattr(dobj, "min_level", None)
-        # max_level = getattr(dobj, "max_level", None)
-        # if min_level is None:
-        #     min_level = 0
-        # if max_level is None:
-        #     max_level = 99
-        # self.min_level = min_level
-        # self.max_level = max_level
-
     cdef int select_cell(self, np.float64_t pos[3], np.float64_t dds[3]) nogil:
         # this routine accepts a position and a width, and returns either
         # zero or one for whether or not that cell is included in the selector.
@@ -127,7 +118,11 @@ cdef class PolygonSelector(SelectorObject):
         new_transform = rasterio.Affine(*tvals)
 
         dims = np.flip(grid.ActiveDimensions[:2])
-        fill_mask = rasterize(shapes=self.dobj.polygon,
+        if self.dobj._number_features > 1:
+            my_shapes = self.dobj.polygon
+        else:
+            my_shapes = [self.dobj.polygon]
+        fill_mask = rasterize(shapes=my_shapes,
                               transform=new_transform,
                               out_shape=dims)
         fill_mask = fill_mask.T
@@ -140,8 +135,8 @@ cdef class PolygonSelector(SelectorObject):
         # this must return some combination of parameters that semi-uniquely
         # identifies the selector.
 
-        coords_list = tuple([self.dobj.polygon[x].exterior.coords for x in \
-          range(self.dobj._number_features)])
-
-        return coords_list
-
+        if self.dobj._number_features > 1:
+            return tuple([self.dobj.polygon[x].exterior.coords for x in \
+                          range(self.dobj._number_features)])
+        else:
+            return tuple([self.dobj.polygon.exterior.coords])
