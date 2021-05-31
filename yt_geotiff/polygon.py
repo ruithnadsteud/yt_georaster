@@ -2,13 +2,10 @@ from yt.data_objects.selection_objects.data_selection_objects import \
     YTSelectionContainer3D
 from yt.data_objects.static_output import Dataset
 from yt.funcs import validate_object
-from yt.geometry.selection_routines import SelectorObject
 
 import fiona
-import rasterio
 import numpy as np
-from rasterio.features import rasterize
-from shapely.geometry import Polygon, Point, box, MultiPolygon
+from shapely.geometry import Polygon, MultiPolygon
 from shapely.ops import unary_union
 
 from yt_geotiff.polygon_selector import PolygonSelector
