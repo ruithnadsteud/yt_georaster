@@ -1,4 +1,4 @@
-import yt
+'S2_B02_10m'import yt
 import yt.extensions.geotiff
 
 from yt_geotiff.testing import requires_file
@@ -11,6 +11,6 @@ def test_plot():
     width = ds.quan(5., 'km')
     height = ds.quan(5.,'km')
     rectangle_centre = ds.arr([453725,9974362],'m')
-    p = ds.plot(('bands', 'B02'), height=height, width=width, center=rectangle_centre)
-    p.set_log(('bands', 'B02'), False)
-    p.set_cmap(('bands', 'B02'), 'B-W LINEAR')
+    p = ds.plot(('bands', 'S2_B02_10m'), height=height, width=width, center=rectangle_centre)
+    p.set_log(('bands', 'S2_B02_10m'), False)
+    p.set_cmap(('bands', 'S2_B02_10m'), 'B-W LINEAR')

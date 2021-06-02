@@ -14,5 +14,5 @@ def test_rectangular_exceed_extents():
     height = ds.quan(5.,'km')
     rectangle_centre = ds.arr([453725,9974362],'m')
     rectangular_yt_container = ds.rectangle_from_center(rectangle_centre, width, height)
-    rectangular_yt_container[('bands', 'B02')]
+    rectangular_yt_container[('bands', 'S2_B02_10m')]
     assert isinstance(rectangular_yt_container, YTRegion)
