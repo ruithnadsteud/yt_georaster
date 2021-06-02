@@ -1,4 +1,4 @@
-'S2_B02_10m'import yt
+import yt
 import yt.extensions.geotiff
 
 from yt_geotiff.testing import requires_file
