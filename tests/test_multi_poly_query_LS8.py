@@ -1,6 +1,7 @@
 import yt
 from yt.config import ytcfg
 import yt.extensions.geotiff
+import os
 
 from yt_geotiff.testing import requires_file
 

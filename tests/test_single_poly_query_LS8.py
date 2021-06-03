@@ -1,7 +1,7 @@
 import yt
 from yt.config import ytcfg
 import yt.extensions.geotiff
-
+import os
 from yt_geotiff.testing import requires_file
 
 landsat_data = "Landsat-8_sample_L2/LC08_L2SP_171060_20210227_20210304_02_T1_SR_B1.TIF"
