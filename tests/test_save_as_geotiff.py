@@ -42,8 +42,8 @@ class GeoTiffSaveTest(TempDirTest):
         ds = yt.load(*fns)
 
         circle = ds.circle(ds.domain_center, (10, 'km'))
-        fields = [("bands", "LS_B1"),
-                  ("bands", "S2_B06"),
+        fields = [("bands", "LS_B1_30m"),
+                  ("bands", "S2_B06_20m"),
                   ("band_ratios", "S2_NDWI"),
                   ("variables", "LS_temperature")]
         ds_fn, fm_fn = save_as_geotiff(
