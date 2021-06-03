@@ -14,5 +14,5 @@ def test_circle():
     radius = ds.quan(500.,'m')
     circle_centre = ds.arr([488012,6199162],'m')
     circular_yt_container = ds.circle(circle_centre, radius)
-    circular_yt_container[('bands','S2_B02_10m')]
+    circular_yt_container[('bands', 'B02')]
     assert isinstance(circular_yt_container, YTSphere)
