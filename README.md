@@ -289,7 +289,7 @@ yt : [INFO     ] 2021-05-31 12:58:36,744 Parameters: domain_right_edge         =
 
 Load and read a polygon shapefile into yt_geotiff
 ```
->>> multifeature_shapefile = "C:/path/to/esri_shapefile/multi_feature_polygon.shp"
+>>> multi_shapefile = "C:/path/to/esri_shapefile/multi_feature_polygon.shp"
 >>> polyon = ds.polygon(multi_shapefile)
 Number of features in file: 4
 ```
@@ -300,4 +300,3 @@ Query Raster dataset field/band using the polygon dataset
 ```
 
 Plotting polygon read data in yt_geotiff
-
