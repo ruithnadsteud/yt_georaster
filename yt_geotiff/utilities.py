@@ -6,7 +6,6 @@ Utility functions for yt_geotiff.
 """
 import numpy as np
 import rasterio
-from rasterio import Affine
 from unyt import unyt_array, unyt_quantity, uconcatenate
 import yaml
 

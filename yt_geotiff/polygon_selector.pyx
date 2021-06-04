@@ -107,15 +107,9 @@ cdef class PolygonSelector(SelectorObject):
         # Shapely polygon dataset 
         shape_file = self.dobj.polygon 
 
-        transform = grid.ds.parameters['transform']
-        tvals = list(transform[:6])
-        for i in range(2):
-            if i in grid.ds._flip_axes:
-                val = grid.RightEdge[i].d
-            else:
-                val = grid.LeftEdge[i].d
-            tvals[3*i + 2] = val
-        new_transform = rasterio.Affine(*tvals)
+        new_transform = grid.ds._update_transform(
+            grid.ds.parameters["transform"],
+            grid.LeftEdge, grid.RightEdge)
 
         dims = np.flip(grid.ActiveDimensions[:2])
         if self.dobj._number_features > 1:
