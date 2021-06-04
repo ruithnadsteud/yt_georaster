@@ -421,6 +421,20 @@ class GeoTiffDataset(Dataset):
                 break
         return fn
 
+    def _update_transform(self, transform, left_edge, right_edge):
+        """
+        Create a new rasterio transform given left and right edge coordinates.
+        """
+
+        tvals = list(transform[:6])
+        for i in range(2):
+            if i in self._flip_axes:
+                val = right_edge[i].d
+            else:
+                val = left_edge[i].d
+            tvals[3*i + 2] = val
+        return rasterio.Affine(*tvals)
+
     def circle(self, center, radius):
         """
         Create a circular data container.

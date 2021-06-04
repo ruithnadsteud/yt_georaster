@@ -155,7 +155,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
         my_data_source = ds.box(left_edge, right_edge)
 
     width, height = \
-      ((my_data_source.right_edge - my_data_source.left_edge)[:2] /
+      np.ceil((my_data_source.right_edge - my_data_source.left_edge)[:2] /
        ds.resolution).astype(int).d
     ytLogger.info(f"Saving {len(fields)} fields to {filename}.")
     ytLogger.info(f"Bounding box: {my_data_source.left_edge[:2]} - "
@@ -163,16 +163,10 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
 
     dtype = my_data_source[fields[0]].dtype
 
-    # update xmin and ymax
-    # these are transform properties (dx, roty, xmin, rotx, -dy, ymax)
-    transform = np.array(ds.parameters['transform'][:6])
-
-    transform[2] = my_data_source.left_edge[0]  # xmin
-
-    transform[5] = my_data_source.right_edge[1]  # ymax
-
-    # no change to rotation terms as we do not change crs following read
-    transform = Affine(*list(transform)) 
+    transform = ds._update_transform(
+        ds.parameters["transform"],
+        my_data_source.left_edge,
+        my_data_source.right_edge)
 
     field_info = {}
     with rasterio.open(filename,
@@ -205,7 +199,6 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
                   f"ds = yt.load(\"{filename}\", field_map=\"{yfn}\")")
 
     return (filename, yfn)
-
 
 def merge_dicts(*dict_args):
     """
