@@ -1,3 +1,4 @@
+import functools
 import glob
 import numpy as np
 import os
@@ -6,6 +7,7 @@ from rasterio import warp
 from rasterio.windows import from_bounds
 import re
 import stat
+import weakref
 
 from unyt import dimensions
 
@@ -24,6 +26,8 @@ from yt.frontends.ytdata.data_structures import \
 from yt.utilities.parallel_tools.parallel_analysis_interface import \
     parallel_root_only
 from yt.visualization.api import SlicePlot
+
+from yt_geotiff.polygon import YTPolygon, PolygonSelector
 
 from .fields import \
     GeoRasterFieldInfo
@@ -181,9 +185,19 @@ class GeoTiffGrid(YTGrid):
             left_edge = np.array(selector.left_edge)
             right_edge = np.array(selector.right_edge)
 
+        elif isinstance(selector, PolygonSelector):
+            left_edge, right_edge = selector.dobj._get_bbox()
+            left_edge = left_edge.d
+            right_edge = right_edge.d
+
         else:
             left_edge = dle
             right_edge = dre
+
+        # round to enclosing pixel edges
+        dds = self.dds.d
+        left_edge = np.floor((left_edge - dle) / dds) * dds + dle
+        right_edge = np.ceil((right_edge - dle) / dds) * dds + dle
 
         left_edge.clip(min=dle, max=dre, out=left_edge)
         right_edge.clip(min=dle, max=dre, out=right_edge)
@@ -250,24 +264,26 @@ class RasterioGroupHierarchy(GeoTiffHierarchy):
                     group = 'bands'                
                     for _i in range(1, f.count + 1):
                         if (filename.split(".")[1] == "jp2"):
-                            field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]))
+                            field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2])+'_'+str(int(f.res[0]))+'m')
                             if (f.count > 1):
-                                field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]+"_BAND"+str(_i)))
+                                field_name = (group, ("S2_"+ str(filename.split(".")[0]).split("_")[2]+'_'+
+                                    str(int(f.res[0]))+'m'+"_BAND"+str(_i)))
                         elif (filename.split(".")[1] == "TIF") and ((filename.split("_")[0])[0:2] == "LC"):          
-                            field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[8]))
+                            field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[8]+'_'+str(int(f.res[0]))+'m'))
                             if (f.count > 1):
-                                field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[2]+"_BAND"+str(_i)))
+                                field_name = (group, ("LS_"+ str(filename.split(".")[0]).split("_")[2]+
+                                    '_'+str(int(f.res[0]))+'m'+"_BAND"+str(_i)))
                         else:
-                            field_name = (group, filename)
+                            field_name = (group, (filename +'_'+str(int(f.res[0]))+'m'))
                             if (f.count > 1):
-                                field_name = (group, (filename+ "_BAND"+str(_i)))
+                                field_name = (group, (filename +'_'+str(int(f.res[0]))+'m'+"_BAND"+str(_i)))
 
                         self.field_list.append(field_name)
                         self.ds.field_units[field_name] = ""
 
                         self.ds._file_band_number.update({field_name[1]: {'filename': fn, 'band': _i}})               
             
-                self.ds._field_filename.update({field_name[1]: {'filename': fn, 'resolution': f.res[0]}})
+                self.ds._field_filename.update({field_name[1]: {'filename': fn, 'resolution': str(int(f.res[0]))}})
 
 
 class JPEG2000Hierarchy(GeoTiffHierarchy):
@@ -374,6 +390,10 @@ class GeoTiffDataset(Dataset):
             self.arr(np.max([rast_left, rast_right], axis=0), 'm')
         self.resolution = self.arr(self.parameters['res'], 'm')
 
+    def _setup_classes(self):
+        super()._setup_classes()
+        self.polygon = functools.partial(YTPolygon, ds=weakref.proxy(self))
+
     def _set_code_unit_attributes(self):
         attrs = ('length_unit', 'mass_unit', 'time_unit',
                  'velocity_unit', 'magnetic_unit')
@@ -400,6 +420,20 @@ class GeoTiffDataset(Dataset):
                 fn = fn[:-len(ext)]
                 break
         return fn
+
+    def _update_transform(self, transform, left_edge, right_edge):
+        """
+        Create a new rasterio transform given left and right edge coordinates.
+        """
+
+        tvals = list(transform[:6])
+        for i in range(2):
+            if i in self._flip_axes:
+                val = right_edge[i].d
+            else:
+                val = left_edge[i].d
+            tvals[3*i + 2] = val
+        return rasterio.Affine(*tvals)
 
     def circle(self, center, radius):
         """

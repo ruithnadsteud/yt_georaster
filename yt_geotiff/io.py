@@ -59,7 +59,7 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                 ftype, fname = field
 
                 # Read in the band/field
-                data = src.read(int(fname), window=rasterio_window).astype(
+                data = src.read(int(fname), window=rasterio_window, boundless=True).astype(
                     self._field_dtype)
                 rv[(ftype, fname)] = self._transform_data(data)
 
@@ -110,7 +110,7 @@ class IOHandlerGeoTiff(IOHandlerYTGridHDF5):
                     ftype, fname = field
 
                     # Perform Rasterio window read
-                    data = src.read(int(fname), window=rasterio_window).astype(
+                    data = src.read(int(fname), window=rasterio_window, boundless=True).astype(
                         self._field_dtype)
                     data = self._transform_data(data)
 
@@ -169,7 +169,7 @@ class IOHandlerRasterioGroup(IOHandlerGeoTiff):
 
                 # Read in the band/field
 
-                data = src.read(band_number, window=rasterio_window).astype(
+                data = src.read(band_number, window=rasterio_window, boundless=True).astype(
                     self._field_dtype) # could be multiband
                 data = self._transform_data(data)
                 
@@ -191,14 +191,14 @@ class IOHandlerRasterioGroup(IOHandlerGeoTiff):
                 self._cached_fields.setdefault(g.id, {})
                 self._cached_fields[g.id].update(rv)
             return rv
-      
+
         if size is None:
             size = sum((g.count(selector) for chunk in chunks
                         for g in chunk.objs))
         for field in fields:
             ftype, fname = field
             fsize = size
-            rv[field] = np.empty(fsize, dtype="float64")
+            rv[field] = np.empty(int(fsize), dtype="float64")
         ind = 0
                 
         for chunk in chunks:
@@ -231,7 +231,7 @@ class IOHandlerRasterioGroup(IOHandlerGeoTiff):
                     filename= self.ds._file_band_number[fname]['filename']  
                     band_number = self.ds._file_band_number[fname]['band']
                     
-                    src = rasterio.open(filename, "r")#
+                    src = rasterio.open(filename, "r")
 
                     # Calculate base window
                     base_window = g._get_rasterio_window(selector, self.ds.parameters['crs'], self.ds.parameters['transform'])
@@ -239,11 +239,11 @@ class IOHandlerRasterioGroup(IOHandlerGeoTiff):
                     rasterio_window = g._get_rasterio_window(selector, src.crs, src.transform) # check elsewhere
                                                 
                     # Round up rasterio window width and height
-                    rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)                                   
+                    rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)
 
                     # Perform Rasterio window read
-                    data = src.read(band_number, window=rasterio_window).astype(
-                            self._field_dtype)    
+                    data = src.read(band_number, window=rasterio_window, boundless=True).astype(
+                            self._field_dtype)
                   
                     data = self._transform_data(data)
                     
@@ -309,7 +309,7 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
                 rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)
 
                 # Read in the band/field
-                data = src.read(band_number, window=rasterio_window).astype(
+                data = src.read(band_number, window=rasterio_window, boundless=True).astype(
                     self._field_dtype)
 
                 data = self._transform_data(data)
@@ -382,7 +382,7 @@ class io_handler_JPEG2000(IOHandlerGeoTiff):
                     rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)
                     
                     # Perform Rasterio window read
-                    data = src.read(band_number, window=rasterio_window).astype(
+                    data = src.read(band_number, window=rasterio_window, boundless=True).astype(
                         self._field_dtype)                   
 
                     data = self._transform_data(data)

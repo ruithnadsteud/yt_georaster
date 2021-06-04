@@ -4,14 +4,14 @@
 
 A package for handling _geotiff_ files and georeferenced datasets within **yt**.
 
-## Dependencies
+### Dependencies
 
 Aside from **yt** itself, the following packages are required to use yt_geotiff:
 - [numpy](https://docs.scipy.org/doc/numpy/reference/)
 - [gdal](https://gdal.org/)
 - [rasterio](https://rasterio.readthedocs.io/en/latest/)
 
-## Developments and working examples
+### Developments and working examples
 
 Key developments applied to the yt_geotiff package include:
 
@@ -39,6 +39,9 @@ yt : [INFO     ] 2021-02-23 23:58:46,416 Parameters: domain_dimensions         =
 yt : [INFO     ] 2021-02-23 23:58:46,419 Parameters: domain_left_edge          = [3444000. 3642000.       0.] m
 yt : [INFO     ] 2021-02-23 23:58:46,420 Parameters: domain_right_edge         = [3.644e+06 3.842e+06 1.000e+00] m
 ```
+
+### Constructing and querying data containers
+
 Generate rectangular yt data container for performing the yt_geotiff Window-read based on centre coordinates and width and height dimensions:
 ```
 >>> width = ds.arr(2000., 'm')
@@ -103,6 +106,8 @@ Example plot using a circle data container with 1000 m radius:
 >>> q.show()
 ```
 
+### Raster image up/down sampling
+
 Example function for generating a list of Sentinel-2 and Landsat-8 datasets in a given directory:
 ```
 >>> def file_list():
@@ -162,6 +167,8 @@ yt : [INFO     ] 2021-04-30 14:53:32,200 xlim = 461696.000000 481696.000000
 yt : [INFO     ] 2021-04-30 14:53:32,201 ylim = 9979860.000000 9999860.000000
 yt : [INFO     ] 2021-04-30 14:53:32,204 Making a fixed resolution buffer of (('bands', 'S2_B05')) 800 by 800
 ```
+
+### Querying and creating yt derivable fields
 
 List currently available derivable fields:
 ```
@@ -262,3 +269,34 @@ bounding box enclosing the container.
 ...        fields=fields, data_source=circle)
 >>> ds_new = yt.load(ds_fn, field_map=field_map)
 ```
+
+### Querying and plotting polygon Window reads
+
+Window reads can also be performed within yt_geotiff based on the extents of single and multiple feature polygon shapefile (.shp) datasets.
+
+```
+>>> import yt
+>>> import yt.extensions.geotiff
+```
+Load Raster dataset (e.g., Landsat8, Band1) into yt_geotiff
+```
+>>> landsat_data = "C:/path/to/Landsat_test_data/LC08_L2SP_171060_20210227_20210304_02_T1_SR_B1.TIF"
+>>> ds = yt.load(landsat_data
+yt : [INFO     ] 2021-05-31 12:58:36,740 Parameters: domain_dimensions         = [7581 7741    1]
+yt : [INFO     ] 2021-05-31 12:58:36,743 Parameters: domain_left_edge          = [ 361485. -116415.       0.] m
+yt : [INFO     ] 2021-05-31 12:58:36,744 Parameters: domain_right_edge         = [5.88915e+05 1.15815e+05 1.00000e+00] m
+```
+
+Load and read a polygon shapefile into yt_geotiff
+```
+>>> multi_shapefile = "C:/path/to/esri_shapefile/multi_feature_polygon.shp"
+>>> polyon = ds.polygon(multi_shapefile)
+Number of features in file: 4
+```
+
+Query Raster dataset field/band using the polygon dataset
+```
+>>> data_in_polygon = (poly[('bands', '1')])
+```
+
+Plotting polygon read data in yt_geotiff

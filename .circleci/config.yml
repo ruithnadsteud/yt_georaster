@@ -38,6 +38,8 @@ commands:
             pip install 'pygdal==2.4.0.6'
             pip install 'gdal==2.4.0'
             pip install 'scipy==1.6.1'
+            pip install 'fiona==1.8.18'
+            pip install 'shapely==1.7.1'
             pip install girder-client
             export MAX_BUILD_CORES=2
             if [ << parameters.ytdev >> == 1 ]; then

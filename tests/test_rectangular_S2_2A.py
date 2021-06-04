@@ -14,5 +14,5 @@ def test_rectangular():
     height = ds.quan(500.,'m')
     rectangle_centre = ds.arr([488012,6199162],'m')
     rectangular_yt_container = ds.rectangle_from_center(rectangle_centre,width,height)
-    rectangular_yt_container[('bands','B02_20m')]
+    rectangular_yt_container[('bands', 'B02')]
     assert isinstance(rectangular_yt_container, YTRegion)

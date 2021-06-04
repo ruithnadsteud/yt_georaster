@@ -141,6 +141,19 @@ class GeoRasterFieldInfo(FieldInfoContainer):
             take_log=False,
             units="")
 
+        # Normalised Difference Vegetation Index (NDVI)
+        def _ndvi(field, data):
+            visible_red = data["bands", "red"]
+            nir = data["bands", "nir"]
+            return ((nir - visible_red) / (nir + visible_red))
+
+        self.add_field(
+            ("band_ratios", "S2_NDVI"),
+            function=_ndvi,
+            sampling_type="local",
+            take_log=False,
+            units="")
+
         # Landsat Temperature
         def _LS_temperature(field, data):
             thermal_infrared_1 = data["bands", "TIRS_1"]

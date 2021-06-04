@@ -154,13 +154,18 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
         my_data_source = ds.box(left_edge, right_edge)
 
     width, height = \
-      ((my_data_source.right_edge - my_data_source.left_edge)[:2] /
+      np.ceil((my_data_source.right_edge - my_data_source.left_edge)[:2] /
        ds.resolution).astype(int).d
     ytLogger.info(f"Saving {len(fields)} fields to {filename}.")
     ytLogger.info(f"Bounding box: {my_data_source.left_edge[:2]} - "
                   f"{my_data_source.right_edge[:2]} with shape {width,height}.")
 
     dtype = my_data_source[fields[0]].dtype
+
+    transform = ds._update_transform(
+        ds.parameters["transform"],
+        my_data_source.left_edge,
+        my_data_source.right_edge)
 
     field_info = {}
     with rasterio.open(filename,
@@ -171,7 +176,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
                        count=len(fields),
                        dtype=dtype,
                        crs=ds.parameters['crs'],
-                       transform=ds.parameters['transform'],
+                       transform=transform,
                        ) as dst:
         for i, field in enumerate(fields):
             band = i + 1
