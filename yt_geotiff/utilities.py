@@ -141,21 +141,28 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
     if fields is None:
         fields = ds.field_list
 
+    dds = ds.domain_width / ds.domain_dimensions
+
     if data_source is None:
         my_data_source = ds.all_data()
-    elif hasattr(data_source, "left_edge"):
-        my_data_source = data_source
     else:
         left_edge, right_edge = data_source.get_bbox()
+        left_edge.convert_to_units("code_length")
+        right_edge.convert_to_units("code_length")
         dle = ds.domain_left_edge.to("code_length")
         dre = ds.domain_right_edge.to("code_length")
-        left_edge.clip(dle, dre, out=left_edge)
-        right_edge.clip(dle, dre, out=right_edge)
+
+        # round to enclosing pixel edges
+        left_edge = np.floor((left_edge - dle) / dds) * dds + dle
+        right_edge = np.ceil((right_edge - dle) / dds) * dds + dle
+
+        left_edge.clip(min=dle, max=dre, out=left_edge)
+        right_edge.clip(min=dle, max=dre, out=right_edge)
         my_data_source = ds.box(left_edge, right_edge)
 
-    width, height = \
-      np.ceil((my_data_source.right_edge - my_data_source.left_edge)[:2] /
-       ds.resolution).astype(int).d
+    width, height, _ = \
+      np.round((my_data_source.right_edge - my_data_source.left_edge) /
+               dds).astype(int)
     ytLogger.info(f"Saving {len(fields)} fields to {filename}.")
     ytLogger.info(f"Bounding box: {my_data_source.left_edge[:2]} - "
                   f"{my_data_source.right_edge[:2]} with shape {width,height}.")
