@@ -75,6 +75,21 @@ class GeoTiffWindowGrid(YTGrid):
         ad = self.ActiveDimensions
         return f"GeoTiffWindowGrid ({ad[0]}x{ad[1]})"
 
+    def _get_rasterio_window(self, selector, dst_crs, transform):
+        left_edge = self.LeftEdge
+        right_edge = self.RightEdge
+
+        transform_x, transform_y = warp.transform(
+            self.ds.parameters['crs'], dst_crs,
+            [left_edge[0], right_edge[0]],
+            [left_edge[1],right_edge[1]], zs=None)
+
+        window = from_bounds(transform_x[0], transform_y[0],
+                             transform_x[1], transform_y[1],
+                             transform)
+
+        return window
+
 
 class GeoTiffGrid(YTGrid):
     _last_wgrid = None

@@ -144,35 +144,21 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
     dds = ds.domain_width / ds.domain_dimensions
 
     if data_source is None:
-        my_data_source = ds.all_data()
-    else:
-        left_edge, right_edge = data_source.get_bbox()
-        left_edge.convert_to_units("code_length")
-        right_edge.convert_to_units("code_length")
-        dle = ds.domain_left_edge.to("code_length")
-        dre = ds.domain_right_edge.to("code_length")
+        data_source = ds.all_data()
 
-        # round to enclosing pixel edges
-        left_edge = np.floor((left_edge - dle) / dds) * dds + dle
-        right_edge = np.ceil((right_edge - dle) / dds) * dds + dle
+    wgrid = ds.index.grids[0]._get_window_grid(data_source.selector)
 
-        left_edge.clip(min=dle, max=dre, out=left_edge)
-        right_edge.clip(min=dle, max=dre, out=right_edge)
-        my_data_source = ds.box(left_edge, right_edge)
-
-    width, height, _ = \
-      np.round((my_data_source.right_edge - my_data_source.left_edge) /
-               dds).astype(int)
+    width, height = wgrid.ActiveDimensions[:2]
     ytLogger.info(f"Saving {len(fields)} fields to {filename}.")
-    ytLogger.info(f"Bounding box: {my_data_source.left_edge[:2]} - "
-                  f"{my_data_source.right_edge[:2]} with shape {width,height}.")
+    ytLogger.info(f"Bounding box: {wgrid.LeftEdge[:2]} - "
+                  f"{wgrid.RightEdge[:2]} with shape {width,height}.")
 
-    dtype = my_data_source[fields[0]].dtype
+    dtype = wgrid[fields[0]].dtype
 
     transform = ds._update_transform(
         ds.parameters["transform"],
-        my_data_source.left_edge,
-        my_data_source.right_edge)
+        wgrid.LeftEdge,
+        wgrid.RightEdge)
 
     field_info = {}
     with rasterio.open(filename,
@@ -191,7 +177,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
             field_info[str(band)] = {"field_type": field[0], "field_name": field[1]}
             for attr in ["take_log", "units"]:
                 field_info[str(band)][attr] = getattr(ds.field_info[field], attr)
-            data = np.reshape(my_data_source[field].d, (width, height), order="C")
+            data = np.reshape(wgrid[field].d, (width, height), order="C")
             if ds._flip_axes:
                 data = np.flip(data, axis=ds._flip_axes)
             data = data.T
