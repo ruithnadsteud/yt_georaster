@@ -54,21 +54,14 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
 
                 rv[field] = self._read_rasterio_data(selector, g, field)
 
-            if self._cache_on:
-                self._cached_fields.setdefault(g.id, {})
-                self._cached_fields[g.id].update(rv)
-            return rv
-
         if size is None:
             size = sum((g.count(selector) for chunk in chunks for g in chunk.objs))
         for field in fields:
             ftype, fname = field
-            fsize = size
-            rv[field] = np.empty(int(fsize), dtype="float64")
+            rv[field] = np.empty(int(size), dtype=self._field_dtype)
+
         ind = 0
-                
         for chunk in chunks:
-            src = None
             for g in chunk.objs:
                 if g.filename is None:
                     continue
@@ -78,57 +71,19 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
 
                 for field in fields:
                     if field in gf:
-
                         for dim in range(len(gf[field].shape), 3):
                             gf[field] = np.expand_dims(gf[field], dim)
 
                         nd = g.select(selector, gf[field], rv[field], ind)
-
                         self._hits += 1
                         continue
-
                     self._misses += 1
-                   
-                    ftype, fname = field
-                    filename= self.ds._file_band_number[fname]['filename']  
-                    band_number = self.ds._file_band_number[fname]['band']
-                    
-                    src = rasterio.open(filename, "r")
 
-                    base_window = g._get_rasterio_window(
-                        selector, self.ds.parameters['crs'], self.ds.parameters['transform'])
-
-                    rasterio_window = g._get_rasterio_window(
-                        selector, src.crs, src.transform)
-
-                    # Round up rasterio window width and height
-                    rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)
-
-                    # Perform Rasterio window read
-                    data = src.read(band_number, window=rasterio_window, boundless=True).astype(
-                            self._field_dtype)
-                    data = self._transform_data(data)
-                    
-                    # Get resolution from load image
-                    load_resolution = self.ds.resolution.d[0]
-
-                    if src.res[0] != load_resolution:
-                        scale_factor = src.res[0] / load_resolution
-                        # Order of the spline interpolation, 0 (no interp.) to 5.
-                        data = self._resample(data, fname, scale_factor,
-                                              src.res[0], load_resolution, order=0)
-
-                    data = data[:int(base_window.width), :int(base_window.height)]
-
+                    data = self._read_rasterio_data(selector, g, field)
                     for dim in range(len(data.shape), 3):
                         data = np.expand_dims(data, dim)
 
-                    if self._cache_on:
-                        self._cached_fields.setdefault(g.id, {})
-                        self._cached_fields[g.id][field] = data
-
                     nd = g.select(selector, data, rv[field], ind)
-
                 ind += nd
 
         return rv
@@ -168,6 +123,10 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
         base_window = grid._get_rasterio_window(
             selector, self.ds.parameters['crs'], self.ds.parameters['transform'])
         data = data[:int(base_window.width), :int(base_window.height)]
+
+        if self._cache_on:
+            self._cached_fields.setdefault(grid.id, {})
+            self._cached_fields[grid.id][field] = data
 
         return data
 
