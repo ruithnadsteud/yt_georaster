@@ -153,13 +153,11 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
     ytLogger.info(f"Bounding box: {wgrid.LeftEdge[:2]} - "
                   f"{wgrid.RightEdge[:2]} with shape {width,height}.")
 
-    dtype = wgrid[fields[0]].dtype
-
+    dtype = ds.index.io._field_dtype
     transform = ds._update_transform(
         ds.parameters["transform"],
         wgrid.LeftEdge,
         wgrid.RightEdge)
-
 
     # get the mask to remove data not in the container
     mask = data_source.selector.fill_mask(wgrid)[..., 0]
