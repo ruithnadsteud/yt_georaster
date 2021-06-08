@@ -243,26 +243,8 @@ class GeoRasterGrid(YTGrid):
 class GeoRasterHierarchy(YTGridHierarchy):
     grid = GeoRasterGrid
 
-    def _detect_output_fields(self):
-        self.field_list = []
-        self.ds.field_units = self.ds.field_units or {}
-
-        # Number of bands in image dataset
-        self.ds._file_band_number = {}
-
-        with rasterio.open(self.ds.parameter_filename, "r") as f:
-            group = 'bands'
-            for _i in range(1, f.count + 1):
-                field_name = (group, str(_i))
-                self.field_list.append(field_name)
-                self.ds.field_units[field_name] = ""
-                self.ds._file_band_number.update(
-                    {field_name[1]: {'filename': self.ds.parameter_filename, 'band': _i}})
-
     def _count_grids(self):
         self.num_grids = 1
-
-class RasterioGroupHierarchy(GeoRasterHierarchy):
 
     def _detect_output_fields(self):
         # Follow example for GeoRasterHierarchy to populate the field list.
@@ -299,41 +281,7 @@ class RasterioGroupHierarchy(GeoRasterHierarchy):
                         self.field_list.append(field_name)
                         self.ds.field_units[field_name] = ""
 
-                        self.ds._file_band_number.update({field_name[1]: {'filename': fn, 'band': _i}})               
-            
-
-class JPEG2000Hierarchy(GeoRasterHierarchy):
-    
-    def _detect_output_fields(self):
-        # check data dir of the given jp2 file and grab all similarly named files.
-
-        # List of band files in s2 directory
-        s2_band_file_list = [os.path.basename(x) \
-         for x in glob.glob(self.ds.directory+'/*_***_***.jp2')]
-
-        # Follow example for GeoRasterHierarchy to populate the field list.
-        self.field_list = []
-        self.ds.field_units = self.ds.field_units or {}
-
-        # Number of bands in image dataset
-        self.ds._file_band_number = {}
-
-        # Extract s2 band name from file name.
-        def get_band_name(band_file_list):
-            band_file = band_file_list.split("_",2)
-            return band_file
-
-        band_names = [list(b) for b in zip(*map(get_band_name, s2_band_file_list))][2]
-
-        for _i in range(len(s2_band_file_list)):
-            filename = os.path.join(self.ds.directory,s2_band_file_list[_i])
-            with rasterio.open(os.path.join(filename), "r") as f:
-                group = 'bands'
-                for _j in range(1, f.count + 1):
-                    field_name = (group, (band_names[_i].split(".")[0]))
-                    self.field_list.append(field_name)
-                    self.ds.field_units[field_name] = ""
-                    self.ds._file_band_number.update({field_name[1]: {'filename': filename, 'band': _j}})
+                        self.ds._file_band_number.update({field_name[1]: {'filename': fn, 'band': _i}})
 
 
 class GeoRasterDataset(Dataset):
@@ -341,8 +289,8 @@ class GeoRasterDataset(Dataset):
     _index_class = GeoRasterHierarchy
     _field_info_class = GeoRasterFieldInfo
     _dataset_type = "GeoRaster"
-    _valid_extensions = ('.tif', '.tiff')
-    _driver_type = "GTiff"
+    _valid_extensions = ('.tif','.tiff','.jp2')
+    _driver_types = ("GTiff", "JP2OpenJPEG")
     geometry = "cartesian"
     default_fluid_type = "bands"
     fluid_types = ("bands", "index", "sentinel2")
@@ -352,7 +300,9 @@ class GeoRasterDataset(Dataset):
     _con_attrs = ()
 
 
-    def __init__(self, filename, field_map=None):
+    def __init__(self, *args, field_map=None):
+        self.filename_list = args
+        filename = args[0]
         self.field_map = field_map
         super().__init__(filename, self._dataset_type, unit_system="mks")
         self.data = self.index.grids[0]
@@ -667,62 +617,23 @@ class GeoRasterDataset(Dataset):
 
     @classmethod
     def _is_valid(self, *args, **kwargs):
-        if len(args)>1:
-            return False
-        fn = args[0]
-        valid = False
-        for ext in self._valid_extensions:
-            if re.search(f"{ext}$", fn, flags=re.IGNORECASE):
-                valid = True
-                break
-        if not valid:
-            return False
-
-        with rasterio.open(fn, "r") as f:
-            driver_type = f.meta["driver"]
-            if driver_type == self._driver_type:
-                return True
-        return False
-
-class JPEG2000Dataset(GeoRasterDataset):
-    _index_class = JPEG2000Hierarchy
-    _field_info_class = GeoRasterFieldInfo
-    _valid_extensions = ('.jp2',)
-    _driver_type = "JP2OpenJPEG"
-    _dataset_type = "GeoRaster"
-
-class RasterioGroupDataset(GeoRasterDataset):
-    _dataset_type = "GeoRaster"
-    _valid_extensions = ('.tif','.tiff','.jp2')
-    _index_class = RasterioGroupHierarchy
-    _field_info_class = GeoRasterFieldInfo
-
-
-    # list of all filenames in directory
-    
-    @classmethod
-    def _is_valid(self, *args, **kwargs):
-        if len(args) == 1:
-            return False
-
-        # for number of files
         for fn in args:    
-
             valid = False
             for ext in self._valid_extensions:
                 if re.search(f"{ext}$", fn, flags=re.IGNORECASE): 
                     valid = True
                     break
+
             if not valid:
-                return False        
+                return False
+
+            with rasterio.open(fn, "r") as f:
+                driver_type = f.meta["driver"]
+                if driver_type not in self._driver_types:
+                    return False
+
         return True
 
-    def __init__(self, *args, field_map=None):
-        self.filename_list = args
-        filename = args[0] 
-        super().__init__(filename, field_map=field_map)
-        self.data = self.index.grids[0]
-        
 
 class GeoRasterWindowDataset(GeoRasterDataset):
     """
