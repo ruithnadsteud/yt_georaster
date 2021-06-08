@@ -141,8 +141,6 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
     if fields is None:
         fields = ds.field_list
 
-    dds = ds.domain_width / ds.domain_dimensions
-
     if data_source is None:
         data_source = ds.all_data()
 
