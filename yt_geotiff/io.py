@@ -38,51 +38,21 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
         if isinstance(selector, GridSelector):            
             if not (len(chunks) == len(chunks[0].objs) == 1):
                 raise RuntimeError
-            g = chunks[0].objs[0]
 
+            g = chunks[0].objs[0]
             if g.id in self._cached_fields:
                 gf = self._cached_fields[g.id]
                 rv.update(gf)
-
             if len(rv) == len(fields):
                 return rv
-            
+
             for field in fields:
                 if field in rv:
                     self._hits += 1
                     continue
                 self._misses += 1
-                ftype, fname = field 
-                
-                filename=self.ds._file_band_number[fname]['filename']      
-                band_number= self.ds._file_band_number[fname]['band']                        
 
-                src = rasterio.open(filename, "r")
-                rasterio_window = g._get_rasterio_window(selector, src.crs, src.transform)
-
-                # round up rasterio window width and height
-                rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)
-
-                # Read in the band/field
-
-                data = src.read(band_number, window=rasterio_window, boundless=True).astype(
-                    self._field_dtype) # could be multiband
-                data = self._transform_data(data)
-                
-                # Get resolution from load image
-                load_resolution = self.ds.resolution.d[0]
-                                
-                if src.res[0] !=load_resolution:
-                    # Calculate scale factor to adjust resolution
-                    scale_factor = src.res[0]/load_resolution
-                     
-                    # Order of spline interpolation- has to be in the range 0 (no interp.) to 5.
-                    data = self._resample(data, \
-                        fname, scale_factor, src.res[0], load_resolution, order=0)
-                    
-                base_window = g._get_rasterio_window(
-                    selector, self.ds.parameters['crs'], self.ds.parameters['transform'])
-                rv[(ftype, fname)] = data[:int(base_window.width), :int(base_window.height)]
+                rv[field] = self._read_rasterio_data(selector, g, field)
 
             if self._cache_on:
                 self._cached_fields.setdefault(g.id, {})
@@ -162,3 +132,42 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
                 ind += nd
 
         return rv
+
+    def _read_rasterio_data(self, selector, grid, field):
+        """
+        Perform rasterio read and do all transformations and resamples.
+        """
+
+        ftype, fname = field
+        filename = self.ds._file_band_number[fname]['filename']
+        band = self.ds._file_band_number[fname]['band']
+
+        src = rasterio.open(filename, "r")
+        rasterio_window = grid._get_rasterio_window(selector, src.crs, src.transform)
+
+        # round up rasterio window width and height.
+        rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)
+
+        # Read in the band/field.
+        data = src.read(band, window=rasterio_window, boundless=True).astype(
+            self._field_dtype)
+        data = self._transform_data(data)
+
+        # Get resolution from load image.
+        base_resolution = self.ds.resolution.d[0]
+
+        if src.res[0] !=base_resolution:
+            # Calculate scale factor to adjust resolution.
+            scale_factor = src.res[0] / base_resolution
+
+            # Order of spline interpolation- has to be in the range 0 (no interp.) to 5.
+            data = self._resample(data, \
+                fname, scale_factor, src.res[0], base_resolution, order=0)
+
+        # Now clip to the size of the window in the base resolution.
+        base_window = grid._get_rasterio_window(
+            selector, self.ds.parameters['crs'], self.ds.parameters['transform'])
+        data = data[:int(base_window.width), :int(base_window.height)]
+
+        return data
+
