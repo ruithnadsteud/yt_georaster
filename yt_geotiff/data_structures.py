@@ -693,7 +693,7 @@ class JPEG2000Dataset(GeoTiffDataset):
     _field_info_class = GeoRasterFieldInfo
     _valid_extensions = ('.jp2',)
     _driver_type = "JP2OpenJPEG"
-    _dataset_type = "JPEG2000"
+    _dataset_type = "RasterioGroup"
 
 class RasterioGroupDataset(GeoTiffDataset):
     _dataset_type = "RasterioGroup"
