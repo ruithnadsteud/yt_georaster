@@ -160,6 +160,10 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
         wgrid.LeftEdge,
         wgrid.RightEdge)
 
+
+    # get the mask to remove data not in the container
+    mask = data_source.selector.fill_mask(wgrid)[..., 0]
+
     field_info = {}
     with rasterio.open(filename,
                        'w',
@@ -177,7 +181,8 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
             field_info[str(band)] = {"field_type": field[0], "field_name": field[1]}
             for attr in ["take_log", "units"]:
                 field_info[str(band)][attr] = getattr(ds.field_info[field], attr)
-            data = np.reshape(wgrid[field].d, (width, height), order="C")
+            data = wgrid[field].d[..., 0]
+            data[~mask] = 0
             if ds._flip_axes:
                 data = np.flip(data, axis=ds._flip_axes)
             data = data.T
