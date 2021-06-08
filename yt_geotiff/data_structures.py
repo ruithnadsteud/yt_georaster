@@ -40,7 +40,7 @@ from .utilities import \
     s1_data_manager
 
 
-class GeoTiffWindowGrid(YTGrid):
+class GeoRasterWindowGrid(YTGrid):
     def __init__(self, gridobj, left_edge, right_edge):
 
         YTSelectionContainer.__init__(self, gridobj._index.dataset, None)
@@ -73,7 +73,7 @@ class GeoTiffWindowGrid(YTGrid):
 
     def __repr__(self):
         ad = self.ActiveDimensions
-        return f"GeoTiffWindowGrid ({ad[0]}x{ad[1]})"
+        return f"GeoRasterWindowGrid ({ad[0]}x{ad[1]})"
 
     def _get_rasterio_window(self, selector, dst_crs, transform):
         left_edge = self.LeftEdge
@@ -91,7 +91,7 @@ class GeoTiffWindowGrid(YTGrid):
         return window
 
 
-class GeoTiffGrid(YTGrid):
+class GeoRasterGrid(YTGrid):
     _last_wgrid = None
     _last_wgrid_id = None
 
@@ -167,14 +167,14 @@ class GeoTiffGrid(YTGrid):
 
     def _get_window_grid(self, selector):
         """
-        Return a GeoTiffWindowGrid for a given selector.
+        Return a GeoRasterWindowGrid for a given selector.
         """
 
         if self._last_wgrid and hash(selector) == self._last_wgrid_id:
             return self._last_wgrid
 
         left_edge, right_edge = self._get_selection_window(selector)
-        wgrid = GeoTiffWindowGrid(self, left_edge, right_edge)
+        wgrid = GeoRasterWindowGrid(self, left_edge, right_edge)
         self._last_wgrid = wgrid
         self._last_wgrid_id = hash(selector)
         return wgrid
@@ -237,11 +237,11 @@ class GeoTiffGrid(YTGrid):
 
     def __repr__(self):
         ad = self.ActiveDimensions
-        return f"GeoTiffGrid ({ad[0]}x{ad[1]})"
+        return f"GeoRasterGrid ({ad[0]}x{ad[1]})"
 
 
-class GeoTiffHierarchy(YTGridHierarchy):
-    grid = GeoTiffGrid
+class GeoRasterHierarchy(YTGridHierarchy):
+    grid = GeoRasterGrid
 
     def _detect_output_fields(self):
         self.field_list = []
@@ -265,10 +265,10 @@ class GeoTiffHierarchy(YTGridHierarchy):
     def _count_grids(self):
         self.num_grids = 1
 
-class RasterioGroupHierarchy(GeoTiffHierarchy):
+class RasterioGroupHierarchy(GeoRasterHierarchy):
 
     def _detect_output_fields(self):
-        # Follow example for GeoTiffHierarchy to populate the field list.
+        # Follow example for GeoRasterHierarchy to populate the field list.
         self.field_list = []
         self.ds.field_units = self.ds.field_units or {}
 
@@ -310,7 +310,7 @@ class RasterioGroupHierarchy(GeoTiffHierarchy):
                 self.ds._field_filename.update({field_name[1]: {'filename': fn, 'resolution': str(int(f.res[0]))}})
 
 
-class JPEG2000Hierarchy(GeoTiffHierarchy):
+class JPEG2000Hierarchy(GeoRasterHierarchy):
     
     def _detect_output_fields(self):
         # check data dir of the given jp2 file and grab all similarly named files.
@@ -319,7 +319,7 @@ class JPEG2000Hierarchy(GeoTiffHierarchy):
         s2_band_file_list = [os.path.basename(x) \
          for x in glob.glob(self.ds.directory+'/*_***_***.jp2')]
 
-        # Follow example for GeoTiffHierarchy to populate the field list.
+        # Follow example for GeoRasterHierarchy to populate the field list.
         self.field_list = []
         self.ds.field_units = self.ds.field_units or {}
 
@@ -349,9 +349,9 @@ class JPEG2000Hierarchy(GeoTiffHierarchy):
             self.ds._field_filename.update({field_name[1]: {'filename': filename, 'resolution': f.res[0]}})
 
 
-class GeoTiffDataset(Dataset):
+class GeoRasterDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
-    _index_class = GeoTiffHierarchy
+    _index_class = GeoRasterHierarchy
     _field_info_class = GeoRasterFieldInfo
     _dataset_type = "GeoRaster"
     _valid_extensions = ('.tif', '.tiff')
@@ -658,7 +658,7 @@ class GeoTiffDataset(Dataset):
 
         wleft, wright = self.data._get_selection_window(my_selector)
         with log_level(40):
-            wds = GeoTiffWindowDataset(self, wleft, wright)
+            wds = GeoRasterWindowDataset(self, wleft, wright)
 
         w_data_source = wds._get_window_container(data_source)
 
@@ -697,14 +697,14 @@ class GeoTiffDataset(Dataset):
                 return True
         return False
 
-class JPEG2000Dataset(GeoTiffDataset):
+class JPEG2000Dataset(GeoRasterDataset):
     _index_class = JPEG2000Hierarchy
     _field_info_class = GeoRasterFieldInfo
     _valid_extensions = ('.jp2',)
     _driver_type = "JP2OpenJPEG"
     _dataset_type = "GeoRaster"
 
-class RasterioGroupDataset(GeoTiffDataset):
+class RasterioGroupDataset(GeoRasterDataset):
     _dataset_type = "GeoRaster"
     _valid_extensions = ('.tif','.tiff','.jp2')
     _index_class = RasterioGroupHierarchy
@@ -737,9 +737,9 @@ class RasterioGroupDataset(GeoTiffDataset):
         self.data = self.index.grids[0]
         
 
-class GeoTiffWindowDataset(GeoTiffDataset):
+class GeoRasterWindowDataset(GeoRasterDataset):
     """
-    Class used for plotting a window of data from GeoTiffDataset.
+    Class used for plotting a window of data from GeoRasterDataset.
     """
 
     @classmethod
@@ -788,7 +788,7 @@ class GeoTiffWindowDataset(GeoTiffDataset):
         wobj.ds = self
         return wobj
 
-class LandSatGeoTiffHierarchy(GeoTiffHierarchy):
+class LandSatGeoTiffHierarchy(GeoRasterHierarchy):
     def _detect_output_fields(self):
         self.field_list = []
         self.ds.field_units = self.ds.field_units or {}
@@ -807,7 +807,7 @@ class LandSatGeoTiffHierarchy(GeoTiffHierarchy):
             self.ds.field_units[field_name] = ""
 
 
-class LandSatGeoTiffDataSet(GeoTiffDataset):
+class LandSatGeoTiffDataSet(GeoRasterDataset):
     """"""
     _index_class = LandSatGeoTiffHierarchy
 

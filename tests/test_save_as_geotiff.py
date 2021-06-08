@@ -14,7 +14,7 @@ test_data_dir = ytcfg.get("yt", "test_data_dir")
 S2_dir = "M2_Sentinel-2_test_data"
 LS_dir = "Landsat-8_sample_L2"
 
-class GeoTiffSaveTest(TempDirTest):
+class GeoRasterSaveTest(TempDirTest):
     @requires_file(os.path.join(S2_dir, "T36MVE_20210315T075701_B01.jp2"))
     @requires_file(os.path.join(LS_dir, "LC08_L2SP_171060_20210227_20210304_02_T1_SR_B1.TIF"))
     def test_save_default(self):
