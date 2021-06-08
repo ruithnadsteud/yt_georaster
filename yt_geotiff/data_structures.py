@@ -246,12 +246,21 @@ class GeoTiffHierarchy(YTGridHierarchy):
     def _detect_output_fields(self):
         self.field_list = []
         self.ds.field_units = self.ds.field_units or {}
+
+        # Filename dictionary
+        self.ds._field_filename = {}
+
+        # Number of bands in image dataset
+        self.ds._file_band_number = {}
+
         with rasterio.open(self.ds.parameter_filename, "r") as f:
             group = 'bands'
             for _i in range(1, f.count + 1):
                 field_name = (group, str(_i))
                 self.field_list.append(field_name)
                 self.ds.field_units[field_name] = ""
+                self.ds._file_band_number.update(
+                    {field_name[1]: {'filename': self.ds.parameter_filename, 'band': _i}})
 
     def _count_grids(self):
         self.num_grids = 1
@@ -344,7 +353,7 @@ class GeoTiffDataset(Dataset):
     """Dataset for saved covering grids, arbitrary grids, and FRBs."""
     _index_class = GeoTiffHierarchy
     _field_info_class = GeoRasterFieldInfo
-    _dataset_type = 'geotiff'
+    _dataset_type = "GeoRaster"
     _valid_extensions = ('.tif', '.tiff')
     _driver_type = "GTiff"
     geometry = "cartesian"
@@ -693,10 +702,10 @@ class JPEG2000Dataset(GeoTiffDataset):
     _field_info_class = GeoRasterFieldInfo
     _valid_extensions = ('.jp2',)
     _driver_type = "JP2OpenJPEG"
-    _dataset_type = "RasterioGroup"
+    _dataset_type = "GeoRaster"
 
 class RasterioGroupDataset(GeoTiffDataset):
-    _dataset_type = "RasterioGroup"
+    _dataset_type = "GeoRaster"
     _valid_extensions = ('.tif','.tiff','.jp2')
     _index_class = RasterioGroupHierarchy
     _field_info_class = GeoRasterFieldInfo
