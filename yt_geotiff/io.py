@@ -1,7 +1,6 @@
 import numpy as np
 import rasterio
-
-import scipy.ndimage
+from scipy.ndimage import zoom
 
 from yt.geometry.selection_routines import \
     GridSelector
@@ -19,17 +18,6 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
 
     def __init__(self, ds, *args, **kwargs):
         super(IOHandlerGeoRaster, self).__init__(ds)
-
-    def _transform_data(self, data):
-        data = data.T
-        if self.ds._flip_axes:
-            data = np.flip(data, axis=self.ds._flip_axes)
-        return data
-
-    def _resample(self, data, fname, scale_factor, original_res, load_res, order):
-        mylog.info(f"Resampling {fname}: {original_res} to {load_res} m.")        
-        data_resample = scipy.ndimage.zoom(data,scale_factor, order=order)     
-        return data_resample
 
     def _read_fluid_selection(self, chunks, selector, fields, size):
         rv = {}
@@ -98,26 +86,28 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
         band = self.ds._file_band_number[fname]['band']
 
         src = rasterio.open(filename, "r")
-        rasterio_window = grid._get_rasterio_window(selector, src.crs, src.transform)
 
-        # round up rasterio window width and height.
+        # Round up rasterio window width and height.
+        rasterio_window = grid._get_rasterio_window(selector, src.crs, src.transform)
         rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)
 
         # Read in the band/field.
-        data = src.read(band, window=rasterio_window, boundless=True).astype(
-            self._field_dtype)
-        data = self._transform_data(data)
+        data = src.read(
+            band, window=rasterio_window,
+            out_dtype=self._field_dtype, boundless=True)
 
-        # Get resolution from load image.
+        # Transform data to correct shape.
+        data = data.T
+        if self.ds._flip_axes:
+            data = np.flip(data, axis=self.ds._flip_axes)
+
+        # Resample to base resolution if necessary.
+        image_resolution = src.res[0]
         base_resolution = self.ds.resolution.d[0]
-
-        if src.res[0] !=base_resolution:
-            # Calculate scale factor to adjust resolution.
-            scale_factor = src.res[0] / base_resolution
-
-            # Order of spline interpolation- has to be in the range 0 (no interp.) to 5.
-            data = self._resample(data, \
-                fname, scale_factor, src.res[0], base_resolution, order=0)
+        if image_resolution != base_resolution:
+            scale_factor = image_resolution / base_resolution
+            mylog.info(f"Resampling {fname}: {image_resolution} to {base_resolution} m.")
+            data = zoom(data, scale_factor, order=0)
 
         # Now clip to the size of the window in the base resolution.
         base_window = grid._get_rasterio_window(
