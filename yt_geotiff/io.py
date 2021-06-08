@@ -2,13 +2,11 @@ import numpy as np
 import rasterio
 from scipy.ndimage import zoom
 
-from yt.geometry.selection_routines import \
-    GridSelector
-
 from yt.frontends.ytdata.io import \
     IOHandlerYTGridHDF5
-
 from yt.funcs import mylog
+from yt.geometry.selection_routines import \
+    GridSelector
 
 class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
     _dataset_type = "GeoRaster"
