@@ -247,9 +247,6 @@ class GeoRasterHierarchy(YTGridHierarchy):
         self.field_list = []
         self.ds.field_units = self.ds.field_units or {}
 
-        # Filename dictionary
-        self.ds._field_filename = {}
-
         # Number of bands in image dataset
         self.ds._file_band_number = {}
 
@@ -271,9 +268,6 @@ class RasterioGroupHierarchy(GeoRasterHierarchy):
         # Follow example for GeoRasterHierarchy to populate the field list.
         self.field_list = []
         self.ds.field_units = self.ds.field_units or {}
-
-        # Filename dictionary
-        self.ds._field_filename = {}
 
         # Number of bands in image dataset
         self.ds._file_band_number = {}
@@ -307,8 +301,6 @@ class RasterioGroupHierarchy(GeoRasterHierarchy):
 
                         self.ds._file_band_number.update({field_name[1]: {'filename': fn, 'band': _i}})               
             
-                self.ds._field_filename.update({field_name[1]: {'filename': fn, 'resolution': str(int(f.res[0]))}})
-
 
 class JPEG2000Hierarchy(GeoRasterHierarchy):
     
@@ -322,9 +314,6 @@ class JPEG2000Hierarchy(GeoRasterHierarchy):
         # Follow example for GeoRasterHierarchy to populate the field list.
         self.field_list = []
         self.ds.field_units = self.ds.field_units or {}
-
-        # Filename dictionary
-        self.ds._field_filename = {}
 
         # Number of bands in image dataset
         self.ds._file_band_number = {}
@@ -345,8 +334,6 @@ class JPEG2000Hierarchy(GeoRasterHierarchy):
                     self.field_list.append(field_name)
                     self.ds.field_units[field_name] = ""
                     self.ds._file_band_number.update({field_name[1]: {'filename': filename, 'band': _j}})
-
-            self.ds._field_filename.update({field_name[1]: {'filename': filename, 'resolution': f.res[0]}})
 
 
 class GeoRasterDataset(Dataset):
