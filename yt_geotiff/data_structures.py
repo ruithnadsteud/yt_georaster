@@ -17,6 +17,7 @@ from yt.data_objects.selection_objects.data_selection_objects import \
     YTSelectionContainer
 from yt.funcs import mylog
 from yt.geometry.selection_routines import \
+    DiskSelector, \
     GridSelector, \
     RegionSelector, \
     SphereSelector
@@ -187,7 +188,7 @@ class GeoRasterGrid(YTGrid):
         dle = self.ds.domain_left_edge.d
         dre = self.ds.domain_right_edge.d
 
-        if isinstance(selector, SphereSelector):
+        if isinstance(selector, (DiskSelector, SphereSelector)):
             left_edge = np.array(selector.center)
             left_edge[:2] -= selector.radius
             left_edge[2] = dle[2]
@@ -415,7 +416,7 @@ class GeoRasterDataset(Dataset):
         """
         Create a circular data container.
 
-        This is a wrapper around the sphere data container
+        This is a wrapper around the disk data container
         that allows for specifying the center with only x
         and y values.
 
@@ -427,7 +428,7 @@ class GeoRasterDataset(Dataset):
             z direction. If center is of length 3, center is
             unaltered.
         radius : float, width specifier, or unyt_quantity
-            The radius of the sphere. If passed a float,
+            The radius of the circle. If passed a float,
             that will be interpreted in code units. Also
             accepts a (radius, unit) tuple or unyt_quantity
             instance with units attached.
@@ -442,7 +443,9 @@ class GeoRasterDataset(Dataset):
         cc = validate_coord_array(
             self, center, "center",
             self.domain_center[2], "code_length")
-        return self.sphere(cc, radius)
+        normal = [0, 0, 1]
+        height = self.domain_width[2] / 2
+        return self.disk(cc, normal, radius, height)
 
     def rectangle(self, left_edge, right_edge, clip=True):
         """
