@@ -1,7 +1,7 @@
 from yt.data_objects.selection_objects.data_selection_objects import \
     YTSelectionContainer3D
 from yt.data_objects.static_output import Dataset
-from yt.funcs import validate_object
+from yt.funcs import validate_object, mylog
 
 import fiona
 import numpy as np
@@ -33,7 +33,7 @@ class YTPolygon(YTSelectionContainer3D):
         with fiona.open(shpfile_path, "r") as shapefile:
             shapes_from_file = [feature["geometry"] for feature in shapefile]
 
-        print(f"Number of features in file: {len(shapes_from_file)}")       
+        mylog.info(f"Number of features in file: {len(shapes_from_file)}")
 
         # save number of polygons
         self._number_features = len(shapes_from_file)
