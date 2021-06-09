@@ -36,8 +36,8 @@ from .utilities import \
     parse_awslandsat_metafile, \
     validate_coord_array, \
     validate_quantity, \
-    log_level, \
-    s1_data_manager
+    log_level
+# from .utilities import s1_data_manager
 
 
 class GeoRasterWindowGrid(YTGrid):
@@ -264,9 +264,9 @@ class GeoRasterHierarchy(YTGridHierarchy):
         for fn in self.ds.filename_list:
             path, filename =  os.path.split(fn)
 
-            if (filename.startswith("s1")):
-                field_name = s1_data_manager(path, filename)
-                continue
+            # if (filename.startswith("s1")):
+            #     field_name = s1_data_manager(path, filename)
+            #     continue
 
             prefix, suffix = filename.rsplit(".", 1)
             suffix = suffix.lower()
