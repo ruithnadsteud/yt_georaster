@@ -289,7 +289,7 @@ class GeoRasterHierarchy(YTGridHierarchy):
 
                 for i in range(1, f.count + 1):
                     fieldname = field_prefix
-                    if f.count > 1:
+                    if f.count > 1 or field_prefix == prefix:
                         fieldname += f"_{i}"
                     field = (ftype, fieldname)
 
