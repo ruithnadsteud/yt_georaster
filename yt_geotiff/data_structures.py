@@ -661,8 +661,8 @@ class GeoRasterWindowDataset(GeoRasterDataset):
 
     def __init__(self, parent_ds, left_edge, right_edge):
         self._parent_ds = parent_ds
-        self._index_class=parent_ds._index_class
-        self._dataset_type=parent_ds._dataset_type
+        self._index_class = parent_ds._index_class
+        self._dataset_type = parent_ds._dataset_type
         self.domain_left_edge = parent_ds.arr(left_edge, 'm')
         self.domain_right_edge = parent_ds.arr(right_edge, 'm')
         self.domain_dimensions = \
@@ -671,7 +671,8 @@ class GeoRasterWindowDataset(GeoRasterDataset):
                 (parent_ds.domain_right_edge -
                     parent_ds.domain_left_edge)).d.astype(np.int32)
 
-        super().__init__(parent_ds.parameter_filename, parent_ds.field_map)
+        super().__init__(parent_ds.parameter_filename,
+                         field_map=parent_ds.field_map)
 
         for field in parent_ds._added_fields:
             self.add_field(*field["args"], **field["kwargs"])
