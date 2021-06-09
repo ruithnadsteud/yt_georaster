@@ -138,6 +138,12 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
     >>> save_as_geotiff(ds, "my_data.tiff", fields=fields, data_source=circle)
     """
 
+    exts = ("tif", "tiff")
+    prefix, suffix = filename.rsplit(".", 1)
+    if suffix.lower() not in exts:
+        raise ValueError(
+            f"Invalid filename extension ({filename}), must be one of {exts}.")
+
     if fields is None:
         fields = ds.field_list
 
@@ -186,7 +192,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
 
     yfn = f"{filename[:filename.rfind('.')]}_fields.yaml"
     with open(yfn, mode="w") as f:
-        yaml.dump(field_info, stream=f)
+        yaml.dump({prefix: field_info}, stream=f)
     ytLogger.info(f"Field map saved to {yfn}.")
     ytLogger.info(f"Save complete. Reload data with:\n"
                   f"ds = yt.load(\"{filename}\", field_map=\"{yfn}\")")

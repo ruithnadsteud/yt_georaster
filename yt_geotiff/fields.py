@@ -32,17 +32,33 @@ class GeoRasterFieldInfo(FieldInfoContainer):
 
     def _create_field_map_aliases(self):
         """
-        Read the field map and create aliases.
+        Read the field map file and create aliases.
         """
 
         if self.ds.field_map is None:
             return
 
         with open(self.ds.field_map, 'r') as f:
-            fmap = yaml.load(f, Loader=yaml.FullLoader)
+            field_map = yaml.load(f, Loader=yaml.FullLoader)
 
-        for dfield, afield in fmap.items():
-            add_field_map_band_alias(self, dfield, afield)
+        for filename, fmap in field_map.items():
+            for dfield, afield in fmap.items():
+                my_field = f"{filename}_{dfield}"
+                self._add_field_map_band_alias(my_field, afield)
+
+    def _add_field_map_band_alias(self, band, afield):
+        """
+        Add an alias entry from the field map file.
+        """
+        units = afield.get("units", "")
+        def my_field(field, data):
+            return data.ds.arr(data["bands", band], units)
+        self.add_field(
+            (afield['field_type'], afield['field_name']),
+            function=my_field, sampling_type="local",
+            force_override=True,
+            take_log=afield.get("take_log", True),
+            units=units)
 
     def _create_band_aliases(self):
         """
@@ -51,7 +67,7 @@ class GeoRasterFieldInfo(FieldInfoContainer):
 
         fres = defaultdict(list)
         reg = re.compile(r"(.+)_(\d+)m$")
-        for field in self.field_list:
+        for field in self:
             ftype, fname = field
             match = reg.search(fname)
             if match is None:
@@ -174,14 +190,3 @@ class GeoRasterFieldInfo(FieldInfoContainer):
         self.add_field(("index", "area"), function=_area,
             sampling_type="local",
             units="km**2")
-
-def add_field_map_band_alias(fic, band, afield):
-    units = afield.get("units", "")
-    def my_field(field, data):
-        return data.ds.arr(data["bands", band], units)
-    fic.add_field(
-        (afield['field_type'], afield['field_name']),
-        function=my_field, sampling_type="local",
-        force_override=True,
-        take_log=afield.get("take_log", True),
-        units=units)
