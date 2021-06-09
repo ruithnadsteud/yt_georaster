@@ -80,8 +80,8 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
         """
 
         ftype, fname = field
-        filename = self.ds._file_band_number[fname]['filename']
-        band = self.ds._file_band_number[fname]['band']
+        filename = self.ds._field_band_map[fname]['filename']
+        band = self.ds._field_band_map[fname]['band']
 
         src = rasterio.open(filename, "r")
 

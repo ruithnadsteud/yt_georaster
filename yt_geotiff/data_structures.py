@@ -252,7 +252,7 @@ class GeoRasterHierarchy(YTGridHierarchy):
         self.ds.field_units = self.ds.field_units or {}
 
         # Number of bands in image dataset
-        self.ds._file_band_number = {}
+        self.ds._field_band_map = {}
 
         # Sentinel-2 regular expression
         key_S2 = re.compile(r"_([A-Za-z0-9]+)(_\d+m)?$")
@@ -295,7 +295,8 @@ class GeoRasterHierarchy(YTGridHierarchy):
 
                     self.field_list.append(field)
                     self.ds.field_units[field] = ""
-                    self.ds._file_band_number.update({fieldname: {'filename': fn, 'band': i}})
+                    self.ds._field_band_map.update(
+                        {fieldname: {'filename': fn, 'band': i}})
 
 
 class GeoRasterDataset(Dataset):
