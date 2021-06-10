@@ -24,7 +24,13 @@ class GeoRasterSaveTest(TempDirTest):
 
         ds = yt.load(*fns)
 
-        ds_fn, fm_fn = save_as_geotiff(ds, "my_data.tif")
+        fields = [("bands", "LS_B1_30m"),
+                  ("bands", "S2_B06_20m"),
+                  ("band_ratios", "S2_NDWI"),
+                  ("variables", "LS_temperature")]
+
+        ds_fn, fm_fn = save_as_geotiff(
+            ds, "my_data.tiff", fields=fields)
         ds_new = yt.load(ds_fn, field_map=fm_fn)
 
         for field in ds.field_list:
