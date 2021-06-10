@@ -1,42 +1,74 @@
+import glob
+from numpy.testing import assert_almost_equal, assert_equal
+import os
 import yt
 import yt.extensions.geotiff
 
-from yt.data_objects.selection_objects.region import YTRegion
+from yt.config import ytcfg
 
 from yt_geotiff.testing import requires_file
 
-land_use_data = "200km_2p5m_N38E34/200km_2p5m_N38E34.TIF"
-s2l1c_data = "Sentinel-2_sample_L1C/T33UXP_20170501T100031_B02.jp2"
-s2l2a_data = "Sentinel-2_sample_L2A/T30UVG_20200601T113331_B02_20m.jp2"
+test_data_dir = ytcfg.get("yt", "test_data_dir")
+landsat = "Landsat-8_sample_L2/LC08_L2SP_171060_20210227_20210304_02_T1_SR_B1.TIF"
+s2 = "M2_Sentinel-2_test_data/T36MVE_20210315T075701_B01.jp2"
 
-@requires_file(land_use_data)
-def test_rectangular():
-    ds = yt.load(land_use_data)
-    width = ds.quan(2000., 'm')
-    height = ds.quan(2000.,'m')
-    rectangle_centre = ds.arr([3501279,3725080],'m')
+landsat_fns = glob.glob(os.path.join(test_data_dir, os.path.dirname(landsat), "*.TIF"))
+s2_fns = glob.glob(os.path.join(test_data_dir, os.path.dirname(s2), "*.jp2"))
 
-    rectangular_yt_container = ds.rectangle_from_center(rectangle_centre,width,height)
-    rectangular_yt_container[('bands','200km_2p5m_N38E34_1')]
+@requires_file(landsat)
+@requires_file(s2)
+def test_rectangle_ls():
+    fns = landsat_fns + s2_fns
+    ds = yt.load(*fns)
+    # make center, radius not even number of pixels
+    res = ds.resolution[0]
+    center = ds.domain_center
+    center[:2] += res / 3
 
-    assert isinstance(rectangular_yt_container, YTRegion)
+    width = 1234.56 * res
+    height = 2345.67 * res
 
-@requires_file(s2l1c_data)
-def test_rectangular_S2L1C():
-    ds = yt.load(s2l1c_data)
-    width = ds.quan(5., 'km')
-    height = ds.quan(5.,'km')
-    rectangle_centre = ds.arr([453725,9974362],'m')
-    rectangular_yt_container = ds.rectangle_from_center(rectangle_centre,width,height)
-    rectangular_yt_container[('bands', 'S2_B02')]
-    assert isinstance(rectangular_yt_container, YTRegion)
+    rectangle = ds.rectangle_from_center(center, width, height)
 
-@requires_file(s2l2a_data)
-def test_rectangular_S2L2A():
-    ds = yt.load(s2l2a_data)
-    width = ds.quan(500., 'm')
-    height = ds.quan(500.,'m')
-    rectangle_centre = ds.arr([488012,6199162],'m')
-    rectangular_yt_container = ds.rectangle_from_center(rectangle_centre,width,height)
-    rectangular_yt_container[('bands', 'S2_B02')]
-    assert isinstance(rectangular_yt_container, YTRegion)
+    rw = rectangle.right_edge - rectangle.left_edge
+    a1 = rw[:2].prod()
+    a2 = rectangle.quantities.total_quantity(("index", "area"))
+    assert_almost_equal(a1/a2, 1, decimal=3)
+
+    n1 = a1 / ds.resolution.prod()
+    n2 = rectangle[('bands', 'LS_B1')].size
+    assert_almost_equal(n1/n2, 1, decimal=3)
+
+    n3 = rectangle[('bands', 'S2_B01')].size
+    assert_almost_equal(n1/n3, 1, decimal=3)
+
+    assert_equal(n2, n3)
+
+@requires_file(landsat)
+@requires_file(s2)
+def test_rectangle_s2():
+    fns = s2_fns + landsat_fns
+    ds = yt.load(*fns)
+    # make center, radius not even number of pixels
+    res = ds.resolution[0]
+    center = ds.domain_center
+    center[:2] += res / 3
+
+    width = 1234.56 * res
+    height = 234.567 * res
+
+    rectangle = ds.rectangle_from_center(center, width, height)
+
+    rw = rectangle.right_edge - rectangle.left_edge
+    a1 = rw[:2].prod()
+    a2 = rectangle.quantities.total_quantity(("index", "area"))
+    assert_almost_equal(a1/a2, 1, decimal=2)
+
+    n1 = a1 / ds.resolution.prod()
+    n2 = rectangle[('bands', 'LS_B1')].size
+    assert_almost_equal(n1/n2, 1, decimal=2)
+
+    n3 = rectangle[('bands', 'S2_B01')].size
+    assert_almost_equal(n1/n3, 1, decimal=2)
+
+    assert_equal(n2, n3)

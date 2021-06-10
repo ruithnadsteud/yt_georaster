@@ -27,10 +27,13 @@ def test_circle_lu():
     radius = res * 1234.567
     circle = ds.circle(center, radius)
 
+    a1 = np.pi * circle.radius**2
+    a2 = circle.quantities.total_quantity(("index", "area"))
+    assert_almost_equal(a1/a2, 1, decimal=5)
+
     # check number of points in sufficiently large circle
-    n1 = np.pi * circle.radius**2 / ds.resolution.prod()
+    n1 = a1 / ds.resolution.prod()
     n2 = circle[('bands', '200km_2p5m_N38E34_1')].size
-    breakpoint()
     assert_almost_equal(n1/n2, 1, decimal=5)
 
 @requires_file(landsat)
