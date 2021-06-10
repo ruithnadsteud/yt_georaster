@@ -72,3 +72,30 @@ def test_rectangle_s2():
     assert_almost_equal(n1/n3, 1, decimal=2)
 
     assert_equal(n2, n3)
+
+@requires_file(landsat)
+@requires_file(s2)
+def test_rectangle_overlaps_edge():
+    fns = landsat_fns + s2_fns
+    ds = yt.load(*fns)
+    # make center, radius not even number of pixels
+    res = ds.resolution[0]
+
+    center = ds.domain_left_edge + 0.9 * ds.domain_width + res / 3
+    width = 0.2 * ds.domain_width + res / 5
+
+    rectangle = ds.rectangle_from_center(center, width[0], width[1])
+
+    rw = rectangle.right_edge - rectangle.left_edge
+    a1 = rw[:2].prod()
+    a2 = rectangle.quantities.total_quantity(("index", "area"))
+    assert_almost_equal(a1/a2, 1, decimal=3)
+
+    n1 = a1 / ds.resolution.prod()
+    n2 = rectangle[('bands', 'LS_B1')].size
+    assert_almost_equal(n1/n2, 1, decimal=3)
+
+    n3 = rectangle[('bands', 'S2_B01')].size
+    assert_almost_equal(n1/n3, 1, decimal=3)
+
+    assert_equal(n2, n3)
