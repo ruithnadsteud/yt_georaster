@@ -104,11 +104,12 @@ cdef class PolygonSelector(SelectorObject):
         # this takes a grid object and fills a mask of which zones should be
         # included. It must take into account the child mask of the grid.
 
-        # Shapely polygon dataset 
-        shape_file = self.dobj.polygon 
+        # Shapely polygon dataset
+        shape_file = self.dobj.polygon
+        ds = grid.ds
 
-        new_transform = grid.ds._update_transform(
-            grid.ds.parameters["transform"],
+        new_transform = ds._update_transform(
+            ds.parameters["transform"],
             grid.LeftEdge, grid.RightEdge)
 
         dims = np.flip(grid.ActiveDimensions[:2])
@@ -118,8 +119,10 @@ cdef class PolygonSelector(SelectorObject):
             my_shapes = [self.dobj.polygon]
         fill_mask = rasterize(shapes=my_shapes,
                               transform=new_transform,
-                              out_shape=dims)
+                              out_shape=dims, all_touched=True)
         fill_mask = fill_mask.T
+        if ds._flip_axes:
+            fill_mask = np.flip(fill_mask, axis=ds._flip_axes)
         fill_mask = fill_mask.astype(bool)
         fill_mask = np.expand_dims(fill_mask, 2)
 

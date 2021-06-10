@@ -77,7 +77,7 @@ commands:
           command: |
             source $BASH_ENV
             source $HOME/venv/bin/activate
-            flake8 yt_geotiff
+            flake8 yt_geotiff tests
 
   run-tests:
     description: "Build yt_geotiff and run tests."
