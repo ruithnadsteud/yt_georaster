@@ -25,4 +25,3 @@ def test_grid():
     n2 = ds.data[('bands', 'S2_B01')].shape
     assert_equal(n1, n2)
     assert_equal(n1, tuple(ds.data.ActiveDimensions))
-
