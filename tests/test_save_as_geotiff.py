@@ -33,7 +33,7 @@ class GeoRasterSaveTest(TempDirTest):
             ds, "my_data.tiff", fields=fields)
         ds_new = yt.load(ds_fn, field_map=fm_fn)
 
-        for field in ds.field_list:
+        for field in fields:
             ad = ds.all_data()
             ad_new = ds_new.all_data()
             assert_array_equal(
