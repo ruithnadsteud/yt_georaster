@@ -1,10 +1,9 @@
 import glob
-from numpy.testing import assert_array_equal
 import os
 
 import yt
 from yt.config import ytcfg
-from yt.extensions.geotiff import save_as_geotiff
+import yt.extensions.geotiff
 
 from yt_geotiff.testing import \
     requires_file, \
