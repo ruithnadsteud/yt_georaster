@@ -32,6 +32,7 @@ from yt_geotiff.polygon import YTPolygon, PolygonSelector
 
 from .fields import \
     GeoRasterFieldInfo
+from .image_types import GeoManager
 from .utilities import \
     left_aligned_coord_cal, \
     parse_awslandsat_metafile, \
@@ -255,63 +256,14 @@ class GeoRasterHierarchy(YTGridHierarchy):
         # Number of bands in image dataset
         self.ds._field_band_map = {}
 
-        # Sentinel-2 regular expression
-        key_S2 = re.compile(r"_([A-Za-z0-9]+)(_\d+m)?$")
+        geo_manager = GeoManager()
 
-        # Landsat regular expression
-        key_LS = re.compile(r"^LC.+_([A-Za-z0-9]+)$")
-
-        new_ftypes = []
         for fn in self.ds.filename_list:
-            path, filename =  os.path.split(fn)
+            geo_manager.identify(self, fn)
 
-            # if (filename.startswith("s1")):
-            #     field_name = s1_data_manager(path, filename)
-            #     continue
-
-            prefix, suffix = filename.rsplit(".", 1)
-            suffix = suffix.lower()
-            with rasterio.open(fn, "r") as f:
-                units = "m"
-                resolution = f"{int(f.res[0])}{units}"
-
-                # does it look like something we recognize?
-                search_S2 = key_S2.search(prefix)
-                search_LS = key_LS.search(prefix)
-
-                if suffix == "jp2" and search_S2:
-                    groups = [g for g in search_S2.groups() if g is not None]
-                    field_prefix = f"S2_{groups[0]}_{resolution}"
-
-                    fsearch = re.search(f"(.+)_{''.join(groups)}", filename)
-                    if fsearch is None:
-                        ftype = "bands"
-                    else:
-                        ftype = fsearch.groups()[0]
-                    if ftype not in new_ftypes:
-                        new_ftypes.append(ftype)
-
-                elif suffix == "tif" and search_LS:
-                    groups = [g for g in search_LS.groups() if g is not None]
-                    field_prefix = f"LS_{groups[0]}_{resolution}"
-                    ftype = "bands"
-
-                else:
-                    field_prefix = prefix
-                    ftype = "bands"
-
-                for i in range(1, f.count + 1):
-                    fieldname = field_prefix
-                    if f.count > 1 or field_prefix == prefix:
-                        fieldname += f"_{i}"
-                    field = (ftype, fieldname)
-
-                    self.field_list.append(field)
-                    self.ds.field_units[field] = ""
-                    self.ds._field_band_map.update(
-                        {fieldname: {'filename': fn, 'band': i}})
-
-        self.ds.fluid_types += tuple(new_ftypes)
+        ftypes = set(self.ds.fluid_types)
+        new_ftypes = set(geo_manager.ftypes)
+        self.ds.fluid_types = tuple(ftypes.union(new_ftypes))
 
 
 class GeoRasterDataset(Dataset):
