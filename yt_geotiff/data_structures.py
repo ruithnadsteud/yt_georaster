@@ -261,7 +261,7 @@ class GeoRasterHierarchy(YTGridHierarchy):
         # Landsat regular expression
         key_LS = re.compile(r"^LC.+_([A-Za-z0-9]+)$")
 
-        ftype = "bands"
+        new_ftypes = []
         for fn in self.ds.filename_list:
             path, filename =  os.path.split(fn)
 
@@ -280,13 +280,25 @@ class GeoRasterHierarchy(YTGridHierarchy):
                 search_LS = key_LS.search(prefix)
 
                 if suffix == "jp2" and search_S2:
-                    field_prefix = f"S2_{search_S2.groups()[0]}_{resolution}"
+                    groups = [g for g in search_S2.groups() if g is not None]
+                    field_prefix = f"S2_{groups[0]}_{resolution}"
+
+                    fsearch = re.search(f"(.+)_{''.join(groups)}", filename)
+                    if fsearch is None:
+                        ftype = "bands"
+                    else:
+                        ftype = fsearch.groups()[0]
+                    if ftype not in new_ftypes:
+                        new_ftypes.append(ftype)
 
                 elif suffix == "tif" and search_LS:
-                    field_prefix = f"LS_{search_LS.groups()[0]}_{resolution}"
+                    groups = [g for g in search_LS.groups() if g is not None]
+                    field_prefix = f"LS_{groups[0]}_{resolution}"
+                    ftype = "bands"
 
                 else:
                     field_prefix = prefix
+                    ftype = "bands"
 
                 for i in range(1, f.count + 1):
                     fieldname = field_prefix
@@ -298,6 +310,8 @@ class GeoRasterHierarchy(YTGridHierarchy):
                     self.ds.field_units[field] = ""
                     self.ds._field_band_map.update(
                         {fieldname: {'filename': fn, 'band': i}})
+
+        self.ds.fluid_types += tuple(new_ftypes)
 
 
 class GeoRasterDataset(Dataset):
