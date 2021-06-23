@@ -39,15 +39,15 @@ class Sentinel2(SatGeoImage):
         ("B02", ("blue",)),
         ("B03", ("green",)),
         ("B04", ("red",)),
-        ("B05", ("vnir1", "red_edge1")),
-        ("B06", ("vnir2", "red_edge2")),
-        ("B07", ("vnir3",)),
-        ("B08", ("vnir4",)),
-        ("B8A", ("vnir5", "nir")),
-        ("B09", ("swir1",)),
-        ("B10", ("swir2",)),
-        ("B11", ("swir3",)),
-        ("B12", ("swir4",)),
+        ("B05", ("vnir_1", "red_edge_1")),
+        ("B06", ("vnir_2", "red_edge_2")),
+        ("B07", ("vnir_3",)),
+        ("B08", ("vnir_4",)),
+        ("B8A", ("vnir_5", "nir")),
+        ("B09", ("swir_1",)),
+        ("B10", ("swir_2",)),
+        ("B11", ("swir_3",)),
+        ("B12", ("swir_4",)),
     )
 
 class Landsat8(SatGeoImage):
@@ -68,17 +68,17 @@ class Landsat8(SatGeoImage):
     _suffix = "tif"
     _field_prefix = "L8"
     _band_aliases = (
-        ("B1", ("visible1",)),
-        ("B2", ("visible2",)),
-        ("B3", ("visible3",)),
+        ("B1", ("visible_1",)),
+        ("B2", ("visible_2",)),
+        ("B3", ("visible_3",)),
         ("B4", ("red",)),
         ("B5", ("nir",)),
-        ("B6", ("swir1",)),
-        ("B7", ("swir2",)),
+        ("B6", ("swir_1",)),
+        ("B7", ("swir_2",)),
         ("B8", ("pan",)),
         ("B9", ("cirrus",)),
-        ("B10", ("tirs1",)),
-        ("B11", ("tirs2",)),
+        ("B10", ("tirs_1",)),
+        ("B11", ("tirs_2",)),
     )
 
 class GeoManager:

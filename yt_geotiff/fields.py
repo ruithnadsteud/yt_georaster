@@ -67,6 +67,7 @@ class GeoRasterFieldInfo(FieldInfoContainer):
 
             # Normalised difference water index (NDWI)
             def _ndwi(field, data):
+                ftype = field.name[0]
                 green = data[ftype, "green"]
                 nir = data[ftype, "nir"]
                 return (green - nir) / (green + nir)
@@ -80,11 +81,12 @@ class GeoRasterFieldInfo(FieldInfoContainer):
 
             # Maximum chlorophyll index (MCI)
             def _mci(field, data):
-                visible_red = data[ftype, "red"]
-                red_edge_1 = data[ftype, "red_edge1"]
-                red_edge_2 = data[ftype, "red_edge2"]
-                return (red_edge_1  - visible_red) - \
-                  0.53 * (red_edge_2 - visible_red)
+                ftype = field.name[0]
+                red = data[ftype, "red"]
+                red_edge_1 = data[ftype, "red_edge_1"]
+                red_edge_2 = data[ftype, "red_edge_2"]
+                return (red_edge_1  - red) - \
+                  0.53 * (red_edge_2 - red)
 
             self.add_field(
                 (ftype, "MCI"),
@@ -95,9 +97,10 @@ class GeoRasterFieldInfo(FieldInfoContainer):
 
             # Colored Dissolved Organic Matter (CDOM)
             def _cdom(field, data):
-                visible_blue = data[ftype, "blue"]
-                visible_green = data[ftype, "green"]
-                return 8 * (visible_green / visible_blue)**(-1.4)
+                ftype = field.name[0]
+                blue = data[ftype, "blue"]
+                green = data[ftype, "green"]
+                return 8 * (green / blue)**(-1.4)
 
             self.add_field(
                 (ftype, "CDOM"),
@@ -108,11 +111,12 @@ class GeoRasterFieldInfo(FieldInfoContainer):
 
             # Enhanced Vegetation Index (EVI)
             def _evi(field, data):
-                visible_blue = data[ftype, "blue"]
-                visible_red = data[ftype, "red"]
+                ftype = field.name[0]
+                blue = data[ftype, "blue"]
+                red = data[ftype, "red"]
                 nir = data[ftype, "nir"]
-                return 2.5 * (nir - visible_red) / \
-                  ((nir + 6.0 * visible_red - 7.5 * visible_blue) + 1.0)
+                return 2.5 * (nir - red) / \
+                  ((nir + 6.0 * red - 7.5 * blue) + 1.0)
 
             self.add_field(
                 (ftype, "EVI"),
@@ -123,9 +127,10 @@ class GeoRasterFieldInfo(FieldInfoContainer):
 
             # Normalised Difference Vegetation Index (NDVI)
             def _ndvi(field, data):
-                visible_red = data[ftype, "red"]
+                ftype = field.name[0]
+                red = data[ftype, "red"]
                 nir = data[ftype, "nir"]
-                return (nir - visible_red) / (nir + visible_red)
+                return (nir - red) / (nir + red)
 
             self.add_field(
                 (ftype, "NDVI"),
@@ -136,7 +141,8 @@ class GeoRasterFieldInfo(FieldInfoContainer):
 
             # Landsat Temperature
             def _LS_temperature(field, data):
-                thermal_infrared_1 = data[ftype, "tirs1"]
+                ftype = field.name[0]
+                thermal_infrared_1 = data[ftype, "tirs_1"]
                 return data.ds.arr((thermal_infrared_1 * 0.00341802 + 149), 'K')
 
             self.add_field(

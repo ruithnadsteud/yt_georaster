@@ -359,6 +359,9 @@ class GeoRasterDataset(Dataset):
                 break
         return fn
 
+    def __str__(self):
+        return self.__repr__()
+
     def _update_transform(self, transform, left_edge, right_edge):
         """
         Create a new rasterio transform given left and right edge coordinates.
