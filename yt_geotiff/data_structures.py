@@ -259,7 +259,7 @@ class GeoRasterHierarchy(YTGridHierarchy):
         geo_manager = GeoManager()
 
         for fn in self.ds.filename_list:
-            geo_manager.identify(self, fn)
+            geo_manager.process(self, fn)
 
         ftypes = set(self.ds.fluid_types)
         new_ftypes = set(geo_manager.ftypes)

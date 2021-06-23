@@ -2,19 +2,19 @@ import os
 import rasterio
 import re
 
-class Imager:
+class GeoImage:
     field_aliases = ()
 
     def split(self, filename):
         "Return a prefix and suffix for a filename."
         return filename.rsplit(".", 1)
 
-    def process(self, filename, resolution):
+    def identify(self, filename, resolution):
         prefix, _ = self.split(filename)
         return prefix, "band"
 
-class SatImager(Imager):
-    def process(self, filename, resolution):
+class SatGeoImage(GeoImage):
+    def identify(self, filename, resolution):
         prefix, suffix = self.split(filename)
         if suffix.lower() != self._suffix:
             return None
@@ -23,38 +23,42 @@ class SatImager(Imager):
         if search is None:
             return None
 
-        groups = [g for g in search.groups() if g is not None]
-        fname = f"{self._field_prefix}_{groups[0]}_{resolution}"
-
-        fsearch = re.search(f"(.+)_{''.join(groups)}", filename)
-        if fsearch is None:
-            return None
-        ftype = fsearch.groups()[0]
+        groups = search.groups()
+        ftype = groups[0]
+        fname = f"{self._field_prefix}_{groups[1]}_{resolution}"
 
         return ftype, fname
 
-class Sentinel2(SatImager):
-    _regex = re.compile(r"_([A-Za-z0-9]+)(_\d+m)?$")
+class Sentinel2(SatGeoImage):
+    _regex = re.compile(r"(\w+)_([A-Za-z0-9]+)(_\d+m)?$")
     _suffix = "jp2"
     _field_prefix = "S2"
 
-class Landsat8(SatImager):
-    _regex = re.compile(r"^LC.+_([A-Za-z0-9]+)$")
+class Landsat8(SatGeoImage):
+    """
+    LXSS_LLLL_PPPRRR_YYYYMMDD_yyyymmdd_CC_TX
+    L = Landsat (constant)
+    X = Sensor (C = OLI / TIRS, O = OLI-only, T= TIRS-only, E = ETM+, T = TM, M= MSS)
+    SS = Satellite (e.g., 04 for Landsat 4, 05 for Landsat 5, 07 for Landsat 7, etc.)
+    LLLL = Processing level (L1TP, L1GT, L1GS)
+    PPP = WRS path
+    RRR = WRS row
+    YYYYMMDD = Acquisition Year (YYYY) / Month (MM) / Day (DD)
+    yyyymmdd = Processing Year (yyyy) / Month (mm) / Day (dd)
+    CC = Collection number (e.g., 01, 02, etc.)
+    TX= RT for Real-Time, T1 for Tier 1 (highest quality), and T2 for Tier 2
+    """
+    _regex = re.compile(r"(^L[COTEM]08_L\w{3}_\d{6}_\d{8}_\d{8}_\d{2}_\w{2})\w+_([A-Za-z0-9]+)$")
     _suffix = "tif"
     _field_prefix = "L8"
 
-
 class GeoManager:
+    image_types = (Sentinel2(), Landsat8(), GeoImage())
+
     def __init__(self):
         self.ftypes = []
-        self.default_imager = Imager()
-        self.imagers = [Sentinel2(), Landsat8()]
 
-    @property
-    def all_imagers(self):
-        return self.imagers + [self.default_imager]
-
-    def identify(self, index, fullpath):
+    def process(self, index, fullpath):
         _, filename = os.path.split(fullpath)
 
         units = "m"
@@ -62,8 +66,8 @@ class GeoManager:
             resolution = f"{int(f.res[0])}{units}"
             count = f.count
 
-        for imager in self.all_imagers:
-            res = imager.process(filename, resolution)
+        for imager in self.image_types:
+            res = imager.identify(filename, resolution)
             if res is None:
                 continue
             ftype, fname = res
