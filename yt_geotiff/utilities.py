@@ -179,10 +179,11 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
                        ) as dst:
         for i, field in enumerate(fields):
             band = i + 1
+            fname = f"band_{band}"
             ytLogger.info(f"Saving {field} to band {band}/{len(fields)}.")
-            field_info[str(band)] = {"field_type": field[0], "field_name": field[1]}
+            field_info[fname] = {"field_type": field[0], "field_name": field[1]}
             for attr in ["take_log", "units"]:
-                field_info[str(band)][attr] = getattr(ds.field_info[field], attr)
+                field_info[fname][attr] = getattr(ds.field_info[field], attr)
             data = wgrid[field].d[..., 0]
             data[~mask] = 0
             if ds._flip_axes:

@@ -1,6 +1,7 @@
 import os
 import rasterio
 import re
+import yaml
 
 class GeoImage:
     _band_aliases = ()
@@ -83,10 +84,20 @@ class Landsat8(SatGeoImage):
 class GeoManager:
     image_types = (Sentinel2(), Landsat8(), GeoImage())
 
-    def __init__(self, index):
+    def __init__(self, index, field_map=None):
         self.index = index
         self.ftypes = []
         self.fields = {}
+
+        self.load_field_map(field_map)
+
+    def load_field_map(self, fn):
+        if fn is None:
+            self.field_map = {}
+            return
+
+        with open(fn, mode="r") as f:
+            self.field_map = yaml.load(f, Loader=yaml.FullLoader)
 
     def add_field_type(self, ftype):
         if ftype not in self.ftypes:
@@ -108,18 +119,28 @@ class GeoManager:
             count = f.count
 
         if fprefix is None:
-            fname = "band"
+            fkey = "band"
         else:
-            fname = f"{fprefix}_{resolution}"
+            fkey = f"{fprefix}_{resolution}"
 
+        fmap = self.field_map
         for i in range(1, count + 1):
+            fname = fkey
             if count > 1 or fname == "band":
                 fname += f"_{i}"
 
-            field = (ftype, fname)
+            entry = fmap.get(ftype, {}).get(fname)
+            if entry is not None:
+                field = (entry["field_type"], entry["field_name"])
+                units = entry.get("units", "")
+            else:
+                field = (ftype, fname)
+                units = ""
+
             self.fields[field] = {"filename": fullpath, "band": i}
             self.index.field_list.append(field)
-            self.index.ds.field_units[field] = ""
+            self.index.ds.field_units[field] = units
+            self.add_field_type(field[0])
 
     def process_files(self, fullpaths):
         for fn in fullpaths:
@@ -134,6 +155,5 @@ class GeoManager:
                 continue
 
             ftype, fprefix = res
-            self.add_field_type(ftype)
             self.create_fields(fullpath, ftype, fprefix)
             break

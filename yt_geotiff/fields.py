@@ -1,6 +1,5 @@
 from collections import defaultdict
 import re
-import yaml
 
 from yt.fields.field_info_container import \
     FieldInfoContainer
@@ -24,40 +23,9 @@ class GeoRasterFieldInfo(FieldInfoContainer):
 
     def __init__(self, ds, field_list):
         super().__init__(ds, field_list)
-        self._create_field_map_aliases()
         self._create_highres_aliases()
         self._create_satellite_aliases()
         self._setup_geo_fields()
-
-    def _create_field_map_aliases(self):
-        """
-        Read the field map file and create aliases.
-        """
-
-        if self.ds.field_map is None:
-            return
-
-        with open(self.ds.field_map, 'r') as f:
-            field_map = yaml.load(f, Loader=yaml.FullLoader)
-
-        for filename, fmap in field_map.items():
-            for dfield, afield in fmap.items():
-                my_field = f"{filename}_{dfield}"
-                self._add_field_map_band_alias(my_field, afield)
-
-    def _add_field_map_band_alias(self, band, afield):
-        """
-        Add an alias entry from the field map file.
-        """
-        units = afield.get("units", "")
-        def my_field(field, data):
-            return data.ds.arr(data["bands", band], units)
-        self.add_field(
-            (afield['field_type'], afield['field_name']),
-            function=my_field, sampling_type="local",
-            force_override=True,
-            take_log=afield.get("take_log", True),
-            units=units)
 
     def _create_highres_aliases(self):
         """

@@ -252,7 +252,8 @@ class GeoRasterHierarchy(YTGridHierarchy):
 
         # The geo manager identifies files with various imagery/satellite
         # naming conventions.
-        self.geo_manager = gm = GeoManager(self)
+        self.geo_manager = gm = \
+          GeoManager(self, field_map=self.ds.field_map)
         gm.process_files(self.ds.filename_list)
 
         ftypes = set(self.ds.fluid_types)
