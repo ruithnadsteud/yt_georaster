@@ -25,9 +25,8 @@ class GeoRasterFieldInfo(FieldInfoContainer):
     def __init__(self, ds, field_list):
         super().__init__(ds, field_list)
         self._create_field_map_aliases()
-        self._create_band_aliases()
-        self._create_sentinel2_aliases()
-        self._create_landsat_aliases()
+        self._create_highres_aliases()
+        self._create_satellite_aliases()
         self._setup_geo_fields()
 
     def _create_field_map_aliases(self):
@@ -60,7 +59,7 @@ class GeoRasterFieldInfo(FieldInfoContainer):
             take_log=afield.get("take_log", True),
             units=units)
 
-    def _create_band_aliases(self):
+    def _create_highres_aliases(self):
         """
         Create band aliases using the highest resolution version.
         """
@@ -77,27 +76,23 @@ class GeoRasterFieldInfo(FieldInfoContainer):
 
         for (ftype, band), bres in fres.items():
             fname = f"{band}_{min(bres)}m"
-            self.alias(("bands", band), (ftype, fname))
+            self.alias((ftype, band), (ftype, fname))
 
-    def _create_sentinel2_aliases(self):
+    def _create_satellite_aliases(self):
         """
-        Create aliases of sentinel-2 bands to wavelength-based names.
-        """
-
-        # Note, we use "bands" as the alias field type because we
-        # want to be able to define color fields for multiple satellites.
-        for fname, band in _sentinel2_fields.items():
-            self.alias(("bands", fname), ("bands", band))
-
-    def _create_landsat_aliases(self):
-        """
-        Create aliases of sentinel-2 bands to wavelength-based names.
+        Use the geo manager to create band aliases.
         """
 
-        # Note, we use "bands" as the alias field type because we
-        # want to be able to define color fields for multiple satellites.
-        for fname, band in _landsat_fields.items():
-            self.alias(("bands", fname), ("bands", band))
+        band_aliases = self.ds.index.geo_manager.band_aliases
+        new_aliases = []
+
+        for field in self:
+            ftype, fname = field
+            for alias in band_aliases.get(fname, ()):
+                new_aliases.append(((ftype, alias), field))
+
+        for new_alias in new_aliases:
+            self.alias(*new_alias)
 
     def _setup_geo_fields(self):
         """

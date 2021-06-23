@@ -247,7 +247,6 @@ class GeoRasterHierarchy(YTGridHierarchy):
         self.num_grids = 1
 
     def _detect_output_fields(self):
-        # Follow example for GeoRasterHierarchy to populate the field list.
         self.field_list = []
         self.ds.field_units = self.ds.field_units or {}
 

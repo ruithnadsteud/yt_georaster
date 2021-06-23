@@ -3,7 +3,7 @@ import rasterio
 import re
 
 class GeoImage:
-    field_aliases = ()
+    _band_aliases = ()
 
     def split(self, filename):
         "Return a prefix and suffix for a filename."
@@ -30,7 +30,7 @@ class SatGeoImage(GeoImage):
         return ftype, fprefix
 
 class Sentinel2(SatGeoImage):
-    _regex = re.compile(r"(\w+)_([A-Za-z0-9]+)(_\d+m)?$")
+    _regex = re.compile(r"([A-Za-z0-9]+_[A-Za-z0-9]+)_([A-Za-z0-9]+)(?:_\d+m)?$")
     _suffix = "jp2"
     _field_prefix = "S2"
     _band_aliases = (
@@ -91,6 +91,15 @@ class GeoManager:
     def add_field_type(self, ftype):
         if ftype not in self.ftypes:
             self.ftypes.append(ftype)
+
+    @property
+    def band_aliases(self):
+        aliases = {}
+        for it in self.image_types:
+            for field, band_aliases in it._band_aliases:
+                fname = f"{it._field_prefix}_{field}"
+                aliases[fname] = band_aliases
+        return aliases
 
     def create_fields(self, fullpath, ftype, fprefix):
         units = "m"
