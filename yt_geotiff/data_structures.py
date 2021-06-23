@@ -256,10 +256,10 @@ class GeoRasterHierarchy(YTGridHierarchy):
         # Number of bands in image dataset
         self.ds._field_band_map = {}
 
-        geo_manager = GeoManager()
+        geo_manager = GeoManager(self)
 
         for fn in self.ds.filename_list:
-            geo_manager.process(self, fn)
+            geo_manager.process(fn)
 
         ftypes = set(self.ds.fluid_types)
         new_ftypes = set(geo_manager.ftypes)

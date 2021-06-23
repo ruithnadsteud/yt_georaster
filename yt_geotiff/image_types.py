@@ -9,12 +9,12 @@ class GeoImage:
         "Return a prefix and suffix for a filename."
         return filename.rsplit(".", 1)
 
-    def identify(self, filename, resolution):
+    def identify(self, filename):
         prefix, _ = self.split(filename)
-        return prefix, "band"
+        return prefix, None
 
 class SatGeoImage(GeoImage):
-    def identify(self, filename, resolution):
+    def identify(self, filename):
         prefix, suffix = self.split(filename)
         if suffix.lower() != self._suffix:
             return None
@@ -25,9 +25,9 @@ class SatGeoImage(GeoImage):
 
         groups = search.groups()
         ftype = groups[0]
-        fname = f"{self._field_prefix}_{groups[1]}_{resolution}"
+        fprefix = f"{self._field_prefix}_{groups[1]}"
 
-        return ftype, fname
+        return ftype, fprefix
 
 class Sentinel2(SatGeoImage):
     _regex = re.compile(r"(\w+)_([A-Za-z0-9]+)(_\d+m)?$")
@@ -83,34 +83,44 @@ class Landsat8(SatGeoImage):
 class GeoManager:
     image_types = (Sentinel2(), Landsat8(), GeoImage())
 
-    def __init__(self):
+    def __init__(self, index):
+        self.index = index
         self.ftypes = []
 
-    def process(self, index, fullpath):
-        _, filename = os.path.split(fullpath)
+    def add_field_type(self, ftype):
+        if ftype not in self.ftypes:
+            self.ftypes.append(ftype)
 
+    def create_fields(self, fullpath, ftype, fprefix):
         units = "m"
         with rasterio.open(fullpath, mode="r") as f:
             resolution = f"{int(f.res[0])}{units}"
             count = f.count
 
+        if fprefix is None:
+            fname = "band"
+        else:
+            fname = f"{fprefix}_{resolution}"
+
+        for i in range(1, count + 1):
+            if count > 1 or fname == "band":
+                fname += f"_{i}"
+
+            field = (ftype, fname)
+            self.index.field_list.append(field)
+            self.index.ds.field_units[field] = ""
+            self.index.ds._field_band_map.update(
+                {fname: {'filename': fullpath, 'band': i}})
+
+    def process(self, fullpath):
+        _, filename = os.path.split(fullpath)
+
         for imager in self.image_types:
-            res = imager.identify(filename, resolution)
+            res = imager.identify(filename)
             if res is None:
                 continue
-            ftype, fname = res
 
-            if ftype not in self.ftypes:
-                self.ftypes.append(ftype)
-
-            for i in range(1, count + 1):
-                fieldname = fname
-                if count > 1 or fieldname == "band":
-                    fieldname += f"_{i}"
-
-                field = (ftype, fieldname)
-                index.field_list.append(field)
-                index.ds.field_units[field] = ""
-                index.ds._field_band_map.update(
-                    {fieldname: {'filename': fullpath, 'band': i}})
+            ftype, fprefix = res
+            self.add_field_type(ftype)
+            self.create_fields(fullpath, ftype, fprefix)
             break
