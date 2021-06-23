@@ -39,8 +39,6 @@ from .utilities import \
     validate_coord_array, \
     validate_quantity, \
     log_level
-# from .utilities import s1_data_manager
-
 
 class GeoRasterWindowGrid(YTGrid):
     def __init__(self, gridobj, left_edge, right_edge):
@@ -253,16 +251,13 @@ class GeoRasterHierarchy(YTGridHierarchy):
         self.field_list = []
         self.ds.field_units = self.ds.field_units or {}
 
-        # Number of bands in image dataset
-        self.ds._field_band_map = {}
-
-        geo_manager = GeoManager(self)
-
-        for fn in self.ds.filename_list:
-            geo_manager.process(fn)
+        # The geo manager identifies files with various imagery/satellite
+        # naming conventions.
+        self.geo_manager = gm = GeoManager(self)
+        gm.process_files(self.ds.filename_list)
 
         ftypes = set(self.ds.fluid_types)
-        new_ftypes = set(geo_manager.ftypes)
+        new_ftypes = set(gm.ftypes)
         self.ds.fluid_types = tuple(ftypes.union(new_ftypes))
 
 

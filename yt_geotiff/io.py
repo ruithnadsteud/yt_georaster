@@ -79,9 +79,9 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
         Perform rasterio read and do all transformations and resamples.
         """
 
-        ftype, fname = field
-        filename = self.ds._field_band_map[fname]['filename']
-        band = self.ds._field_band_map[fname]['band']
+        read_info = self.ds.index.geo_manager.fields[field]
+        filename = read_info["filename"]
+        band = read_info["band"]
 
         src = rasterio.open(filename, "r")
 
@@ -104,7 +104,7 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
         base_resolution = self.ds.resolution.d[0]
         if image_resolution != base_resolution:
             scale_factor = image_resolution / base_resolution
-            mylog.info(f"Resampling {fname}: {image_resolution} to {base_resolution} m.")
+            mylog.info(f"Resampling {field}: {image_resolution} to {base_resolution} m.")
             data = zoom(data, scale_factor, order=0)
 
         # Now clip to the size of the window in the base resolution.

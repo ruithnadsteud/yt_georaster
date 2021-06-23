@@ -86,6 +86,7 @@ class GeoManager:
     def __init__(self, index):
         self.index = index
         self.ftypes = []
+        self.fields = {}
 
     def add_field_type(self, ftype):
         if ftype not in self.ftypes:
@@ -107,12 +108,15 @@ class GeoManager:
                 fname += f"_{i}"
 
             field = (ftype, fname)
+            self.fields[field] = {"filename": fullpath, "band": i}
             self.index.field_list.append(field)
             self.index.ds.field_units[field] = ""
-            self.index.ds._field_band_map.update(
-                {fname: {'filename': fullpath, 'band': i}})
 
-    def process(self, fullpath):
+    def process_files(self, fullpaths):
+        for fn in fullpaths:
+            self.process_file(fn)
+
+    def process_file(self, fullpath):
         _, filename = os.path.split(fullpath)
 
         for imager in self.image_types:
