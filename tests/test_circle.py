@@ -33,7 +33,7 @@ def test_circle_lu():
 
     # check number of points in sufficiently large circle
     n1 = a1 / ds.resolution.prod()
-    n2 = circle[('bands', '200km_2p5m_N38E34_1')].size
+    n2 = circle[('200km_2p5m_N38E34', 'band_1')].size
     assert_almost_equal(n1/n2, 1, decimal=5)
 
 @requires_file(landsat)
@@ -50,10 +50,10 @@ def test_circle_ls():
 
     # check number of points in sufficiently large circle
     n1 = np.pi * circle.radius**2 / ds.resolution.prod()
-    n2 = circle[('bands', 'LS_B1')].size
+    n2 = circle[('LC08_L2SP_171060_20210227_20210304_02_T1', 'L8_B1')].size
     assert_almost_equal(n1/n2, 1, decimal=5)
 
-    n3 = circle[('bands', 'S2_B01')].size
+    n3 = circle[('T36MVE_20210315T075701', 'S2_B01')].size
     assert_almost_equal(n1/n3, 1, decimal=5)
 
     assert_equal(n2, n3)
@@ -72,12 +72,12 @@ def test_circle_s2():
 
     # check number of points in sufficiently large circle
     n1 = np.pi * circle.radius**2 / ds.resolution.prod()
-    n2 = circle[('bands', 'LS_B1')].size
+    n2 = circle[('LC08_L2SP_171060_20210227_20210304_02_T1', 'L8_B1')].size
 
     # lower decimal precision since this sphere is smaller
     assert_almost_equal(n1/n2, 1, decimal=3)
 
-    n3 = circle[('bands', 'S2_B01')].size
+    n3 = circle[('T36MVE_20210315T075701', 'S2_B01')].size
     assert_almost_equal(n1/n3, 1, decimal=3)
 
     assert_equal(n2, n3)

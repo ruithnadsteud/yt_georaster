@@ -21,7 +21,7 @@ def test_grid():
     fns = s2_fns + landsat_fns
     ds = yt.load(*fns)
 
-    n1 = ds.data[('bands', 'LS_B1')].shape
-    n2 = ds.data[('bands', 'S2_B01')].shape
+    n1 = ds.data[('LC08_L2SP_171060_20210227_20210304_02_T1', 'L8_B1')].shape
+    n2 = ds.data[('T36MVE_20210315T075701', 'S2_B01')].shape
     assert_equal(n1, n2)
     assert_equal(n1, tuple(ds.data.ActiveDimensions))

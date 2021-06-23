@@ -270,7 +270,7 @@ class GeoRasterDataset(Dataset):
     _driver_types = ("GTiff", "JP2OpenJPEG")
     geometry = "cartesian"
     default_fluid_type = None
-    fluid_types = ()
+    fluid_types = ("index",)
     _periodicity = np.zeros(3, dtype=bool)
     cosmological_simulation = False
     refine_by = 2
