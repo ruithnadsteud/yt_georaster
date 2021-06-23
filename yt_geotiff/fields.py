@@ -4,19 +4,6 @@ import re
 from yt.fields.field_info_container import \
     FieldInfoContainer
 
-_sentinel2_fields = {
-    "blue": "S2_B02",
-    "green": "S2_B03",
-    "red" : "S2_B04",
-    "nir": "S2_B8A",
-    "red_edge_1" : "S2_B05",
-    "red_edge_2" : "S2_B06"
-}
-
-_landsat_fields = {
-    "TIRS_1": "LS_B10"
-}
-
 class GeoRasterFieldInfo(FieldInfoContainer):
     known_other_fields = ()
     known_particle_fields = ()
