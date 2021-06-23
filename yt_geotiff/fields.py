@@ -98,84 +98,6 @@ class GeoRasterFieldInfo(FieldInfoContainer):
         """
         Add geo-sciences derived fields.
         """
-        # Normalised difference water index (NDWI)
-        def _ndwi(field, data):
-            green = data["bands", "green"]
-            nir = data["bands", "nir"]
-            return (green - nir) / (green + nir)
-
-        self.add_field(
-            ("band_ratios", "S2_NDWI"),
-            function=_ndwi,
-            sampling_type="local",
-            take_log=False,
-            units="")
-
-        # Maximum chlorophyll index (MCI)
-        def _mci(field, data):
-            visible_red = data["bands", "red"]
-            red_edge_1 = data["bands", "red_edge_1"]
-            red_edge_2 = data["bands", "red_edge_2"]
-            return (red_edge_1  - visible_red) - 0.53*(red_edge_2 - visible_red)
-
-        self.add_field(
-            ("band_ratios", "S2_MCI"),
-            function=_mci,
-            sampling_type="local",
-            take_log=False,
-            units="")
-
-        # Colored Dissolved Organic Matter (CDOM)
-        def _cdom(field, data):
-            visible_blue = data["bands", "blue"]
-            visible_green = data["bands", "green"]
-            return 8* (visible_green/visible_blue)**(-1.4)
-
-        self.add_field(
-            ("band_ratios", "S2_CDOM"),
-            function=_cdom,
-            sampling_type="local",
-            take_log=False,
-            units="")
-
-        # Enhanced Vegetation Index (EVI)
-        def _evi(field, data):
-            visible_blue = data["bands", "blue"]
-            visible_red = data["bands", "red"]
-            nir = data["bands", "nir"]
-            return 2.5 * (nir - visible_red) / ((nir + 6.0 * visible_red - 7.5 * visible_blue) + 1.0)
-
-        self.add_field(
-            ("band_ratios", "S2_EVI"),
-            function=_evi,
-            sampling_type="local",
-            take_log=False,
-            units="")
-
-        # Normalised Difference Vegetation Index (NDVI)
-        def _ndvi(field, data):
-            visible_red = data["bands", "red"]
-            nir = data["bands", "nir"]
-            return ((nir - visible_red) / (nir + visible_red))
-
-        self.add_field(
-            ("band_ratios", "S2_NDVI"),
-            function=_ndvi,
-            sampling_type="local",
-            take_log=False,
-            units="")
-
-        # Landsat Temperature
-        def _LS_temperature(field, data):
-            thermal_infrared_1 = data["bands", "TIRS_1"]
-            return data.ds.arr((thermal_infrared_1*0.00341802 + 149),'K')
-
-        self.add_field(
-            ("variables", "LS_temperature"),
-            function=_LS_temperature,
-            sampling_type="local",
-            take_log=False,
-            units="K")
 
         # Area coverage of field
         def _area(field, data):
@@ -185,3 +107,86 @@ class GeoRasterFieldInfo(FieldInfoContainer):
         self.add_field(("index", "area"), function=_area,
             sampling_type="local",
             units="km**2")
+
+        for ftype in self.ds.index.geo_manager.ftypes:
+
+            # Normalised difference water index (NDWI)
+            def _ndwi(field, data):
+                green = data[ftype, "green"]
+                nir = data[ftype, "nir"]
+                return (green - nir) / (green + nir)
+
+            self.add_field(
+                (ftype, "NDWI"),
+                function=_ndwi,
+                sampling_type="local",
+                take_log=False,
+                units="")
+
+            # Maximum chlorophyll index (MCI)
+            def _mci(field, data):
+                visible_red = data[ftype, "red"]
+                red_edge_1 = data[ftype, "red_edge1"]
+                red_edge_2 = data[ftype, "red_edge2"]
+                return (red_edge_1  - visible_red) - \
+                  0.53 * (red_edge_2 - visible_red)
+
+            self.add_field(
+                (ftype, "MCI"),
+                function=_mci,
+                sampling_type="local",
+                take_log=False,
+                units="")
+
+            # Colored Dissolved Organic Matter (CDOM)
+            def _cdom(field, data):
+                visible_blue = data[ftype, "blue"]
+                visible_green = data[ftype, "green"]
+                return 8 * (visible_green / visible_blue)**(-1.4)
+
+            self.add_field(
+                (ftype, "CDOM"),
+                function=_cdom,
+                sampling_type="local",
+                take_log=False,
+                units="")
+
+            # Enhanced Vegetation Index (EVI)
+            def _evi(field, data):
+                visible_blue = data[ftype, "blue"]
+                visible_red = data[ftype, "red"]
+                nir = data[ftype, "nir"]
+                return 2.5 * (nir - visible_red) / \
+                  ((nir + 6.0 * visible_red - 7.5 * visible_blue) + 1.0)
+
+            self.add_field(
+                (ftype, "EVI"),
+                function=_evi,
+                sampling_type="local",
+                take_log=False,
+                units="")
+
+            # Normalised Difference Vegetation Index (NDVI)
+            def _ndvi(field, data):
+                visible_red = data[ftype, "red"]
+                nir = data[ftype, "nir"]
+                return (nir - visible_red) / (nir + visible_red)
+
+            self.add_field(
+                (ftype, "NDVI"),
+                function=_ndvi,
+                sampling_type="local",
+                take_log=False,
+                units="")
+
+            # Landsat Temperature
+            def _LS_temperature(field, data):
+                thermal_infrared_1 = data[ftype, "tirs1"]
+                return data.ds.arr((thermal_infrared_1 * 0.00341802 + 149), 'K')
+
+            self.add_field(
+                (ftype, "LS_temperature"),
+                function=_LS_temperature,
+                sampling_type="local",
+                take_log=False,
+                units="degC")
