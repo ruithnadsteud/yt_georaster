@@ -36,10 +36,10 @@ def test_rectangle_ls():
     assert_almost_equal(a1/a2, 1, decimal=3)
 
     n1 = a1 / ds.resolution.prod()
-    n2 = rectangle[('bands', 'LS_B1')].size
+    n2 = rectangle[('LC08_L2SP_171060_20210227_20210304_02_T1', 'L8_B1')].size
     assert_almost_equal(n1/n2, 1, decimal=3)
 
-    n3 = rectangle[('bands', 'S2_B01')].size
+    n3 = rectangle[('T36MVE_20210315T075701', 'S2_B01')].size
     assert_almost_equal(n1/n3, 1, decimal=3)
 
     assert_equal(n2, n3)
@@ -65,10 +65,10 @@ def test_rectangle_s2():
     assert_almost_equal(a1/a2, 1, decimal=2)
 
     n1 = a1 / ds.resolution.prod()
-    n2 = rectangle[('bands', 'LS_B1')].size
+    n2 = rectangle[('LC08_L2SP_171060_20210227_20210304_02_T1', 'L8_B1')].size
     assert_almost_equal(n1/n2, 1, decimal=2)
 
-    n3 = rectangle[('bands', 'S2_B01')].size
+    n3 = rectangle[('T36MVE_20210315T075701', 'S2_B01')].size
     assert_almost_equal(n1/n3, 1, decimal=2)
 
     assert_equal(n2, n3)
@@ -92,10 +92,10 @@ def test_rectangle_overlaps_edge():
     assert_almost_equal(a1/a2, 1, decimal=3)
 
     n1 = a1 / ds.resolution.prod()
-    n2 = rectangle[('bands', 'LS_B1')].size
+    n2 = rectangle[('LC08_L2SP_171060_20210227_20210304_02_T1', 'L8_B1')].size
     assert_almost_equal(n1/n2, 1, decimal=3)
 
-    n3 = rectangle[('bands', 'S2_B01')].size
+    n3 = rectangle[('T36MVE_20210315T075701', 'S2_B01')].size
     assert_almost_equal(n1/n3, 1, decimal=3)
 
     assert_equal(n2, n3)
