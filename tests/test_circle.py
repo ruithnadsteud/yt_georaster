@@ -3,11 +3,11 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 import os
 import yt
-import yt.extensions.geotiff
+import yt.extensions.georaster
 
 from yt.config import ytcfg
 
-from yt_geotiff.testing import requires_file
+from yt_georaster.testing import requires_file
 
 test_data_dir = ytcfg.get("yt", "test_data_dir")
 landuse = "200km_2p5m_N38E34/200km_2p5m_N38E34.TIF"

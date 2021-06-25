@@ -16,15 +16,15 @@ def get_version(filename):
         "Could not get version from %s." % filename)
 
 
-VERSION = get_version("yt_geotiff/__init__.py")
+VERSION = get_version("yt_georaster/__init__.py")
 
 dev_requirements = [
     'flake8', 'pytest>=3.6']
 
 std_libs = []
 cython_extensions = [
-    Extension("yt_geotiff.polygon_selector",
-              ["yt_geotiff/polygon_selector.pyx"],
+    Extension("yt_georaster.polygon_selector",
+              ["yt_georaster/polygon_selector.pyx"],
               libraries=std_libs),
 ]
 
@@ -57,37 +57,40 @@ class sdist(_sdist):
         cythonize(cython_extensions)
         _sdist.run(self)
 
-setup(name="yt_geotiff",
+setup(name="yt_georaster",
       version=VERSION,
-      description="A package for handling geotiff files and georeferenced datasets within yt.",
+      description="A yt extension for working with geotagged images loadable with rasterio.",
       author="Daniel Eastwood",
       author_email="eastwooddans@gmail.com",
       # license="BSD",
-      url="https://github.com/deastwoo/yt_geotiff",
-      packages=["yt_geotiff"],
+      url="https://github.com/ruithnadsteud/yt_georaster",
+      packages=["yt_georaster"],
       keywords=["GeoTiff", "GTiff", "raster"],
       install_requires=[
+          'fiona',
           'gdal',
           'numpy',
           'pyyaml',
           'rasterio',
+          'shapely',
           'yt'
       ],
       classifiers=[
-          "Development Status :: 2 - Pre-Alpha",
+          "Development Status :: 4 - Beta",
           "Environment :: Console",
           "Intended Audience :: Science/Research",
-          # "License :: OSI Approved :: BSD License",
           "Operating System :: MacOS :: MacOS X",
-          "Operating System :: POSIX :: AIX",
           "Operating System :: POSIX :: Linux",
-          "Programming Language :: Python",
-          "Topic :: Utilities",
+          "Operating System :: Microsoft :: Windows",
+          "Programming Language :: Python :: 3",
+          "Topic :: Scientific/Engineering :: Image Processing",
+          "Topic :: Scientific/Engineering :: GIS",
+          "Topic :: Scientific/Engineering :: Visualization",
           ],
       extras_require={
           'dev': dev_requirements,
       },
       cmdclass={'sdist': sdist, 'build_ext': build_ext},
       ext_modules=cython_extensions,
-      python_requires='>=3.6'
+      python_requires='>=3.7'
       )

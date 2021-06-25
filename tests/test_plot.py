@@ -3,9 +3,9 @@ import os
 
 import yt
 from yt.config import ytcfg
-import yt.extensions.geotiff
+import yt.extensions.georaster
 
-from yt_geotiff.testing import \
+from yt_georaster.testing import \
     requires_file, \
     TempDirTest
 

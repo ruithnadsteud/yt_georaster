@@ -2,11 +2,11 @@ import glob
 from numpy.testing import assert_almost_equal, assert_equal
 import os
 import yt
-import yt.extensions.geotiff
+import yt.extensions.georaster
 
 from yt.config import ytcfg
 
-from yt_geotiff.testing import requires_file
+from yt_georaster.testing import requires_file
 
 test_data_dir = ytcfg.get("yt", "test_data_dir")
 landsat = "Landsat-8_sample_L2/LC08_L2SP_171060_20210227_20210304_02_T1_SR_B1.TIF"

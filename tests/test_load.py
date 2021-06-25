@@ -1,11 +1,11 @@
 import os
 import yt
-import yt.extensions.geotiff
+import yt.extensions.georaster
 
 from yt.config import ytcfg
 
-from yt_geotiff.data_structures import GeoRasterDataset
-from yt_geotiff.testing import requires_file
+from yt_georaster.data_structures import GeoRasterDataset
+from yt_georaster.testing import requires_file
 
 test_data_dir = ytcfg.get("yt", "test_data_dir")
 land_use_data = os.path.join(
@@ -16,7 +16,7 @@ s2l2a_data = os.path.join(
     test_data_dir, "Sentinel-2_sample_L2A/T30UVG_20200601T113331_B02_20m.jp2")
 
 @requires_file(land_use_data)
-def test_load_geotiff():
+def test_load_georaster():
     ds = yt.load(land_use_data)
     assert isinstance(ds, GeoRasterDataset)
 

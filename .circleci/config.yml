@@ -8,17 +8,18 @@ commands:
           name: "Set environment variables."
           command: |
             echo 'export YT_DIR=$HOME/yt-git' >> $BASH_ENV
+            echo 'export YT_BRANCH=yt_georaster' >> $BASH_ENV
             echo 'export TEST_DATA=$HOME/test_data' >> $BASH_ENV
 
   install:
-    description: "Install yt_geotiff and dependencies."
+    description: "Install yt_georaster and dependencies."
     parameters:
       ytdev:
         type: integer
         default: 0
     steps:
       - run:
-          name: "Install yt_geotiff and dependencies."
+          name: "Install yt_georaster and dependencies."
           no_output_timeout: 20m
           command: |
             sudo apt-get update
@@ -44,11 +45,11 @@ commands:
             export MAX_BUILD_CORES=2
             if [ << parameters.ytdev >> == 1 ]; then
                 if [ ! -f $YT_DIR/README.md ]; then
-                    git clone --branch=ytgeotiff https://github.com/ruithnadsteud/yt $YT_DIR
+                    git clone --branch=$YT_BRANCH https://github.com/ruithnadsteud/yt $YT_DIR
                 fi
                 pushd $YT_DIR
-                git pull origin ytgeotiff
-                git checkout ytgeotiff
+                git pull origin $YT_BRANCH
+                git checkout $YT_BRANCH
                 pip install -e .
                 popd
             fi
@@ -77,10 +78,10 @@ commands:
           command: |
             source $BASH_ENV
             source $HOME/venv/bin/activate
-            flake8 yt_geotiff tests
+            flake8 yt_georaster tests
 
   run-tests:
-    description: "Build yt_geotiff and run tests."
+    description: "Build yt_georaster and run tests."
     parameters:
       coverage:
         type: integer
@@ -88,11 +89,11 @@ commands:
 
     steps:
       - run:
-          name: "Build yt_geotiff and run tests."
+          name: "Build yt_georaster and run tests."
           command: |
             source $BASH_ENV
             source $HOME/venv/bin/activate
-            # pytest --cov=yt_geotiff tests
+            # pytest --cov=yt_georaster tests
             pytest tests
             if [ << parameters.coverage >> == 1 ]; then
                 # code coverage report
@@ -135,7 +136,7 @@ jobs:
       name: python
       tag: << parameters.tag >>
 
-    working_directory: ~/yt_geotiff
+    working_directory: ~/yt_georaster
 
     steps:
       - checkout
@@ -143,14 +144,14 @@ jobs:
 
       - restore_cache:
           name: "Restore dependencies cache."
-          key: python-<< parameters.tag >>-<< parameters.ytdev >>-dependencies-2021-04-22
+          key: python-<< parameters.tag >>-<< parameters.ytdev >>-dependencies-2021-06-25
 
       - install:
           ytdev: << parameters.ytdev >>
 
       - save_cache:
           name: "Save dependencies cache."
-          key: python-<< parameters.tag >>-<< parameters.ytdev >>-dependencies-2021-04-22
+          key: python-<< parameters.tag >>-<< parameters.ytdev >>-dependencies-2021-06-25
           paths:
             - ~/.cache/pip
             - ~/venv
