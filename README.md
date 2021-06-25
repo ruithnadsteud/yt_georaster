@@ -1,37 +1,37 @@
-# yt_geotiff
+# yt_georaster
 
-[![CircleCI](https://circleci.com/gh/ruithnadsteud/yt_geotiff/tree/master.svg?style=shield)](https://circleci.com/gh/ruithnadsteud/yt_geotiff/tree/master)
+[![CircleCI](https://circleci.com/gh/ruithnadsteud/yt_georaster/tree/master.svg?style=shield)](https://circleci.com/gh/ruithnadsteud/yt_georaster/tree/master)
 
 A package for handling _geotiff_ files and georeferenced datasets within **yt**.
 
 ### Dependencies
 
-Aside from **yt** itself, the following packages are required to use yt_geotiff:
+Aside from **yt** itself, the following packages are required to use yt_georaster:
 - [numpy](https://docs.scipy.org/doc/numpy/reference/)
 - [gdal](https://gdal.org/)
 - [rasterio](https://rasterio.readthedocs.io/en/latest/)
 
 ### Developments and working examples
 
-Key developments applied to the yt_geotiff package include:
+Key developments applied to the yt_georaster package include:
 
-- The enabling of rasterio Window-reads. This Window-read feature allows for yt_geotiff users to read a sub-region of a multiband raster image analysis without having to read the entire image. Reading only an area of interest allows user to work more efficiently and circumvents the issue whereby the raster image size exceeds a computer's RAM. The function uses existing functionality in yt in order to define Window-read areas based on rectangular and circular yt data container shapes.
+- The enabling of rasterio Window-reads. This Window-read feature allows for yt_georaster users to read a sub-region of a multiband raster image analysis without having to read the entire image. Reading only an area of interest allows user to work more efficiently and circumvents the issue whereby the raster image size exceeds a computer's RAM. The function uses existing functionality in yt in order to define Window-read areas based on rectangular and circular yt data container shapes.
 
-- Support the loading and querying of Sentinel-2 (Level 1C & L2A ESA processed products) and Landsat-8 satellite datasets. A collection of Sentinel-2 and Landsat-8 imagery can be queried and visualised within a user-defined  yt_geotiff data container rectangle or circle shape.
+- Support the loading and querying of Sentinel-2 (Level 1C & L2A ESA processed products) and Landsat-8 satellite datasets. A collection of Sentinel-2 and Landsat-8 imagery can be queried and visualised within a user-defined  yt_georaster data container rectangle or circle shape.
 
-- Imagery across different spatial resolutions, coordinate reference systems and spatial extents can be seamlessly loaded and queried. All imagery within a given collection for loading and querying wihtin yt_geotiff are resampled accordingly in order to match the spatial resolution of the initial oad image (i.e. the base image).
+- Imagery across different spatial resolutions, coordinate reference systems and spatial extents can be seamlessly loaded and queried. All imagery within a given collection for loading and querying wihtin yt_georaster are resampled accordingly in order to match the spatial resolution of the initial oad image (i.e. the base image).
 
 - The library of derivable fields available for working with multi-band Earth observation data was been extended.
 
-Example workflow jupyter notebooks (see Milestone_1_demo.ipynb and Milestone_2_demo.ipynb) provide a thorough demonstration of the above yt_geotiff developments and links to sample data (see https://github.com/ruithnadsteud/yt_geotiff/tree/master/examples). Below in an overview of the yt_geotiff commands for executing these developments.
+Example workflow jupyter notebooks (see Milestone_1_demo.ipynb and Milestone_2_demo.ipynb) provide a thorough demonstration of the above yt_georaster developments and links to sample data (see https://github.com/ruithnadsteud/yt_georaster/tree/master/examples). Below in an overview of the yt_georaster commands for executing these developments.
 
-Import yt and the yt_geotiff extensions
+Import yt and the yt_georaster extensions
 ```
 >>> import yt
->>> import yt.extensions.geotiff
+>>> import yt.extensions.georaster
 ```
 
-Users of yt_geotiff can load a raster image to first extract image metadata, including pixel dimensions and the coordinate reference system:
+Users of yt_georaster can load a raster image to first extract image metadata, including pixel dimensions and the coordinate reference system:
 ```
 >>> ds = yt.load("200km_2p5m_N38E34.tif")
 
@@ -42,7 +42,7 @@ yt : [INFO     ] 2021-02-23 23:58:46,420 Parameters: domain_right_edge         =
 
 ### Constructing and querying data containers
 
-Generate rectangular yt data container for performing the yt_geotiff Window-read based on centre coordinates and width and height dimensions:
+Generate rectangular yt data container for performing the yt_georaster Window-read based on centre coordinates and width and height dimensions:
 ```
 >>> width = ds.arr(2000., 'm')
 >>> height = ds.arr(2000.,'m') 
@@ -50,7 +50,7 @@ Generate rectangular yt data container for performing the yt_geotiff Window-read
 
 >>> rectangular_yt_container = ds.rectangle_from_center(rectangle_centre,width,height)
 ```
-Generate circular yt data container for performing the yt_geotiff Window-read based on centre coordinates and radius:
+Generate circular yt data container for performing the yt_georaster Window-read based on centre coordinates and radius:
 ```
 >>> radius = ds.arr(1000.,'m')
 >>> circle_centre = ds.arr([X,Y],'m')
@@ -129,12 +129,12 @@ yt : [INFO     ] 2021-04-30 14:53:27,145 Parameters: domain_left_edge          =
 yt : [INFO     ] 2021-04-30 14:53:27,146 Parameters: domain_right_edge         = [5.0976e+05 1.0000e+07 1.0000e+00] m
 ```
 
-List fields/bands/datasets that are available for querying and plotting in yt_geotiff
+List fields/bands/datasets that are available for querying and plotting in yt_georaster
 ```
 >>> ds.field_list
 ```
 
-Example plot of Sentinel-2 band 1 data (the base image) when queried using a rectangular data container defined using height, width and center coordinates. The yt_geotiff extension image metadata is updated to reflect the change in image dimensions:
+Example plot of Sentinel-2 band 1 data (the base image) when queried using a rectangular data container defined using height, width and center coordinates. The yt_georaster extension image metadata is updated to reflect the change in image dimensions:
 ```
 # Plot base image (Sentinel-2 Band 1: 60 m resolution)
 >>> p = ds.plot(('bands', 'S2_B01'), height=(10., 'km'), width=(20., 'km'), center=ds.arr([471696,9989860],'m')) # s2
@@ -151,7 +151,7 @@ yt : [INFO     ] 2021-04-30 14:53:29,021 ylim = 9979860.000000 9999860.000000
 yt : [INFO     ] 2021-04-30 14:53:29,023 Making a fixed resolution buffer of (('bands', 'S2_B01')) 800 by 800
 ```
 
-Example plot of Sentinel-2 band 2 data when queried using a rectangular data container defined using height, width and center coordinates. NOTE: the band 2 image spatial resolution is down-sampled in yt_geotiff from 20 to 60 m resolution in order to match the spatial resolution:
+Example plot of Sentinel-2 band 2 data when queried using a rectangular data container defined using height, width and center coordinates. NOTE: the band 2 image spatial resolution is down-sampled in yt_georaster from 20 to 60 m resolution in order to match the spatial resolution:
 ```
 # Plot Sentinel-2 Band 2 (20 m resolution)
 >>> q = ds.plot(('bands', 'S2_B05'), height=(10., 'km'), width=(20., 'km'), center=ds.arr([471696,9989860],'m'))# s2
@@ -236,7 +236,7 @@ entire image or for a subset represented by geometric data container.
 ```
 >>> import glob
 >>> import yt
->>> from yt.extensions.geotiff import save_as_geotiff
+>>> from yt.extensions.georaster import save_as_geotiff
 >>>
 >>> fns = glob.glob("*.jp2") + glob.glob("*.TIF")
 >>> ds = yt.load(*fns)
@@ -255,7 +255,7 @@ bounding box enclosing the container.
 ```
 >>> import glob
 >>> import yt
->>> from yt.extensions.geotiff import save_as_geotiff
+>>> from yt.extensions.georaster import save_as_geotiff
 >>>
 >>> fns = glob.glob("*.jp2") + glob.glob("*.TIF")
 >>> ds = yt.load(*fns)
@@ -272,13 +272,13 @@ bounding box enclosing the container.
 
 ### Querying and plotting polygon Window reads
 
-Window reads can also be performed within yt_geotiff based on the extents of single and multiple feature polygon shapefile (.shp) datasets.
+Window reads can also be performed within yt_georaster based on the extents of single and multiple feature polygon shapefile (.shp) datasets.
 
 ```
 >>> import yt
->>> import yt.extensions.geotiff
+>>> import yt.extensions.georaster
 ```
-Load Raster dataset (e.g., Landsat8, Band1) into yt_geotiff
+Load Raster dataset (e.g., Landsat8, Band1) into yt_georaster
 ```
 >>> landsat_data = "C:/path/to/Landsat_test_data/LC08_L2SP_171060_20210227_20210304_02_T1_SR_B1.TIF"
 >>> ds = yt.load(landsat_data
@@ -287,7 +287,7 @@ yt : [INFO     ] 2021-05-31 12:58:36,743 Parameters: domain_left_edge          =
 yt : [INFO     ] 2021-05-31 12:58:36,744 Parameters: domain_right_edge         = [5.88915e+05 1.15815e+05 1.00000e+00] m
 ```
 
-Load and read a polygon shapefile into yt_geotiff
+Load and read a polygon shapefile into yt_georaster
 ```
 >>> multi_shapefile = "C:/path/to/esri_shapefile/multi_feature_polygon.shp"
 >>> polyon = ds.polygon(multi_shapefile)
@@ -299,4 +299,4 @@ Query Raster dataset field/band using the polygon dataset
 >>> data_in_polygon = (poly[('bands', '1')])
 ```
 
-Plotting polygon read data in yt_geotiff
+Plotting polygon read data in yt_georaster
