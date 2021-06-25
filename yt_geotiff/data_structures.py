@@ -32,14 +32,13 @@ from yt_geotiff.polygon import YTPolygon, PolygonSelector
 
 from .fields import \
     GeoRasterFieldInfo
+from .image_types import GeoManager
 from .utilities import \
     left_aligned_coord_cal, \
     parse_awslandsat_metafile, \
     validate_coord_array, \
     validate_quantity, \
     log_level
-# from .utilities import s1_data_manager
-
 
 class GeoRasterWindowGrid(YTGrid):
     def __init__(self, gridobj, left_edge, right_edge):
@@ -248,56 +247,18 @@ class GeoRasterHierarchy(YTGridHierarchy):
         self.num_grids = 1
 
     def _detect_output_fields(self):
-        # Follow example for GeoRasterHierarchy to populate the field list.
         self.field_list = []
         self.ds.field_units = self.ds.field_units or {}
 
-        # Number of bands in image dataset
-        self.ds._field_band_map = {}
+        # The geo manager identifies files with various imagery/satellite
+        # naming conventions.
+        self.geo_manager = gm = \
+          GeoManager(self, field_map=self.ds.field_map)
+        gm.process_files(self.ds.filename_list)
 
-        # Sentinel-2 regular expression
-        key_S2 = re.compile(r"_([A-Za-z0-9]+)(_\d+m)?$")
-
-        # Landsat regular expression
-        key_LS = re.compile(r"^LC.+_([A-Za-z0-9]+)$")
-
-        ftype = "bands"
-        for fn in self.ds.filename_list:
-            path, filename =  os.path.split(fn)
-
-            # if (filename.startswith("s1")):
-            #     field_name = s1_data_manager(path, filename)
-            #     continue
-
-            prefix, suffix = filename.rsplit(".", 1)
-            suffix = suffix.lower()
-            with rasterio.open(fn, "r") as f:
-                units = "m"
-                resolution = f"{int(f.res[0])}{units}"
-
-                # does it look like something we recognize?
-                search_S2 = key_S2.search(prefix)
-                search_LS = key_LS.search(prefix)
-
-                if suffix == "jp2" and search_S2:
-                    field_prefix = f"S2_{search_S2.groups()[0]}_{resolution}"
-
-                elif suffix == "tif" and search_LS:
-                    field_prefix = f"LS_{search_LS.groups()[0]}_{resolution}"
-
-                else:
-                    field_prefix = prefix
-
-                for i in range(1, f.count + 1):
-                    fieldname = field_prefix
-                    if f.count > 1 or field_prefix == prefix:
-                        fieldname += f"_{i}"
-                    field = (ftype, fieldname)
-
-                    self.field_list.append(field)
-                    self.ds.field_units[field] = ""
-                    self.ds._field_band_map.update(
-                        {fieldname: {'filename': fn, 'band': i}})
+        ftypes = set(self.ds.fluid_types)
+        new_ftypes = set(gm.ftypes)
+        self.ds.fluid_types = tuple(ftypes.union(new_ftypes))
 
 
 class GeoRasterDataset(Dataset):
@@ -308,8 +269,8 @@ class GeoRasterDataset(Dataset):
     _valid_extensions = ('.tif','.tiff','.jp2')
     _driver_types = ("GTiff", "JP2OpenJPEG")
     geometry = "cartesian"
-    default_fluid_type = "bands"
-    fluid_types = ("bands", "index")
+    default_fluid_type = None
+    fluid_types = ("index",)
     _periodicity = np.zeros(3, dtype=bool)
     cosmological_simulation = False
     refine_by = 2
@@ -397,6 +358,9 @@ class GeoRasterDataset(Dataset):
                 fn = fn[:-len(ext)]
                 break
         return fn
+
+    def __str__(self):
+        return self.__repr__()
 
     def _update_transform(self, transform, left_edge, right_edge):
         """

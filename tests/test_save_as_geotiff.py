@@ -24,10 +24,10 @@ class GeoRasterSaveTest(TempDirTest):
 
         ds = yt.load(*fns)
 
-        fields = [("bands", "LS_B1_30m"),
-                  ("bands", "S2_B06_20m"),
-                  ("band_ratios", "S2_NDWI"),
-                  ("variables", "LS_temperature")]
+        fields = [("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B1"),
+                  ("T36MVE_20210315T075701", "S2_B06"),
+                  ("T36MVE_20210315T075701", "NDWI"),
+                  ("LC08_L2SP_171060_20210227_20210304_02_T1", "LS_temperature")]
 
         ds_fn, fm_fn = save_as_geotiff(
             ds, "my_data.tiff", fields=fields)
@@ -49,10 +49,10 @@ class GeoRasterSaveTest(TempDirTest):
         ds = yt.load(*fns)
 
         circle = ds.circle(ds.domain_center, (10, 'km'))
-        fields = [("bands", "LS_B1_30m"),
-                  ("bands", "S2_B06_20m"),
-                  ("band_ratios", "S2_NDWI"),
-                  ("variables", "LS_temperature")]
+        fields = [("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B1"),
+                  ("T36MVE_20210315T075701", "S2_B06"),
+                  ("T36MVE_20210315T075701", "NDWI"),
+                  ("LC08_L2SP_171060_20210227_20210304_02_T1", "LS_temperature")]
         ds_fn, fm_fn = save_as_geotiff(
             ds, "my_data.tiff",
             fields=fields, data_source=circle)
@@ -75,9 +75,9 @@ class GeoRasterSaveTest(TempDirTest):
         ds = yt.load(*fns)
 
         polygon = ds.polygon(os.path.join(test_data_dir, poly_multi))
-        fields = [("bands", "LS_B1_30m"),
-                  ("bands", "S2_B06_20m"),
-                  ("variables", "LS_temperature")]
+        fields = [("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B1"),
+                  ("T36MVE_20210315T075701", "S2_B06"),
+                  ("LC08_L2SP_171060_20210227_20210304_02_T1", "LS_temperature")]
         ds_fn, fm_fn = save_as_geotiff(
             ds, "my_data.tiff",
             fields=fields, data_source=polygon)
