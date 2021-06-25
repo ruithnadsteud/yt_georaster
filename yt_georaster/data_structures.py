@@ -28,7 +28,7 @@ from yt.utilities.parallel_tools.parallel_analysis_interface import \
     parallel_root_only
 from yt.visualization.api import SlicePlot
 
-from yt_geotiff.polygon import YTPolygon, PolygonSelector
+from yt_georaster.polygon import YTPolygon, PolygonSelector
 
 from .fields import \
     GeoRasterFieldInfo

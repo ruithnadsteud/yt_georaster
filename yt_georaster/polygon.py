@@ -8,7 +8,7 @@ import numpy as np
 from shapely.geometry import Polygon, MultiPolygon
 from shapely.ops import unary_union
 
-from yt_geotiff.polygon_selector import PolygonSelector
+from yt_georaster.polygon_selector import PolygonSelector
 
 class YTPolygon(YTSelectionContainer3D):
     """

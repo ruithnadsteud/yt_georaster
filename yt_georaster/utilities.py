@@ -1,5 +1,5 @@
 """
-Utility functions for yt_geotiff.
+Utility functions for yt_georaster.
 
 
 

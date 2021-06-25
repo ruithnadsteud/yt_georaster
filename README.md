@@ -2,7 +2,7 @@
 
 [![CircleCI](https://circleci.com/gh/ruithnadsteud/yt_georaster/tree/master.svg?style=shield)](https://circleci.com/gh/ruithnadsteud/yt_georaster/tree/master)
 
-A package for handling _geotiff_ files and georeferenced datasets within **yt**.
+A yt extension for working with geotagged images loadable with rasterio.
 
 ### Dependencies
 
