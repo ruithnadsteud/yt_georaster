@@ -1,20 +1,31 @@
-.. yt_georaster documentation master file, created by
-   sphinx-quickstart on Mon Jun 28 13:50:18 2021.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Welcome to yt_georaster.
+========================
 
-Welcome to yt_georaster's documentation!
-========================================
+``yt_georaster`` is a `yt <https://yt-project.org/>`__ extension for analyzing
+geotagged image files that are loadable with `rasterio
+<https://rasterio.readthedocs.io/>`__. The ``yt_georaster`` extension combines
+``yt`` and ``rasterio``, allowing users to query data contained within geometric
+shapes, like circles, rectangles, and arbitrary polygons saved as `Shapefiles
+<https://en.wikipedia.org/wiki/Shapefile>`__. Multiple images with different
+resolutions and coordinate reference systems can be loaded together. All queried
+data is transformed to the same resolution and coordinate reference system and
+returned as NumPy arrays of the same shape. Data from multiple images can also
+be re-saved to a single, multiband `GeoTIFF
+<https://en.wikipedia.org/wiki/GeoTIFF>`__ file.
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   Installation.rst
+   Loading.rst
+   Fields.rst
+   Containers.rst
+   Plotting.rst
+   Saving.rst
+   api_reference.rst
 
+Search
+======
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`

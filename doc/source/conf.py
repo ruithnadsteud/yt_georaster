@@ -14,7 +14,7 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-
+import glob
 # -- Project information -----------------------------------------------------
 
 project = 'yt_georaster'
@@ -42,6 +42,8 @@ extensions = [
 
 intersphinx_mapping = \
   {'yt': ('http://yt-project.org/docs/dev/', None),}
+
+autosummary_generate = glob.glob("api_reference.rst")
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
