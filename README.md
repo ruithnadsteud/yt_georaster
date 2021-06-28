@@ -1,6 +1,7 @@
 # yt_georaster
 
 [![CircleCI](https://circleci.com/gh/ruithnadsteud/yt_georaster/tree/master.svg?style=shield)](https://circleci.com/gh/ruithnadsteud/yt_georaster/tree/master)
+[![Coverage Status](https://coveralls.io/repos/github/ruithnadsteud/yt_georaster/badge.svg?branch=master)](https://coveralls.io/github/ruithnadsteud/yt_georaster?branch=master)
 
 A yt extension for working with geotagged images loadable with rasterio.
 

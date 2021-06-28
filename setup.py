@@ -19,7 +19,7 @@ def get_version(filename):
 VERSION = get_version("yt_georaster/__init__.py")
 
 dev_requirements = [
-    'flake8', 'pytest>=3.6']
+    'coveralls', 'flake8', 'pytest>=3.6']
 
 std_libs = []
 cython_extensions = [
