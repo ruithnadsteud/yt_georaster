@@ -17,6 +17,7 @@ be re-saved to a single, multiband `GeoTIFF
    :maxdepth: 2
    :caption: Contents:
 
+   Help.rst
    Installation.rst
    Loading.rst
    Fields.rst
