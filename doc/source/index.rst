@@ -13,6 +13,12 @@ returned as NumPy arrays of the same shape. Data from multiple images can also
 be re-saved to a single, multiband `GeoTIFF
 <https://en.wikipedia.org/wiki/GeoTIFF>`__ file.
 
+Additional Resources
+====================
+
+- `rasterio documentation <https://rasterio.readthedocs.io/>`__
+- `yt documentation <https://yt-project.org/docs/dev/>`__
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
