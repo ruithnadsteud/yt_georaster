@@ -8,30 +8,26 @@ import weakref
 
 from unyt import dimensions
 
-from yt.data_objects.static_output import \
-    Dataset
-from yt.data_objects.selection_objects.data_selection_objects import \
-    YTSelectionContainer
+from yt.data_objects.static_output import Dataset
+from yt.data_objects.selection_objects.data_selection_objects import (
+    YTSelectionContainer,
+)
 from yt.funcs import mylog
-from yt.geometry.selection_routines import \
-    DiskSelector, \
-    GridSelector, \
-    RegionSelector, \
-    SphereSelector
-from yt.frontends.ytdata.data_structures import \
-    YTGridHierarchy, \
-    YTGrid
-from yt.utilities.parallel_tools.parallel_analysis_interface import \
-    parallel_root_only
+from yt.geometry.selection_routines import (
+    DiskSelector,
+    GridSelector,
+    RegionSelector,
+    SphereSelector,
+)
+from yt.frontends.ytdata.data_structures import YTGridHierarchy, YTGrid
+from yt.utilities.parallel_tools.parallel_analysis_interface import parallel_root_only
 from yt.visualization.api import SlicePlot
 
 from yt_georaster.polygon import YTPolygon, PolygonSelector
 from yt_georaster.fields import GeoRasterFieldInfo
 from yt_georaster.image_types import GeoManager
-from yt_georaster.utilities import \
-    validate_coord_array, \
-    validate_quantity, \
-    log_level
+from yt_georaster.utilities import validate_coord_array, validate_quantity, log_level
+
 
 class GeoRasterWindowGrid(YTGrid):
     """
@@ -42,13 +38,13 @@ class GeoRasterWindowGrid(YTGrid):
     then perform a rasterio window read to get data only from this
     area.
     """
+
     def __init__(self, gridobj, left_edge, right_edge):
 
         YTSelectionContainer.__init__(self, gridobj._index.dataset, None)
 
         self.id = gridobj.id
-        self._child_mask = gridobj._child_indices =\
-            gridobj._child_index_mask = None
+        self._child_mask = gridobj._child_indices = gridobj._child_index_mask = None
         self.ds = gridobj._index.dataset
         self._index = gridobj._index
         self.start_index = None
@@ -60,15 +56,16 @@ class GeoRasterWindowGrid(YTGrid):
         self._parent_id = -1
         self.Level = 0
 
-        self.LeftEdge = self.ds.arr(left_edge, 'm')
-        self.RightEdge = self.ds.arr(right_edge, 'm')
+        self.LeftEdge = self.ds.arr(left_edge, "m")
+        self.RightEdge = self.ds.arr(right_edge, "m")
         # Make sure z dimension edges are the same as parent grid.
         self.LeftEdge[2] = gridobj.LeftEdge[2]
         self.RightEdge[2] = gridobj.RightEdge[2]
-        self.ActiveDimensions =\
-            (gridobj.ActiveDimensions *
-                (self.RightEdge - self.LeftEdge) /
-                (gridobj.RightEdge - gridobj.LeftEdge)).d.astype(np.int32)
+        self.ActiveDimensions = (
+            gridobj.ActiveDimensions
+            * (self.RightEdge - self.LeftEdge)
+            / (gridobj.RightEdge - gridobj.LeftEdge)
+        ).d.astype(np.int32)
         # Inherit dx values from parent.
         self.dds = gridobj.dds
 
@@ -81,13 +78,16 @@ class GeoRasterWindowGrid(YTGrid):
         right_edge = self.RightEdge
 
         transform_x, transform_y = warp.transform(
-            self.ds.parameters['crs'], dst_crs,
+            self.ds.parameters["crs"],
+            dst_crs,
             [left_edge[0], right_edge[0]],
-            [left_edge[1],right_edge[1]], zs=None)
+            [left_edge[1], right_edge[1]],
+            zs=None,
+        )
 
-        window = from_bounds(transform_x[0], transform_y[0],
-                             transform_x[1], transform_y[1],
-                             transform)
+        window = from_bounds(
+            transform_x[0], transform_y[0], transform_x[1], transform_y[1], transform
+        )
 
         return window
 
@@ -96,6 +96,7 @@ class GeoRasterGrid(YTGrid):
     """
     Grid object for GeoRasterDataset representing an entire image.
     """
+
     _last_wgrid = None
     _last_wgrid_id = None
 
@@ -227,15 +228,18 @@ class GeoRasterGrid(YTGrid):
         Calculate position, width, and height for a rasterio window read.
         """
         left_edge, right_edge = self._get_selection_window(selector)
-        
-        transform_x, transform_y = warp.transform(
-            self.ds.parameters['crs'], dst_crs,
-            [left_edge[0], right_edge[0]],
-            [left_edge[1],right_edge[1]], zs=None)
 
-        window = from_bounds(transform_x[0], transform_y[0],
-                             transform_x[1], transform_y[1],
-                             transform)
+        transform_x, transform_y = warp.transform(
+            self.ds.parameters["crs"],
+            dst_crs,
+            [left_edge[0], right_edge[0]],
+            [left_edge[1], right_edge[1]],
+            zs=None,
+        )
+
+        window = from_bounds(
+            transform_x[0], transform_y[0], transform_x[1], transform_y[1], transform
+        )
 
         return window
 
@@ -250,6 +254,7 @@ class GeoRasterHierarchy(YTGridHierarchy):
 
     This makes use of the GeoManager to identify fields.
     """
+
     grid = GeoRasterGrid
 
     def _count_grids(self):
@@ -261,8 +266,7 @@ class GeoRasterHierarchy(YTGridHierarchy):
 
         # The geo manager identifies files with various imagery/satellite
         # naming conventions.
-        self.geo_manager = gm = \
-          GeoManager(self, field_map=self.ds.field_map)
+        self.geo_manager = gm = GeoManager(self, field_map=self.ds.field_map)
         gm.process_files(self.ds.filename_list)
 
         ftypes = set(self.ds.fluid_types)
@@ -274,10 +278,11 @@ class GeoRasterDataset(Dataset):
     """
     Dataset class for rasterio-loadable images.
     """
+
     _index_class = GeoRasterHierarchy
     _field_info_class = GeoRasterFieldInfo
     _dataset_type = "GeoRaster"
-    _valid_extensions = ('.tif','.tiff','.jp2')
+    _valid_extensions = (".tif", ".tiff", ".jp2")
     _driver_types = ("GTiff", "JP2OpenJPEG")
     geometry = "cartesian"
     default_fluid_type = None
@@ -286,7 +291,6 @@ class GeoRasterDataset(Dataset):
     cosmological_simulation = False
     refine_by = 2
     _con_attrs = ()
-
 
     def __init__(self, *args, field_map=None):
         self.filename_list = args
@@ -319,13 +323,13 @@ class GeoRasterDataset(Dataset):
             for key in f.meta.keys():
                 v = f.meta[key]
                 self.parameters[key] = v
-            self.parameters['res'] = f.res
-            self.parameters['src'] = f.crs
+            self.parameters["res"] = f.res
+            self.parameters["src"] = f.crs
         self.current_time = 0
 
-        width = self.parameters['width']
-        height = self.parameters['height']
-        transform = self.parameters['transform']
+        width = self.parameters["width"]
+        height = self.parameters["height"]
+        transform = self.parameters["transform"]
         self.dimensionality = 3
         self.domain_dimensions = np.array([width, height, 1], dtype=np.int32)
 
@@ -333,28 +337,31 @@ class GeoRasterDataset(Dataset):
         rast_right = np.concatenate([transform * (width, height), [1]])
         # save dimensions that need to be flipped
         self._flip_axes = np.where(rast_left > rast_right)[0]
-        self.domain_left_edge =\
-            self.arr(np.min([rast_left, rast_right], axis=0), 'm')
-        self.domain_right_edge =\
-            self.arr(np.max([rast_left, rast_right], axis=0), 'm')
-        self.resolution = self.arr(self.parameters['res'], 'm')
+        self.domain_left_edge = self.arr(np.min([rast_left, rast_right], axis=0), "m")
+        self.domain_right_edge = self.arr(np.max([rast_left, rast_right], axis=0), "m")
+        self.resolution = self.arr(self.parameters["res"], "m")
 
     def _setup_classes(self):
         super()._setup_classes()
         self.polygon = functools.partial(YTPolygon, ds=weakref.proxy(self))
 
     def _set_code_unit_attributes(self):
-        attrs = ('length_unit', 'mass_unit', 'time_unit',
-                 'velocity_unit', 'magnetic_unit')
-        si_units = ('m', 'kg', 's', 'm/s', 'T')
+        attrs = (
+            "length_unit",
+            "mass_unit",
+            "time_unit",
+            "velocity_unit",
+            "magnetic_unit",
+        )
+        si_units = ("m", "kg", "s", "m/s", "T")
         base_units = np.ones(len(attrs), dtype=np.float64)
         for unit, attr, si_unit in zip(base_units, attrs, si_units):
             setattr(self, attr, self.quan(unit, si_unit))
 
     def set_units(self):
         super().set_units()
-        res = self.parameters['res']
-        for i, ax in enumerate('xy'):
+        res = self.parameters["res"]
+        for i, ax in enumerate("xy"):
             self.unit_registry.add(f"{ax}pixels", res[i], dimensions.length)
 
         if res[0] == res[1]:
@@ -366,7 +373,7 @@ class GeoRasterDataset(Dataset):
         fn = self.basename
         for ext in self._valid_extensions:
             if re.search(f"{ext}$", fn, flags=re.IGNORECASE):
-                fn = fn[:-len(ext)]
+                fn = fn[: -len(ext)]
                 break
         return fn
 
@@ -384,7 +391,7 @@ class GeoRasterDataset(Dataset):
                 val = right_edge[i].d
             else:
                 val = left_edge[i].d
-            tvals[3*i + 2] = val
+            tvals[3 * i + 2] = val
         return rasterio.Affine(*tvals)
 
     def circle(self, center, radius):
@@ -416,8 +423,8 @@ class GeoRasterDataset(Dataset):
         """
 
         cc = validate_coord_array(
-            self, center, "center",
-            self.domain_center[2], "code_length")
+            self, center, "center", self.domain_center[2], "code_length"
+        )
         normal = [0, 0, 1]
         height = self.domain_width[2] / 2
         return self.disk(cc, normal, radius, height)
@@ -462,11 +469,11 @@ class GeoRasterDataset(Dataset):
         """
 
         le = validate_coord_array(
-            self, left_edge, "left_edge",
-            self.domain_left_edge[2], "code_length")
+            self, left_edge, "left_edge", self.domain_left_edge[2], "code_length"
+        )
         re = validate_coord_array(
-            self, right_edge, "right_edge",
-            self.domain_right_edge[2], "code_length")
+            self, right_edge, "right_edge", self.domain_right_edge[2], "code_length"
+        )
 
         if clip:
             le.clip(self.domain_left_edge, self.domain_right_edge, out=le)
@@ -510,8 +517,8 @@ class GeoRasterDataset(Dataset):
         """
 
         cc = validate_coord_array(
-            self, center, "center",
-            self.domain_center[2], "code_length")
+            self, center, "center", self.domain_center[2], "code_length"
+        )
         width = validate_quantity(self, width, "code_length")
         height = validate_quantity(self, height, "code_length")
         size = self.arr([width, height])
@@ -519,8 +526,7 @@ class GeoRasterDataset(Dataset):
         right = cc[:2] + size / 2
         return self.rectangle(left, right)
 
-    def plot(self, field, data_source=None,
-             center=None, width=None, height=None):
+    def plot(self, field, data_source=None, center=None, width=None, height=None):
         """
         Create a spatial plot of a given field.
 
@@ -563,8 +569,8 @@ class GeoRasterDataset(Dataset):
 
         if center is not None:
             center = validate_coord_array(
-                self, center, "center",
-                self.domain_center[2], "code_length")
+                self, center, "center", self.domain_center[2], "code_length"
+            )
         if width is not None:
             width = validate_quantity(self, width, "code_length")
         if height is not None:
@@ -578,8 +584,7 @@ class GeoRasterDataset(Dataset):
                     center = self.domain_center
                 if height is None:
                     height = width
-                data_source = self.rectangle_from_center(
-                    center, width, height)
+                data_source = self.rectangle_from_center(center, width, height)
                 center = data_source.center
 
         # construct a window data set using bounds from data_source
@@ -603,8 +608,9 @@ class GeoRasterDataset(Dataset):
 
         plot_width = max(width, height)
 
-        p = SlicePlot(wds, 'z', field, data_source=w_data_source,
-                      center=center, width=plot_width)
+        p = SlicePlot(
+            wds, "z", field, data_source=w_data_source, center=center, width=plot_width
+        )
         # make this an actual pointer so wds doesn't go out of scope
         p.ds = wds
 
@@ -612,10 +618,10 @@ class GeoRasterDataset(Dataset):
 
     @classmethod
     def _is_valid(self, *args, **kwargs):
-        for fn in args:    
+        for fn in args:
             valid = False
             for ext in self._valid_extensions:
-                if re.search(f"{ext}$", fn, flags=re.IGNORECASE): 
+                if re.search(f"{ext}$", fn, flags=re.IGNORECASE):
                     valid = True
                     break
 
@@ -643,24 +649,28 @@ class GeoRasterWindowDataset(GeoRasterDataset):
         self._parent_ds = parent_ds
         self._index_class = parent_ds._index_class
         self._dataset_type = parent_ds._dataset_type
-        self.domain_left_edge = parent_ds.arr(left_edge, 'm')
-        self.domain_right_edge = parent_ds.arr(right_edge, 'm')
-        self.domain_dimensions = \
-            (parent_ds.domain_dimensions *
-                (self.domain_right_edge - self.domain_left_edge) /
-                (parent_ds.domain_right_edge -
-                    parent_ds.domain_left_edge)).d.astype(np.int32)
+        self.domain_left_edge = parent_ds.arr(left_edge, "m")
+        self.domain_right_edge = parent_ds.arr(right_edge, "m")
+        self.domain_dimensions = (
+            parent_ds.domain_dimensions
+            * (self.domain_right_edge - self.domain_left_edge)
+            / (parent_ds.domain_right_edge - parent_ds.domain_left_edge)
+        ).d.astype(np.int32)
 
-        super().__init__(parent_ds.parameter_filename,
-                         field_map=parent_ds.field_map)
+        super().__init__(parent_ds.parameter_filename, field_map=parent_ds.field_map)
 
         for field in parent_ds._added_fields:
             self.add_field(*field["args"], **field["kwargs"])
 
     def _parse_parameter_file(self):
-        inh_attrs = ("current_time", "dimensionality",
-                     "num_particles", "_flip_axes",
-                     "resolution", "filename_list")
+        inh_attrs = (
+            "current_time",
+            "dimensionality",
+            "num_particles",
+            "_flip_axes",
+            "resolution",
+            "filename_list",
+        )
         for attr in inh_attrs:
             setattr(self, attr, getattr(self._parent_ds, attr, None))
 

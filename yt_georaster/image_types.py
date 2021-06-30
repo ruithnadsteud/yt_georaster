@@ -3,6 +3,7 @@ import rasterio
 import re
 import yaml
 
+
 class GeoImage:
     _band_aliases = ()
 
@@ -13,6 +14,7 @@ class GeoImage:
     def identify(self, filename):
         prefix, _ = self.split(filename)
         return prefix, None
+
 
 class SatGeoImage(GeoImage):
     def identify(self, filename):
@@ -29,6 +31,7 @@ class SatGeoImage(GeoImage):
         fprefix = f"{self._field_prefix}_{groups[1]}"
 
         return ftype, fprefix
+
 
 class Sentinel2(SatGeoImage):
     _regex = re.compile(r"([A-Za-z0-9]+_[A-Za-z0-9]+)_([A-Za-z0-9]+)(?:_\d+m)?$")
@@ -50,6 +53,7 @@ class Sentinel2(SatGeoImage):
         ("B12", ("swir_4",)),
     )
 
+
 class Landsat8(SatGeoImage):
     """
     LXSS_LLLL_PPPRRR_YYYYMMDD_yyyymmdd_CC_TX
@@ -64,7 +68,10 @@ class Landsat8(SatGeoImage):
     CC = Collection number (e.g., 01, 02, etc.)
     TX= RT for Real-Time, T1 for Tier 1 (highest quality), and T2 for Tier 2
     """
-    _regex = re.compile(r"(^L[COTEM]08_L\w{3}_\d{6}_\d{8}_\d{8}_\d{2}_\w{2})\w+_([A-Za-z0-9]+)$")
+
+    _regex = re.compile(
+        r"(^L[COTEM]08_L\w{3}_\d{6}_\d{8}_\d{8}_\d{2}_\w{2})\w+_([A-Za-z0-9]+)$"
+    )
     _suffix = "tif"
     _field_prefix = "L8"
     _band_aliases = (
@@ -80,6 +87,7 @@ class Landsat8(SatGeoImage):
         ("B10", ("tirs_1",)),
         ("B11", ("tirs_2",)),
     )
+
 
 class GeoManager:
     image_types = (Sentinel2(), Landsat8(), GeoImage())

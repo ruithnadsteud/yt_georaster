@@ -8,9 +8,9 @@ Testing functions.
 import os
 import shutil
 import tempfile
-from unittest import \
-    TestCase
+from unittest import TestCase
 from yt.config import ytcfg
+
 
 def check_path(filename):
     """
@@ -25,6 +25,7 @@ def check_path(filename):
         return tfn
     raise IOError("File does not exist: %s." % filename)
 
+
 def get_path(filename):
     """
     Get a path or list of paths.
@@ -36,8 +37,8 @@ def get_path(filename):
         path = check_path(filename)
     return path
 
-def requires_file(filename):
 
+def requires_file(filename):
     def ffalse(func):
         return None
 
@@ -51,6 +52,7 @@ def requires_file(filename):
     except IOError:
         return ffalse
     return ftrue
+
 
 class TempDirTest(TestCase):
     """

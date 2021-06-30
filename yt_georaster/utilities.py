@@ -11,6 +11,7 @@ import yaml
 
 from yt.utilities.logger import ytLogger
 
+
 def save_as_geotiff(ds, filename, fields=None, data_source=None):
     r"""
     Export georeferenced data to a reloadable geotiff.
@@ -70,7 +71,8 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
     prefix, suffix = filename.rsplit(".", 1)
     if suffix.lower() not in exts:
         raise ValueError(
-            f"Invalid filename extension ({filename}), must be one of {exts}.")
+            f"Invalid filename extension ({filename}), must be one of {exts}."
+        )
 
     if fields is None:
         fields = ds.field_list
@@ -82,29 +84,31 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
 
     width, height = wgrid.ActiveDimensions[:2]
     ytLogger.info(f"Saving {len(fields)} fields to {filename}.")
-    ytLogger.info(f"Bounding box: {wgrid.LeftEdge[:2]} - "
-                  f"{wgrid.RightEdge[:2]} with shape {width,height}.")
+    ytLogger.info(
+        f"Bounding box: {wgrid.LeftEdge[:2]} - "
+        f"{wgrid.RightEdge[:2]} with shape {width,height}."
+    )
 
     dtype = ds.index.io._field_dtype
     transform = ds._update_transform(
-        ds.parameters["transform"],
-        wgrid.LeftEdge,
-        wgrid.RightEdge)
+        ds.parameters["transform"], wgrid.LeftEdge, wgrid.RightEdge
+    )
 
     # get the mask to remove data not in the container
     mask = data_source.selector.fill_mask(wgrid)[..., 0]
 
     field_info = {}
-    with rasterio.open(filename,
-                       'w',
-                       driver='GTiff',
-                       height=height,
-                       width=width,
-                       count=len(fields),
-                       dtype=dtype,
-                       crs=ds.parameters['crs'],
-                       transform=transform,
-                       ) as dst:
+    with rasterio.open(
+        filename,
+        "w",
+        driver="GTiff",
+        height=height,
+        width=width,
+        count=len(fields),
+        dtype=dtype,
+        crs=ds.parameters["crs"],
+        transform=transform,
+    ) as dst:
         for i, field in enumerate(fields):
             band = i + 1
             fname = f"band_{band}"
@@ -123,10 +127,13 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
     with open(yfn, mode="w") as f:
         yaml.dump({prefix: field_info}, stream=f)
     ytLogger.info(f"Field map saved to {yfn}.")
-    ytLogger.info(f"Save complete. Reload data with:\n"
-                  f"ds = yt.load(\"{filename}\", field_map=\"{yfn}\")")
+    ytLogger.info(
+        f"Save complete. Reload data with:\n"
+        f'ds = yt.load("{filename}", field_map="{yfn}")'
+    )
 
     return (filename, yfn)
+
 
 def validate_coord_array(ds, coord, name, padval, def_units):
     """
@@ -134,14 +141,12 @@ def validate_coord_array(ds, coord, name, padval, def_units):
     If array is length 2, use padval for third value.
     """
     if not isinstance(coord, np.ndarray):
-        raise ValueError(
-            f"{name} argument must be array-like: {coord}.")
+        raise ValueError(f"{name} argument must be array-like: {coord}.")
 
     if coord.size == 3:
         return coord
     if coord.size != 2:
-        raise ValueError(
-            f"{name} argument must be of size 2 or 3.")
+        raise ValueError(f"{name} argument must be of size 2 or 3.")
 
     if isinstance(coord, unyt_array):
         cfunc = uconcatenate
@@ -156,6 +161,7 @@ def validate_coord_array(ds, coord, name, padval, def_units):
     newc = cfunc([coord, afunc(padval.to(units))])
     return newc
 
+
 def validate_quantity(ds, value, units):
     """
     Take a unyt_quantity, float, or (float, string) tuple
@@ -163,8 +169,9 @@ def validate_quantity(ds, value, units):
     """
 
     if hasattr(value, "units") and not isinstance(value, unyt_quantity):
-        raise ValueError("value must be a quantity, not an array. "
-                         "Use ds.quan instead of ds.arr.")
+        raise ValueError(
+            "value must be a quantity, not an array. " "Use ds.quan instead of ds.arr."
+        )
     if isinstance(value, unyt_quantity):
         return value
     elif isinstance(value, (tuple, list)):
@@ -173,10 +180,12 @@ def validate_quantity(ds, value, units):
         value = ds.quan(value, units)
     return value
 
-class log_level():
+
+class log_level:
     """
     Context manager for setting log level.
     """
+
     def __init__(self, minlevel, mylog=None):
         if mylog is None:
             mylog = ytLogger
