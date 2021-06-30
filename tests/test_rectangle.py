@@ -15,6 +15,7 @@ s2 = "M2_Sentinel-2_test_data/T36MVE_20210315T075701_B01.jp2"
 landsat_fns = glob.glob(os.path.join(test_data_dir, os.path.dirname(landsat), "*.TIF"))
 s2_fns = glob.glob(os.path.join(test_data_dir, os.path.dirname(s2), "*.jp2"))
 
+
 @requires_file(landsat)
 @requires_file(s2)
 def test_rectangle_ls():
@@ -33,16 +34,17 @@ def test_rectangle_ls():
     rw = rectangle.right_edge - rectangle.left_edge
     a1 = rw[:2].prod()
     a2 = rectangle.quantities.total_quantity(("index", "area"))
-    assert_almost_equal(a1/a2, 1, decimal=3)
+    assert_almost_equal(a1 / a2, 1, decimal=3)
 
     n1 = a1 / ds.resolution.prod()
-    n2 = rectangle[('LC08_L2SP_171060_20210227_20210304_02_T1', 'L8_B1')].size
-    assert_almost_equal(n1/n2, 1, decimal=3)
+    n2 = rectangle[("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B1")].size
+    assert_almost_equal(n1 / n2, 1, decimal=3)
 
-    n3 = rectangle[('T36MVE_20210315T075701', 'S2_B01')].size
-    assert_almost_equal(n1/n3, 1, decimal=3)
+    n3 = rectangle[("T36MVE_20210315T075701", "S2_B01")].size
+    assert_almost_equal(n1 / n3, 1, decimal=3)
 
     assert_equal(n2, n3)
+
 
 @requires_file(landsat)
 @requires_file(s2)
@@ -62,16 +64,17 @@ def test_rectangle_s2():
     rw = rectangle.right_edge - rectangle.left_edge
     a1 = rw[:2].prod()
     a2 = rectangle.quantities.total_quantity(("index", "area"))
-    assert_almost_equal(a1/a2, 1, decimal=2)
+    assert_almost_equal(a1 / a2, 1, decimal=2)
 
     n1 = a1 / ds.resolution.prod()
-    n2 = rectangle[('LC08_L2SP_171060_20210227_20210304_02_T1', 'L8_B1')].size
-    assert_almost_equal(n1/n2, 1, decimal=2)
+    n2 = rectangle[("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B1")].size
+    assert_almost_equal(n1 / n2, 1, decimal=2)
 
-    n3 = rectangle[('T36MVE_20210315T075701', 'S2_B01')].size
-    assert_almost_equal(n1/n3, 1, decimal=2)
+    n3 = rectangle[("T36MVE_20210315T075701", "S2_B01")].size
+    assert_almost_equal(n1 / n3, 1, decimal=2)
 
     assert_equal(n2, n3)
+
 
 @requires_file(landsat)
 @requires_file(s2)
@@ -89,13 +92,13 @@ def test_rectangle_overlaps_edge():
     rw = rectangle.right_edge - rectangle.left_edge
     a1 = rw[:2].prod()
     a2 = rectangle.quantities.total_quantity(("index", "area"))
-    assert_almost_equal(a1/a2, 1, decimal=3)
+    assert_almost_equal(a1 / a2, 1, decimal=3)
 
     n1 = a1 / ds.resolution.prod()
-    n2 = rectangle[('LC08_L2SP_171060_20210227_20210304_02_T1', 'L8_B1')].size
-    assert_almost_equal(n1/n2, 1, decimal=3)
+    n2 = rectangle[("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B1")].size
+    assert_almost_equal(n1 / n2, 1, decimal=3)
 
-    n3 = rectangle[('T36MVE_20210315T075701', 'S2_B01')].size
-    assert_almost_equal(n1/n3, 1, decimal=3)
+    n3 = rectangle[("T36MVE_20210315T075701", "S2_B01")].size
+    assert_almost_equal(n1 / n3, 1, decimal=3)
 
     assert_equal(n2, n3)
