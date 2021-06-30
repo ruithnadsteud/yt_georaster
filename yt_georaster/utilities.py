@@ -9,79 +9,7 @@ import rasterio
 from unyt import unyt_array, unyt_quantity, uconcatenate
 import yaml
 
-import yt.geometry.selection_routines as selector_shape
 from yt.utilities.logger import ytLogger
-
-import os
-
-def coord_cal(xcell, ycell, transform):
-    """Function to calculate the position of cell (xcell, ycell) in terms of
-    longitude and latitude"""
-
-    # note dy is -ve
-    dx, rotx, xmin, roty, dy, ymax = transform[0:6]
-    xp = xmin + dx/2 + dx*xcell + rotx*ycell
-    yp = ymax + dy/2 + dy*ycell + roty*xcell
-
-    return xp, yp
-
-
-def left_aligned_coord_cal(xcell, ycell, transform):
-    """Function to calculate the position of cell (xcell, ycell) in terms of
-    distance from the top left corner using the longitude and latitude of
-    the cell and the Earth radius to calculate an arc distance.
-    This is required for yt as it needs to work with the distances rather than
-    degrees.
-    """
-
-    dx, rotx, xmin, roty, dy, ymax = transform[0:6]
-    xp, yp = coord_cal(xcell, ycell, transform)
-    # convert to meters
-    x_arc_dist = (xp - xmin)
-    y_arc_dist = (ymax - yp)
-    return x_arc_dist, y_arc_dist
-
-
-def parse_awslandsat_metafile(filename, flatdict=True):
-    """Function to read in metadata/parameter file and output it as a dict.
-    """
-
-    f = open(filename, 'r')
-    groupkeys = []
-
-    data = {}
-
-    while True:
-
-        # Get next line from file
-        line = f.readline().strip().replace('"', '').replace('\n', '')
-
-        # if line is empty
-        # end of file is reached
-        if not line or line == 'END':
-            break
-        key, value = line.split(' = ')
-
-        # make sure we have all of value if it is an array
-        while value.count('(') != value.count(')'):
-            line = f.readline().strip().replace('"', '').replace('\n', '')
-            value += line
-
-        # save to data dictionary
-        if key == 'GROUP':
-            groupkeys.append(value)
-        elif key == 'END_GROUP':
-            groupkeys.pop()
-        else:
-            if flatdict:
-                data[key] = value
-            else:
-                data[tuple(groupkeys + [key])] = value
-
-    f.close()
-
-    return data
-
 
 def save_as_geotiff(ds, filename, fields=None, data_source=None):
     r"""
@@ -200,45 +128,6 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
 
     return (filename, yfn)
 
-def merge_dicts(*dict_args):
-    """
-    Given any number of dicts, shallow copy and merge into a new dict,
-    precedence goes to key value pairs in latter dicts.
-    """
-    result = {}
-    for dictionary in dict_args:
-        result.update(dictionary)
-    return result
-
-
-def rasterio_window_calc(selector):
-    """
-    This function reads information from either a sphere,
-    box or region selector object and outputs the
-    dimensions of a container: left edge, right edge,
-    width and height.
-    """
-
-    if isinstance(selector, selector_shape.SphereSelector):
-
-        selector_left_edge = np.array(selector.center)
-        selector_left_edge[:2] -= selector.radius
-        selector_right_edge = np.array(selector.center)
-        selector_right_edge[:2] += selector.radius
-        selector_width = selector.radius*2
-        selector_height = selector_width
-
-    elif isinstance(selector, selector_shape.RegionSelector):
-
-        selector_left_edge = selector.left_edge
-        selector_right_edge = selector.right_edge
-        selector_width = selector.right_edge[0] - selector.left_edge[0]
-        selector_height = selector_width
-
-    return selector_left_edge, selector_right_edge,\
-        selector_width, selector_height
-
-
 def validate_coord_array(ds, coord, name, padval, def_units):
     """
     Take a length 2 or 3 array and return a length 3 array.
@@ -267,7 +156,6 @@ def validate_coord_array(ds, coord, name, padval, def_units):
     newc = cfunc([coord, afunc(padval.to(units))])
     return newc
 
-
 def validate_quantity(ds, value, units):
     """
     Take a unyt_quantity, float, or (float, string) tuple
@@ -284,59 +172,6 @@ def validate_quantity(ds, value, units):
     else:
         value = ds.quan(value, units)
     return value
-
-def s1_geocode(path, filename):
-    """
-    A quick example of handling transforms from gcps with rasterio.
-    """
-    
-    """Main function."""
-    # open the file
-    with rasterio.open(os.path.join(path, filename)) as src:
-        #meta = src.meta
-        #array = src.read(1)
-        gcps, crs = src.get_gcps()  # get crs and gcps
-        transform = rasterio.transform.from_gcps(gcps)  # get transform
-    
-    
-    # temp_file = "s1_"+polarisation+"_temp.tiff"
-    # output_path = path_to_sen1_tiff.parent / temp_file
-
-    return crs, transform
-    # with rasterio.Env():
-    #     # update the metadata
-    #     new_meta = meta.copy()
-    #     new_meta.update(
-    #         crs=crs,
-    #         transform=transform
-    #     )
-    #     #print("old: ", meta)
-    #     #print("new: ", new_meta)
-    #     # save to file
-    #     with rasterio.open(output_path, "w", **new_meta) as dst:
-    #         dst.write(array, 1)
-    # reload that data to double check
-    #with rasterio.open(output_path) as src:
-    #    reloaded_meta = src.meta
-    #    new_array = src.read(1)
-    # does this change the data in anyway?
-    #print("meta the same? ", reloaded_meta == new_meta)
-    #print("data the same? ", (new_array == array).all())
-
-def s1_polarisation(filename):
-    if "vv" in filename: 
-        pol = "VV"
-    elif "vh" in filename:
-        pol="VH"
-    return pol
-
-def s1_data_manager(path, filename):
-    # Geocode S1 image      
-    s1_crs, s1_transform = s1_geocode(path, filename)
-    field_label = ('bands', ("S1_"+s1_polarisation(filename)))
-    #self.ds.parameters['crs'] = s1_crs
-    #self.ds.parameters['crs'] = s1_transform
-    return field_label
 
 class log_level():
     """

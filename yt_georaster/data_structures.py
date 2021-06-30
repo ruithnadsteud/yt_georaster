@@ -1,12 +1,9 @@
 import functools
-import glob
 import numpy as np
-import os
 import rasterio
 from rasterio import warp
 from rasterio.windows import from_bounds
 import re
-import stat
 import weakref
 
 from unyt import dimensions
@@ -29,13 +26,9 @@ from yt.utilities.parallel_tools.parallel_analysis_interface import \
 from yt.visualization.api import SlicePlot
 
 from yt_georaster.polygon import YTPolygon, PolygonSelector
-
-from .fields import \
-    GeoRasterFieldInfo
-from .image_types import GeoManager
-from .utilities import \
-    left_aligned_coord_cal, \
-    parse_awslandsat_metafile, \
+from yt_georaster.fields import GeoRasterFieldInfo
+from yt_georaster.image_types import GeoManager
+from yt_georaster.utilities import \
     validate_coord_array, \
     validate_quantity, \
     log_level
@@ -688,141 +681,3 @@ class GeoRasterWindowDataset(GeoRasterDataset):
         wobj = getattr(self, type_name)(*list(con_args.values()))
         wobj.ds = self
         return wobj
-
-class LandSatGeoTiffHierarchy(GeoRasterHierarchy):
-    def _detect_output_fields(self):
-        self.field_list = []
-        self.ds.field_units = self.ds.field_units or {}
-
-        # get list of filekeys
-        filekeys = [s for s in self.ds.parameters.keys()
-                    if 'FILE_NAME_BAND_' in s]
-        files = [self.ds.data_dir + self.ds.parameters[filekey]
-                 for filekey in filekeys]
-
-        group = 'bands'
-        for file in files:
-            band = file.split(os.path.sep)[-1].split('.')[0].split('B')[1]
-            field_name = (group, band)
-            self.field_list.append(field_name)
-            self.ds.field_units[field_name] = ""
-
-
-class LandSatGeoTiffDataSet(GeoRasterDataset):
-    _index_class = LandSatGeoTiffHierarchy
-
-    def _parse_parameter_file(self):
-        self.current_time = 0.
-        self.unique_identifier = \
-            int(os.stat(self.parameter_filename)[stat.ST_CTIME])
-
-        # self.parameter_filename is the dir str
-        if self.parameter_filename[-1] == '/':
-            self.data_dir = self.parameter_filename
-            self.mtlfile = self.data_dir +\
-                self.parameter_filename[:-1]\
-                .split(os.path.sep)[-1] + '_MTL.txt'
-            self.angfile = self.data_dir + self.parameter_filename[:-1]\
-                          .split(os.path.sep)[-1] + '_ANG.txt'
-        else:
-            self.data_dir = self.parameter_filename + '/'
-            self.mtlfile = self.data_dir + self.parameter_filename.split(os.path.sep)[-1] + '_MTL.txt'
-            self.angfile = self.data_dir + self.parameter_filename .split(os.path.sep)[-1]+ '_ANG.txt'
-        # load metadata files
-        self.parameters.update(parse_awslandsat_metafile(self.angfile))
-        self.parameters.update(parse_awslandsat_metafile(self.mtlfile))
-
-        # get list of filekeys
-        filekeys = [s for s in self.parameters.keys() if 'FILE_NAME_BAND_' in s]
-        files = [self.data_dir + self.parameters[filekey] for filekey in filekeys]
-        self.parameters['count'] = len(filekeys)
-        # take the parameters displayed in the filename
-        self._parse_landsat_filename_data(self.parameter_filename.split(os.path.sep)[-1])
-
-        for filename in files:
-            band = filename.split(os.path.sep)[-1].split('.')[0].split('B')[1]
-            # filename = self.parameters[band]
-            with rasterio.open(filename, "r") as f:
-                for key in f.meta.keys():
-                    # skip key if already defined as a parameter
-                    if key in self.parameters.keys(): continue
-                    v = f.meta[key]
-                    # if key == "con_args":
-                    #     v = v.astype("str")
-                    self.parameters[(band, key)] = v
-                self._with_parameter_file_open(f)
-                # self.parameters['transform'] = f.transform
-
-            if band == '1':
-                self.domain_dimensions = np.array([self.parameters[(band, 'height')],
-                                                   self.parameters[(band, 'width')],
-                                                   1], dtype=np.int32)
-                self.dimensionality = 3
-                rightedge_xy = left_aligned_coord_cal(self.domain_dimensions[0],
-                                                      self.domain_dimensions[1],
-                                                      self.parameters[(band, 'transform')])
-                
-                self.domain_left_edge = self.arr(np.zeros(self.dimensionality,
-                                                           dtype=np.float64), 'm')
-                self.domain_right_edge = self.arr([rightedge_xy[0],
-                                                  rightedge_xy[1],
-                                                  1], 'm', dtype=np.float64)
-
-    def _parse_landsat_filename_data(self, filename):
-        """
-        "LXSS_LLLL_PPPRRR_YYYYMMDD_yyyymmdd_CC_TX"
-        L = Landsat
-        X = Sensor ("C"=OLI/TIRS combined,
-                    "O"=OLI-only, "T"=TIRS-only, 
-                    E"=ETM+, "T"="TM, "M"=MSS)
-        SS = Satellite ("07"=Landsat 7, "08"=Landsat 8)
-        LLLL = Processing correction level (L1TP/L1GT/L1GS)
-        PPP = WRS path
-        RRR = WRS row
-        YYYYMMDD = Acquisition year, month, day
-        yyyymmdd - Processing year, month, day
-        CC = Collection number (01, 02, …)
-        TX = Collection category ("RT"=Real-Time, "T1"=Tier 1,
-                                  "T2"=Tier 2)
-        """
-        sensor = {"C": "OLI&TIRS combined",
-                  "O": "OLI-only",
-                  # "T": "TIRS-only", commenting out to fix flake8 error
-                  "E": "ETM+", "T": "TM", "M": "MSS"}
-        satellite = {"07": "Landsat 7",
-                     "08": "Landsat 8"}
-        category = {"RT": "Real-Time", "T1": "Tier 1",
-                    "T2": "Tier 2"}
-
-        self.parameters['sensor'] = sensor[filename[1]]
-        self.parameters['satellite'] = satellite[filename[2:4]]
-        self.parameters['level'] = filename[5:9]        
-        self.parameters['wrs'] = {'path': filename[10:13],
-                                  'row': filename[13:16]}
-        self.parameters['acquisition_time'] = {'year': filename[17:21],
-                                               'month': filename[21:23],
-                                               'day': filename[23:25]}
-        self.parameters['processing_time'] = {'year': filename[26:30],
-                                              'month': filename[30:32],
-                                              'day': filename[32:34]}
-        self.parameters['collection'] = {
-                                'number': filename[35:37],
-                                'category': category[filename[38:40]]}
-
-    @classmethod
-    def _is_valid(self, *args, **kwargs):
-        if not os.path.isdir(args[0]): return False
-        if len(glob.glob(args[0]+'/L*_ANG.txt')) != 1 and\
-           len(glob.glob(args[0]+'/L*_MTL.txt')) != 1: return False
-        try:
-            file = glob.glob(args[0]+'/*.TIF')[0] # open the first file
-            with rasterio.open(file, "r") as f:
-                # data_type = parse_gtif_attr(f, "dtype")
-                driver_type = f.meta["driver"]
-                # if data_type == "uint16":
-                #     return True
-                if driver_type == "GTiff":
-                    return True
-        except:
-            pass
-        return False
