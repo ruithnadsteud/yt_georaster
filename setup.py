@@ -73,6 +73,7 @@ setup(name="yt_georaster",
           'numpy',
           'pyyaml',
           'rasterio',
+          'scipy',
           'shapely',
           'yt'
       ],
