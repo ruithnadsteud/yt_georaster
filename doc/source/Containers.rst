@@ -30,7 +30,7 @@ coordinate reference systems (see :ref:`ytgr_load_multiple`). When data
 is queried with a data container, it is resampled to the resolution of
 :ref:`ytgr_base_image` and transformed into the CRS of :ref:`ytgr_base_image`.
 
-**Data cannot be queried outside the bounds of :ref:`ytgr_base_image`.**
+**Data cannot be queried outside the bounds of the base image.**
 However, data **can** be queried outside of secondary (i.e., not the base)
 images. All pixels outside a secondary image will be returned as zeros.
 

@@ -70,36 +70,6 @@ class GeoRasterFieldInfo(FieldInfoContainer):
 
         for ftype in self.ds.index.geo_manager.ftypes:
 
-            # Normalised difference water index (NDWI)
-            def _ndwi(field, data):
-                ftype = field.name[0]
-                green = data[ftype, "green"]
-                nir = data[ftype, "nir"]
-                return (green - nir) / (green + nir)
-
-            self.add_field(
-                (ftype, "NDWI"),
-                function=_ndwi,
-                sampling_type="local",
-                take_log=False,
-                units="")
-
-            # Maximum chlorophyll index (MCI)
-            def _mci(field, data):
-                ftype = field.name[0]
-                red = data[ftype, "red"]
-                red_edge_1 = data[ftype, "red_edge_1"]
-                red_edge_2 = data[ftype, "red_edge_2"]
-                return (red_edge_1  - red) - \
-                  0.53 * (red_edge_2 - red)
-
-            self.add_field(
-                (ftype, "MCI"),
-                function=_mci,
-                sampling_type="local",
-                take_log=False,
-                units="")
-
             # Colored Dissolved Organic Matter (CDOM)
             def _cdom(field, data):
                 ftype = field.name[0]
@@ -112,6 +82,7 @@ class GeoRasterFieldInfo(FieldInfoContainer):
                 function=_cdom,
                 sampling_type="local",
                 take_log=False,
+                display_name="CDOM",
                 units="")
 
             # Enhanced Vegetation Index (EVI)
@@ -128,6 +99,37 @@ class GeoRasterFieldInfo(FieldInfoContainer):
                 function=_evi,
                 sampling_type="local",
                 take_log=False,
+                display_name="EVI",
+                units="")
+
+            # Landsat Temperature
+            def _LS_temperature(field, data):
+                ftype = field.name[0]
+                thermal_infrared_1 = data[ftype, "tirs_1"]
+                return data.ds.arr((thermal_infrared_1 * 0.00341802 + 149), 'K')
+
+            self.add_field(
+                (ftype, "LS_temperature"),
+                function=_LS_temperature,
+                sampling_type="local",
+                take_log=False,
+                display_name="Landsat Surface Temperature",
+                units="degC")
+
+            # Maximum chlorophyll index (MCI)
+            def _mci(field, data):
+                ftype = field.name[0]
+                red = data[ftype, "red"]
+                red_edge_1 = data[ftype, "red_edge_1"]
+                red_edge_2 = data[ftype, "red_edge_2"]
+                return (red_edge_1  - red) - 0.53 * (red_edge_2 - red)
+
+            self.add_field(
+                (ftype, "MCI"),
+                function=_mci,
+                sampling_type="local",
+                take_log=False,
+                display_name="MCI",
                 units="")
 
             # Normalised Difference Vegetation Index (NDVI)
@@ -142,17 +144,20 @@ class GeoRasterFieldInfo(FieldInfoContainer):
                 function=_ndvi,
                 sampling_type="local",
                 take_log=False,
+                display_name="NDVI",
                 units="")
 
-            # Landsat Temperature
-            def _LS_temperature(field, data):
+            # Normalised difference water index (NDWI)
+            def _ndwi(field, data):
                 ftype = field.name[0]
-                thermal_infrared_1 = data[ftype, "tirs_1"]
-                return data.ds.arr((thermal_infrared_1 * 0.00341802 + 149), 'K')
+                green = data[ftype, "green"]
+                nir = data[ftype, "nir"]
+                return (green - nir) / (green + nir)
 
             self.add_field(
-                (ftype, "LS_temperature"),
-                function=_LS_temperature,
+                (ftype, "NDWI"),
+                function=_ndwi,
                 sampling_type="local",
                 take_log=False,
-                units="degC")
+                display_name="NDWI",
+                units="")
