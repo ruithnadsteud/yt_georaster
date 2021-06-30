@@ -12,7 +12,22 @@ from yt_georaster.polygon_selector import PolygonSelector
 
 class YTPolygon(YTSelectionContainer3D):
     """
-    Data container for a polygon described by a set of coordinates.
+    Create a data container for a polygon described by a set of coordinates.
+
+    Parameters
+    ----------
+    filename : string
+        Path to a Shapefile
+
+    Examples
+    --------
+    >>> import glob
+    >>> import yt
+    >>> import yt.extensions.georaster
+    >>> fns = glob.glob("Landsat-8_sample_L2/*.TIF")
+    >>> ds = yt.load(*fns)
+    >>> poly = ds.polygon("example_polygon_mabira_forest/mabira_forest.shp")
+    >>> print (poly["LC08_L2SP_171060_20210227_20210304_02_T1", "red"])
     """
 
     _type_name = "polygon"
@@ -20,17 +35,17 @@ class YTPolygon(YTSelectionContainer3D):
     
     # What parameters are used to define a polygon?
     # For example, a sphere is center and radius.
-    _con_args = ("shpfile_path",)
+    _con_args = ("filename",)
 
     # add more arguments, like path to a shape file or a shapely Polygon object
-    def __init__(self, shpfile_path, ds=None, field_parameters=None):
+    def __init__(self, filename, ds=None, field_parameters=None):
         validate_object(ds, Dataset)
         validate_object(field_parameters, dict)
 
-        self.shpfile_path = shpfile_path
+        self.filename = filename
 
         # read shapefile with fiona
-        with fiona.open(shpfile_path, "r") as shapefile:
+        with fiona.open(filename, "r") as shapefile:
             shapes_from_file = [feature["geometry"] for feature in shapefile]
 
         mylog.info(f"Number of features in file: {len(shapes_from_file)}")

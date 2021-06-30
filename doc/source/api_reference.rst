@@ -11,6 +11,7 @@ Functions
 
    ~yt_georaster.data_structures.GeoRasterDataset.plot
    ~yt_georaster.data_structures.GeoRasterDataset.circle
+   ~yt_georaster.polygon.YTPolygon
    ~yt_georaster.data_structures.GeoRasterDataset.rectangle
    ~yt_georaster.data_structures.GeoRasterDataset.rectangle_from_center
    ~yt_georaster.utilities.save_as_geotiff

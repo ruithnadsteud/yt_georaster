@@ -417,9 +417,9 @@ class GeoRasterDataset(Dataset):
 
         Examples
         --------
-        >>> center = ds.arr([100, 100], 'm')
-        >>> cir = ds.circle(center, (1, 'km'))
-        >>> vals = cir[("Bands", "1")]
+        >>> center = ds.arr([100, 100], "m")
+        >>> cir = ds.circle(center, (1, "km"))
+        >>> vals = cir["LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B2"]
         """
 
         cc = validate_coord_array(
@@ -462,10 +462,10 @@ class GeoRasterDataset(Dataset):
 
         Examples
         --------
-        >>> left_edge = ds.arr([1, 1], 'km')
-        >>> right_edge = ds.arr(5, 5], 'km')
+        >>> left_edge = ds.arr([1, 1], "km")
+        >>> right_edge = ds.arr(5, 5], "km")
         >>> rec = ds.rectangle(left_edge, right_edge)
-        >>> vals = rec[("Bands", "1")]
+        >>> vals = rec["LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B2"]
         """
 
         le = validate_coord_array(
@@ -509,11 +509,11 @@ class GeoRasterDataset(Dataset):
 
         Examples
         --------
-        >>> center = ds.arr([5, 5], 'km')
-        >>> width = ds.quan(2, 'km')
-        >>> height = (1, 'km')
+        >>> center = ds.arr([5, 5], "km")
+        >>> width = ds.quan(2, "km")
+        >>> height = (1, "km")
         >>> rec = ds.rectangle_from_center(center, width, height)
-        >>> vals = rec[("Bands", "1")]
+        >>> vals = rec["LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B2"]
         """
 
         cc = validate_coord_array(
@@ -558,11 +558,13 @@ class GeoRasterDataset(Dataset):
         --------
         >>> import yt
         >>> ds = yt.load(...)
-        >>> p = ds.plot(('bands', '1'), width=(1, 'km'))
+        >>> p = ds.plot(("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B2"),
+        ...             width=(1, 'km'))
         >>> p.save()
 
         >>> rec = ds.rectangle_from_center(center, width, height)
-        >>> p = ds.plot(('bands', '1'), data_source=rec)
+        >>> p = ds.plot(("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B2"),
+        ...             data_source=rec)
         >>> p.save()
         """
 

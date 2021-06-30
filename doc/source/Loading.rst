@@ -66,6 +66,8 @@ Note that values that should have units are returned as
 :ref:`this discussion in yt <units>` for more information about quantities
 with units.
 
+.. _ytgr_load_multiple:
+
 Loading Multiple Images
 -----------------------
 
@@ -86,6 +88,8 @@ path to ``yt.load``.
 
 Note, the argument to ``yt.load`` is ``*filenames`` and not just
 ``filenames``. This expands the list into its individual items.
+
+.. _ytgr_base_image:
 
 The Base Image
 ^^^^^^^^^^^^^^
