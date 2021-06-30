@@ -1,8 +1,8 @@
 from collections import defaultdict
 import re
 
-from yt.fields.field_info_container import \
-    FieldInfoContainer
+from yt.fields.field_info_container import FieldInfoContainer
+
 
 class GeoRasterFieldInfo(FieldInfoContainer):
     """
@@ -10,6 +10,7 @@ class GeoRasterFieldInfo(FieldInfoContainer):
 
     This is responsible for setting up aliases and derived fields.
     """
+
     known_other_fields = ()
     known_particle_fields = ()
 
@@ -61,12 +62,11 @@ class GeoRasterFieldInfo(FieldInfoContainer):
 
         # Area coverage of field
         def _area(field, data):
-            return data["index", "dx"] *\
-            data["index", "dy"]
+            return data["index", "dx"] * data["index", "dy"]
 
-        self.add_field(("index", "area"), function=_area,
-            sampling_type="local",
-            units="km**2")
+        self.add_field(
+            ("index", "area"), function=_area, sampling_type="local", units="km**2"
+        )
 
         for ftype in self.ds.index.geo_manager.ftypes:
 
@@ -75,7 +75,7 @@ class GeoRasterFieldInfo(FieldInfoContainer):
                 ftype = field.name[0]
                 blue = data[ftype, "blue"]
                 green = data[ftype, "green"]
-                return 8 * (green / blue)**(-1.4)
+                return 8 * (green / blue) ** (-1.4)
 
             self.add_field(
                 (ftype, "CDOM"),
@@ -83,7 +83,8 @@ class GeoRasterFieldInfo(FieldInfoContainer):
                 sampling_type="local",
                 take_log=False,
                 display_name="CDOM",
-                units="")
+                units="",
+            )
 
             # Enhanced Vegetation Index (EVI)
             def _evi(field, data):
@@ -91,8 +92,7 @@ class GeoRasterFieldInfo(FieldInfoContainer):
                 blue = data[ftype, "blue"]
                 red = data[ftype, "red"]
                 nir = data[ftype, "nir"]
-                return 2.5 * (nir - red) / \
-                  ((nir + 6.0 * red - 7.5 * blue) + 1.0)
+                return 2.5 * (nir - red) / ((nir + 6.0 * red - 7.5 * blue) + 1.0)
 
             self.add_field(
                 (ftype, "EVI"),
@@ -100,13 +100,14 @@ class GeoRasterFieldInfo(FieldInfoContainer):
                 sampling_type="local",
                 take_log=False,
                 display_name="EVI",
-                units="")
+                units="",
+            )
 
             # Landsat Temperature
             def _LS_temperature(field, data):
                 ftype = field.name[0]
                 thermal_infrared_1 = data[ftype, "tirs_1"]
-                return data.ds.arr((thermal_infrared_1 * 0.00341802 + 149), 'K')
+                return data.ds.arr((thermal_infrared_1 * 0.00341802 + 149), "K")
 
             self.add_field(
                 (ftype, "LS_temperature"),
@@ -114,7 +115,8 @@ class GeoRasterFieldInfo(FieldInfoContainer):
                 sampling_type="local",
                 take_log=False,
                 display_name="Landsat Surface Temperature",
-                units="degC")
+                units="degC",
+            )
 
             # Maximum chlorophyll index (MCI)
             def _mci(field, data):
@@ -122,7 +124,7 @@ class GeoRasterFieldInfo(FieldInfoContainer):
                 red = data[ftype, "red"]
                 red_edge_1 = data[ftype, "red_edge_1"]
                 red_edge_2 = data[ftype, "red_edge_2"]
-                return (red_edge_1  - red) - 0.53 * (red_edge_2 - red)
+                return (red_edge_1 - red) - 0.53 * (red_edge_2 - red)
 
             self.add_field(
                 (ftype, "MCI"),
@@ -130,7 +132,8 @@ class GeoRasterFieldInfo(FieldInfoContainer):
                 sampling_type="local",
                 take_log=False,
                 display_name="MCI",
-                units="")
+                units="",
+            )
 
             # Normalised Difference Vegetation Index (NDVI)
             def _ndvi(field, data):
@@ -145,7 +148,8 @@ class GeoRasterFieldInfo(FieldInfoContainer):
                 sampling_type="local",
                 take_log=False,
                 display_name="NDVI",
-                units="")
+                units="",
+            )
 
             # Normalised difference water index (NDWI)
             def _ndwi(field, data):
@@ -160,4 +164,5 @@ class GeoRasterFieldInfo(FieldInfoContainer):
                 sampling_type="local",
                 take_log=False,
                 display_name="NDWI",
-                units="")
+                units="",
+            )

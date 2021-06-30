@@ -17,6 +17,7 @@ poly_single = "example_polygon_mabira_forest/mabira_forest.shp"
 landsat_fns = glob.glob(os.path.join(test_data_dir, os.path.dirname(landsat), "*.TIF"))
 s2_fns = glob.glob(os.path.join(test_data_dir, os.path.dirname(s2), "*.jp2"))
 
+
 @requires_file(landsat)
 @requires_file(s2)
 @requires_file(poly_single)
@@ -25,8 +26,11 @@ def test_polygon_single():
     ds = yt.load(*fns)
 
     polygon = ds.polygon(os.path.join(test_data_dir, poly_single))
-    assert_equal(polygon["LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B10"].size, 368007)
+    assert_equal(
+        polygon["LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B10"].size, 368007
+    )
     assert_equal(polygon["T36MVE_20210315T075701", "S2_B10"].size, 368007)
+
 
 @requires_file(landsat)
 @requires_file(s2)
@@ -36,5 +40,7 @@ def test_polygon_multi():
     ds = yt.load(*fns)
 
     polygon = ds.polygon(os.path.join(test_data_dir, poly_multi))
-    assert_equal(polygon["LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B10"].size, 551624)
+    assert_equal(
+        polygon["LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B10"].size, 551624
+    )
     assert_equal(polygon["T36MVE_20210315T075701", "S2_B10"].size, 551624)

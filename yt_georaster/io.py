@@ -2,11 +2,10 @@ import numpy as np
 import rasterio
 from scipy.ndimage import zoom
 
-from yt.frontends.ytdata.io import \
-    IOHandlerYTGridHDF5
+from yt.frontends.ytdata.io import IOHandlerYTGridHDF5
 from yt.funcs import mylog
-from yt.geometry.selection_routines import \
-    GridSelector
+from yt.geometry.selection_routines import GridSelector
+
 
 class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
     """
@@ -14,6 +13,7 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
 
     This is responsible for reading data from files.
     """
+
     _dataset_type = "GeoRaster"
     _base = slice(None)
     _field_dtype = "float64"
@@ -26,7 +26,7 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
         rv = {}
         chunks = list(chunks)
 
-        if isinstance(selector, GridSelector):            
+        if isinstance(selector, GridSelector):
             if not (len(chunks) == len(chunks[0].objs) == 1):
                 raise RuntimeError
 
@@ -92,12 +92,12 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
 
         # Round up rasterio window width and height.
         rasterio_window = grid._get_rasterio_window(selector, src.crs, src.transform)
-        rasterio_window = rasterio_window.round_shape(op='ceil', pixel_precision=None)
+        rasterio_window = rasterio_window.round_shape(op="ceil", pixel_precision=None)
 
         # Read in the band/field.
         data = src.read(
-            band, window=rasterio_window,
-            out_dtype=self._field_dtype, boundless=True)
+            band, window=rasterio_window, out_dtype=self._field_dtype, boundless=True
+        )
 
         # Transform data to correct shape.
         data = data.T
@@ -109,17 +109,19 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
         base_resolution = self.ds.resolution.d[0]
         if image_resolution != base_resolution:
             scale_factor = image_resolution / base_resolution
-            mylog.info(f"Resampling {field}: {image_resolution} to {base_resolution} m.")
+            mylog.info(
+                f"Resampling {field}: {image_resolution} to {base_resolution} m."
+            )
             data = zoom(data, scale_factor, order=0)
 
         # Now clip to the size of the window in the base resolution.
         base_window = grid._get_rasterio_window(
-            selector, self.ds.parameters['crs'], self.ds.parameters['transform'])
-        data = data[:int(base_window.width), :int(base_window.height)]
+            selector, self.ds.parameters["crs"], self.ds.parameters["transform"]
+        )
+        data = data[: int(base_window.width), : int(base_window.height)]
 
         if self._cache_on:
             self._cached_fields.setdefault(grid.id, {})
             self._cached_fields[grid.id][field] = data
 
         return data
-
