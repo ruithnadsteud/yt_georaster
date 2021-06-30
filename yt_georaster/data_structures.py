@@ -41,6 +41,14 @@ from .utilities import \
     log_level
 
 class GeoRasterWindowGrid(YTGrid):
+    """
+    Grid representing the bounding box around a data container.
+
+    This defines a grid spanning a subset of the total image. We
+    use this to limit geometric selection to the bounding box and
+    then perform a rasterio window read to get data only from this
+    area.
+    """
     def __init__(self, gridobj, left_edge, right_edge):
 
         YTSelectionContainer.__init__(self, gridobj._index.dataset, None)
@@ -92,6 +100,9 @@ class GeoRasterWindowGrid(YTGrid):
 
 
 class GeoRasterGrid(YTGrid):
+    """
+    Grid object for GeoRasterDataset representing an entire image.
+    """
     _last_wgrid = None
     _last_wgrid_id = None
 
@@ -241,6 +252,11 @@ class GeoRasterGrid(YTGrid):
 
 
 class GeoRasterHierarchy(YTGridHierarchy):
+    """
+    Hierarchy class for GeoRasterDataset.
+
+    This makes use of the GeoManager to identify fields.
+    """
     grid = GeoRasterGrid
 
     def _count_grids(self):
@@ -262,7 +278,9 @@ class GeoRasterHierarchy(YTGridHierarchy):
 
 
 class GeoRasterDataset(Dataset):
-    """Dataset for saved covering grids, arbitrary grids, and FRBs."""
+    """
+    Dataset class for rasterio-loadable images.
+    """
     _index_class = GeoRasterHierarchy
     _field_info_class = GeoRasterFieldInfo
     _dataset_type = "GeoRaster"
@@ -689,7 +707,6 @@ class LandSatGeoTiffHierarchy(GeoRasterHierarchy):
 
 
 class LandSatGeoTiffDataSet(GeoRasterDataset):
-    """"""
     _index_class = LandSatGeoTiffHierarchy
 
     def _parse_parameter_file(self):

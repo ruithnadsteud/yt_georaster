@@ -22,3 +22,9 @@ Classes
    :toctree: generated/
 
    ~yt_georaster.data_structures.GeoRasterDataset
+   ~yt_georaster.data_structures.GeoRasterGrid
+   ~yt_georaster.data_structures.GeoRasterHierarchy
+   ~yt_georaster.data_structures.GeoRasterWindowGrid
+   ~yt_georaster.data_structures.GeoRasterWindowDataset
+   ~yt_georaster.fields.GeoRasterFieldInfo
+   ~yt_georaster.io.IOHandlerGeoRaster

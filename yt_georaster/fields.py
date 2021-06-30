@@ -5,6 +5,11 @@ from yt.fields.field_info_container import \
     FieldInfoContainer
 
 class GeoRasterFieldInfo(FieldInfoContainer):
+    """
+    FieldInfoContainer class for GeoRasterDataset.
+
+    This is responsible for setting up aliases and derived fields.
+    """
     known_other_fields = ()
     known_particle_fields = ()
 
