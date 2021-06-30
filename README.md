@@ -22,4 +22,4 @@ re-saved to a single, multiband
 ## Additional Resources
 
 - source code repository: https://github.com/ruithnadsteud/yt_georaster
-- online documentation: https://yt-georaster.readthedocs.io/en/latest/
+- online documentation: https://yt-georaster.readthedocs.io/
