@@ -9,6 +9,11 @@ from yt.geometry.selection_routines import \
     GridSelector
 
 class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
+    """
+    IOHandler for GeoRasterDataset.
+
+    This is responsible for reading data from files.
+    """
     _dataset_type = "GeoRaster"
     _base = slice(None)
     _field_dtype = "float64"

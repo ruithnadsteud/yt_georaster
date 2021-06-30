@@ -19,7 +19,8 @@ def get_version(filename):
 VERSION = get_version("yt_georaster/__init__.py")
 
 dev_requirements = [
-    'coveralls', 'flake8', 'pytest>=3.6', 'pytest-cov']
+    'coveralls', 'flake8', 'pytest>=3.6', 'pytest-cov', 'sphinx',
+    'sphinx_rtd_theme']
 
 std_libs = []
 cython_extensions = [

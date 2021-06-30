@@ -41,6 +41,14 @@ from .utilities import \
     log_level
 
 class GeoRasterWindowGrid(YTGrid):
+    """
+    Grid representing the bounding box around a data container.
+
+    This defines a grid spanning a subset of the total image. We
+    use this to limit geometric selection to the bounding box and
+    then perform a rasterio window read to get data only from this
+    area.
+    """
     def __init__(self, gridobj, left_edge, right_edge):
 
         YTSelectionContainer.__init__(self, gridobj._index.dataset, None)
@@ -92,6 +100,9 @@ class GeoRasterWindowGrid(YTGrid):
 
 
 class GeoRasterGrid(YTGrid):
+    """
+    Grid object for GeoRasterDataset representing an entire image.
+    """
     _last_wgrid = None
     _last_wgrid_id = None
 
@@ -241,6 +252,11 @@ class GeoRasterGrid(YTGrid):
 
 
 class GeoRasterHierarchy(YTGridHierarchy):
+    """
+    Hierarchy class for GeoRasterDataset.
+
+    This makes use of the GeoManager to identify fields.
+    """
     grid = GeoRasterGrid
 
     def _count_grids(self):
@@ -262,7 +278,9 @@ class GeoRasterHierarchy(YTGridHierarchy):
 
 
 class GeoRasterDataset(Dataset):
-    """Dataset for saved covering grids, arbitrary grids, and FRBs."""
+    """
+    Dataset class for rasterio-loadable images.
+    """
     _index_class = GeoRasterHierarchy
     _field_info_class = GeoRasterFieldInfo
     _dataset_type = "GeoRaster"
@@ -399,9 +417,9 @@ class GeoRasterDataset(Dataset):
 
         Examples
         --------
-        >>> center = ds.arr([100, 100], 'm')
-        >>> cir = ds.circle(center, (1, 'km'))
-        >>> vals = cir[("Bands", "1")]
+        >>> center = ds.arr([100, 100], "m")
+        >>> cir = ds.circle(center, (1, "km"))
+        >>> vals = cir["LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B2"]
         """
 
         cc = validate_coord_array(
@@ -444,10 +462,10 @@ class GeoRasterDataset(Dataset):
 
         Examples
         --------
-        >>> left_edge = ds.arr([1, 1], 'km')
-        >>> right_edge = ds.arr(5, 5], 'km')
+        >>> left_edge = ds.arr([1, 1], "km")
+        >>> right_edge = ds.arr(5, 5], "km")
         >>> rec = ds.rectangle(left_edge, right_edge)
-        >>> vals = rec[("Bands", "1")]
+        >>> vals = rec["LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B2"]
         """
 
         le = validate_coord_array(
@@ -491,11 +509,11 @@ class GeoRasterDataset(Dataset):
 
         Examples
         --------
-        >>> center = ds.arr([5, 5], 'km')
-        >>> width = ds.quan(2, 'km')
-        >>> height = (1, 'km')
+        >>> center = ds.arr([5, 5], "km")
+        >>> width = ds.quan(2, "km")
+        >>> height = (1, "km")
         >>> rec = ds.rectangle_from_center(center, width, height)
-        >>> vals = rec[("Bands", "1")]
+        >>> vals = rec["LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B2"]
         """
 
         cc = validate_coord_array(
@@ -540,11 +558,13 @@ class GeoRasterDataset(Dataset):
         --------
         >>> import yt
         >>> ds = yt.load(...)
-        >>> p = ds.plot(('bands', '1'), width=(1, 'km'))
+        >>> p = ds.plot(("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B2"),
+        ...             width=(1, 'km'))
         >>> p.save()
 
         >>> rec = ds.rectangle_from_center(center, width, height)
-        >>> p = ds.plot(('bands', '1'), data_source=rec)
+        >>> p = ds.plot(("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B2"),
+        ...             data_source=rec)
         >>> p.save()
         """
 
@@ -689,7 +709,6 @@ class LandSatGeoTiffHierarchy(GeoRasterHierarchy):
 
 
 class LandSatGeoTiffDataSet(GeoRasterDataset):
-    """"""
     _index_class = LandSatGeoTiffHierarchy
 
     def _parse_parameter_file(self):
