@@ -123,6 +123,7 @@ class YTPolygon(YTSelectionContainer3D):
         if isinstance(src_crs, int):
             # assume epsg number
             epsg = src_crs
+            src_crs = CRS.from_epsg(epsg)
         elif isinstance(src_crs, dict):
             src_crs = CRS.from_dict(**src_crs)
             epsg = src_crs.to_epsg()
@@ -137,8 +138,8 @@ class YTPolygon(YTSelectionContainer3D):
                 coords = [list(geom.exterior.coords) for geom in self.polygon.geoms]
                 type_str = 'MultiPolygon'
                 transformed_poly = transform_geom(
-                    f'EPSG:{epsg}',
-                    f'EPSG:{dst_crs.to_epsg()}',
+                    src_crs,
+                    dst_crs,
                     {
                         'type': type_str,
                         'coordinates': coords
@@ -152,11 +153,11 @@ class YTPolygon(YTSelectionContainer3D):
                 # join all shapely polygons to a single layer
                 self.polygon = unary_union(MultiPolygon(polygons))
             else:
-                coords = list(self.polygon.exterior.coords)
+                coords = [list(self.polygon.exterior.coords)]
                 type_str = 'Polygon'
                 transformed_poly = transform_geom(
-                    f'EPSG:{epsg}',
-                    f'EPSG:{dst_crs.to_epsg()}',
+                    src_crs,
+                    dst_crs,
                     {
                         'type': type_str,
                         'coordinates': coords
