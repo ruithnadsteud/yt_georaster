@@ -88,7 +88,7 @@ setup(
         "rasterio",
         "scipy",
         "shapely",
-        "yt",
+        "yt>=4.0.1",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
