@@ -22,8 +22,9 @@ commands:
           name: "Install yt_georaster and dependencies."
           no_output_timeout: 20m
           command: |
-            sudo apt-get update
-            sudo apt-get install -y gdal-bin libgdal-dev
+            sudo apt update
+            sudo apt upgrade
+            sudo apt install -y gdal-bin libgdal-dev
             export CPLUS_INCLUDE_PATH=/usr/include/gdal
             export C_INCLUDE_PATH=/usr/include/gdal
             if [ ! -d $HOME/venv ]; then
