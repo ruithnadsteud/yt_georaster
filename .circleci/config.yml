@@ -22,8 +22,9 @@ commands:
           name: "Install yt_georaster and dependencies."
           no_output_timeout: 20m
           command: |
-            sudo apt-get update
-            sudo apt-get install -y gdal-bin libgdal-dev
+            sudo apt update
+            sudo apt upgrade
+            sudo apt install -y gdal-bin libgdal-dev
             export CPLUS_INCLUDE_PATH=/usr/include/gdal
             export C_INCLUDE_PATH=/usr/include/gdal
             if [ ! -d $HOME/venv ]; then
@@ -36,10 +37,11 @@ commands:
             pip install --upgrade setuptools
             pip install Cython
             pip install 'numpy<1.20'
-            pip install 'gdal==3.4.0'
-            pip install 'scipy==1.7.3'
-            pip install 'fiona==1.8.20'
-            pip install 'shapely==1.8.0'
+            pip install 'pygdal==2.4.0.6'
+            pip install 'gdal==2.4.0'
+            pip install 'scipy==1.6.1'
+            pip install 'fiona==1.8.18'
+            pip install 'shapely==1.7.1'
             pip install girder-client
             export MAX_BUILD_CORES=2
             if [ << parameters.ytdev >> == 1 ]; then
