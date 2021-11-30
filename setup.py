@@ -81,6 +81,7 @@ setup(
     packages=["yt_georaster"],
     keywords=["GeoTiff", "GTiff", "raster"],
     install_requires=[
+        "Cython"
         "fiona",
         "gdal",
         "numpy",

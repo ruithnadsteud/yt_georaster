@@ -34,7 +34,11 @@ class SatGeoImage(GeoImage):
 
 
 class Sentinel2(SatGeoImage):
-    _regex = re.compile(r"([A-Za-z0-9]+_[A-Za-z0-9]+)_([A-Za-z0-9]+)(?:_\d+m)?$")
+    _regex = re.compile(
+        r'^[A-Za-z0-9]+_[A-Za-z0-9]+_([A-Za-z0-9]+)_[A-Za-z0-9]+_'
+        r'[A-Za-z0-9]+_[A-Za-z0-9]+_[A-Za-z0-9]+_'
+        r'([A-Za-z0-9]+)(?:_\\d+m)?$'
+    )
     _suffix = "jp2"
     _field_prefix = "S2"
     _band_aliases = (
