@@ -3,6 +3,7 @@ import numpy as np
 import rasterio
 from rasterio import warp
 from rasterio.windows import from_bounds
+from rasterio.crs import CRS
 import re
 import weakref
 
@@ -56,8 +57,8 @@ class GeoRasterWindowGrid(YTGrid):
         self._parent_id = -1
         self.Level = 0
 
-        self.LeftEdge = self.ds.arr(left_edge, "m")
-        self.RightEdge = self.ds.arr(right_edge, "m")
+        self.LeftEdge = self.ds.arr(left_edge, self.ds.parameters['units'])
+        self.RightEdge = self.ds.arr(right_edge, self.ds.parameters['units'])
         # Make sure z dimension edges are the same as parent grid.
         self.LeftEdge[2] = gridobj.LeftEdge[2]
         self.RightEdge[2] = gridobj.RightEdge[2]
@@ -292,10 +293,11 @@ class GeoRasterDataset(Dataset):
     refine_by = 2
     _con_attrs = ()
 
-    def __init__(self, *args, field_map=None):
+    def __init__(self, *args, field_map=None, crs=None):
         self.filename_list = args
         filename = args[0]
         self.field_map = field_map
+        self.crs = crs
         super().__init__(filename, self._dataset_type, unit_system="mks")
         self.data = self.index.grids[0]
         self._added_fields = []
@@ -324,9 +326,71 @@ class GeoRasterDataset(Dataset):
                 v = f.meta[key]
                 self.parameters[key] = v
             self.parameters["res"] = f.res
-            self.parameters["src"] = f.crs
         self.current_time = 0
 
+        # overwrite crs if one is provided by user
+        if not (self.crs is None):
+            # make sure user provided CRS is valid CRS object
+            if not isinstance(self.crs, CRS):
+                if isinstance(self.crs, int):
+                    # assume epsg number
+                    self.crs = CRS.from_epsg(self.crs)
+                elif isinstance(self.crs, dict):
+                    self.crs = CRS.from_dict(**self.crs)
+                else:
+                    self.crs = CRS.from_string(self.crs)
+
+            # get reprojected transform
+            left_edge = self.parameters["transform"] * (0, 0)
+            right_edge = self.parameters["transform"] * (
+                self.parameters["width"],
+                self.parameters["height"]
+            )
+            transform, width, height = warp.calculate_default_transform(
+                self.parameters["crs"],
+                self.crs,
+                self.parameters["width"],
+                self.parameters["height"],
+                left=left_edge[0],
+                bottom=left_edge[1],
+                right=right_edge[0],
+                top=right_edge[1],
+                # resolution=self.parameters["transform"][0]
+                dst_width=self.parameters["width"],
+                dst_height=self.parameters["height"]
+            )  # current solution can create rectangular pixels
+            # xs, ys = warp.transform(
+            #     self.parameters["crs"],
+            #     dst_crs,
+            #     [left_edge[0], right_edge[0]],
+            #     [left_edge[1], right_edge[1]],
+            #     zs=None
+            # )
+            # update parameters
+            self.parameters["res"] = (transform[0], -transform[4])
+            self.parameters["crs"] = self.crs
+            self.parameters["transform"] = transform
+            self.parameters["width"] = width
+            self.parameters["height"] = height
+        else:
+            # if no crs has be provided replace None with base image CRS
+            self.crs = self.parameters["crs"]
+
+        # get units and conversion factor to metres
+        self.parameters["units"] = self.parameters["crs"].linear_units
+        # for non-projected crs this is unknown
+        if self.parameters["units"] == 'unknown':
+            mylog.warning(
+                f"Dataset CRS {self.parameters['crs']} "
+                "units are 'unknown'. Using meters."
+            )
+            self.parameters["units"] = 'm'  # just a place holder
+        else:
+            mylog.info(
+                f"Dataset CRS {self.parameters['crs']} "
+                f"units are '{self.parameters['units']}'. "
+            )
+        # set domain
         width = self.parameters["width"]
         height = self.parameters["height"]
         transform = self.parameters["transform"]
@@ -337,9 +401,18 @@ class GeoRasterDataset(Dataset):
         rast_right = np.concatenate([transform * (width, height), [1]])
         # save dimensions that need to be flipped
         self._flip_axes = np.where(rast_left > rast_right)[0]
-        self.domain_left_edge = self.arr(np.min([rast_left, rast_right], axis=0), "m")
-        self.domain_right_edge = self.arr(np.max([rast_left, rast_right], axis=0), "m")
-        self.resolution = self.arr(self.parameters["res"], "m")
+        self.domain_left_edge = self.arr(
+            np.min([rast_left, rast_right], axis=0),
+            self.parameters["units"]
+        )
+        self.domain_right_edge = self.arr(
+            np.max([rast_left, rast_right], axis=0),
+            self.parameters["units"]
+        )
+        self.resolution = self.arr(
+            self.parameters["res"],
+            self.parameters["units"]
+        )
 
     def _setup_classes(self):
         super()._setup_classes()
@@ -649,8 +722,8 @@ class GeoRasterWindowDataset(GeoRasterDataset):
         self._parent_ds = parent_ds
         self._index_class = parent_ds._index_class
         self._dataset_type = parent_ds._dataset_type
-        self.domain_left_edge = parent_ds.arr(left_edge, "m")
-        self.domain_right_edge = parent_ds.arr(right_edge, "m")
+        self.domain_left_edge = parent_ds.arr(left_edge, parent_ds.parameters["units"])
+        self.domain_right_edge = parent_ds.arr(right_edge, parent_ds.parameters["units"])
         self.domain_dimensions = (
             parent_ds.domain_dimensions
             * (self.domain_right_edge - self.domain_left_edge)

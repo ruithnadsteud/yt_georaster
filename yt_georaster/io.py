@@ -106,11 +106,14 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
 
         # Resample to base resolution if necessary.
         image_resolution = src.res[0]
+        image_units = src.crs.linear_units
         base_resolution = self.ds.resolution.d[0]
+        base_units = self.ds.parameters['units']
         if image_resolution != base_resolution:
             scale_factor = image_resolution / base_resolution
             mylog.info(
-                f"Resampling {field}: {image_resolution} to {base_resolution} m."
+                f"Resampling {field}: {image_resolution} {image_units} "
+                f"to {base_resolution} {base_units}."
             )
             data = zoom(data, scale_factor, order=0)
 
