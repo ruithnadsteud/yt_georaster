@@ -83,7 +83,6 @@ setup(
     install_requires=[
         "cython",
         "fiona",
-        "gdal",
         "numpy",
         "pyyaml",
         "rasterio",
