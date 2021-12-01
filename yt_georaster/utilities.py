@@ -12,7 +12,8 @@ import yaml
 from yt.utilities.logger import ytLogger
 
 
-def save_as_geotiff(ds, filename, fields=None, data_source=None):
+def save_as_geotiff(ds, filename, fields=None, data_source=None,
+    dtype=None, nodata=None, crs=None):
     r"""
     Export georeferenced data to a reloadable geotiff.
 
@@ -41,6 +42,16 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
         All data contained within the rectangular bounding box (for
         example, if the data container is a sphere) will be saved. If
         none provided, all data within the dataset's domain will be saved.
+    dtype : optional, str or recognised dtype object
+        The desired data type to output the data in. The data will be naively 
+        converted into this type and an attempt will be made to save using this
+        type. Must be an int or float based type.
+    nodata : optional, int/float
+        The nodata value to use when applying mask before saving and also to
+        save to output geotiff metadata.
+    crs : optional, str or :class: `~rasterio.crs.CRS`
+        The coordinate reference system to output your geotiff in. If none is
+        provided the CRS of the dataset is used.
 
     Returns
     -------
@@ -74,6 +85,9 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
             f"Invalid filename extension ({filename}), must be one of {exts}."
         )
 
+    if nodata is None:
+        nodata = ds.parameters['profile']['nodata']
+
     if fields is None:
         fields = ds.field_list
 
@@ -89,7 +103,12 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
         f"{wgrid.RightEdge[:2]} with shape {width,height}."
     )
 
-    dtype = ds.index.io._field_dtype
+    if dtype is None:
+        dtype = ds.parameters['profile']['dtype']
+
+    if not (np.dtype(ds.index.io._field_dtype) is np.dtype(dtype)):
+        ytLogger.info(f"{filename} dtype set to {dtype}.")
+
     transform = ds._update_transform(
         ds.parameters["transform"], wgrid.LeftEdge, wgrid.RightEdge
     )
@@ -106,6 +125,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
         width=width,
         count=len(fields),
         dtype=dtype,
+        nodata=nodata,
         crs=ds.parameters["crs"],
         transform=transform,
     ) as dst:
@@ -120,7 +140,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None):
             data[~mask] = 0
             if ds._flip_axes:
                 data = np.flip(data, axis=ds._flip_axes)
-            data = data.T
+            data = data.T.astype(dtype)
             dst.write(data, band)
 
     yfn = f"{filename[:filename.rfind('.')]}_fields.yaml"

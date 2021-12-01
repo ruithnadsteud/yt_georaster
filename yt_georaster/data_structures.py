@@ -326,6 +326,7 @@ class GeoRasterDataset(Dataset):
                 v = f.meta[key]
                 self.parameters[key] = v
             self.parameters["res"] = f.res
+            self.parameters["profile"] = f.profile
         self.current_time = 0
 
         # overwrite crs if one is provided by user
