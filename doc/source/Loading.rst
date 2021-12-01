@@ -107,3 +107,19 @@ what the base image is.
    LC08_L2SP_171060_20210227_20210304_02_T1_QA_PIXEL
    >>> print (ds.parameter_filename)
    Landsat-8_sample_L2/LC08_L2SP_171060_20210227_20210304_02_T1_QA_PIXEL.TIF
+
+Specifying your Coordinate Reference System
+-------------------------------------------
+
+At load you can also specify what coordinate reference system (CRS) you want to handle your dataset in.
+
+.. code-block:: python
+
+   >>> import yt
+   >>> import yt.extensions.georaster
+
+   >>> filenames = glob.glob("Landsat-8_sample_L2/*.TIF") + \
+   ...   glob.glob("M2_Sentinel-2_test_data/*.jp2")
+   >>> ds = yt.load(*filenames, crs="epsg:32736")
+
+This should work for all projected systems. Instead of using the CRS of your base image the dataset is assigned the CRS you provide and yt will convert everything into this coordinate reference system as you query that data.
