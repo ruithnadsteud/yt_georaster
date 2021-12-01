@@ -24,9 +24,6 @@ commands:
           command: |
             sudo apt update
             sudo apt upgrade
-            sudo apt install -y gdal-bin libgdal-dev
-            export CPLUS_INCLUDE_PATH=/usr/include/gdal
-            export C_INCLUDE_PATH=/usr/include/gdal
             if [ ! -d $HOME/venv ]; then
                 python3 -m venv $HOME/venv
             fi
@@ -36,24 +33,22 @@ commands:
             pip install --upgrade wheel
             pip install --upgrade setuptools
             pip install Cython
-            pip install 'numpy<1.20'
-            pip install 'pygdal==2.4.0.6'
-            pip install 'gdal==2.4.0'
-            pip install 'scipy==1.6.1'
-            pip install 'fiona==1.8.18'
-            pip install 'shapely==1.7.1'
+            pip install 'scipy==1.7.3'
+            pip install 'fiona==1.8.20'
+            pip install 'shapely==1.8.0'
             pip install girder-client
             export MAX_BUILD_CORES=2
-            if [ << parameters.ytdev >> == 1 ]; then
-                if [ ! -f $YT_DIR/README.md ]; then
-                    git clone --branch=$YT_BRANCH https://github.com/ruithnadsteud/yt $YT_DIR
-                fi
-                pushd $YT_DIR
-                git pull origin $YT_BRANCH
-                git checkout $YT_BRANCH
-                pip install -e .
-                popd
-            fi
+            pip install yt
+            # if [ << parameters.ytdev >> == 1 ]; then
+            #     if [ ! -f $YT_DIR/README.md ]; then
+            #         git clone --branch=$YT_BRANCH https://github.com/ruithnadsteud/yt $YT_DIR
+            #     fi
+            #     pushd $YT_DIR
+            #     git pull origin $YT_BRANCH
+            #     git checkout $YT_BRANCH
+            #     pip install -e .
+            #     popd
+            # fi
             # configure yt
             yt config set --global yt test_data_dir $TEST_DATA
             pip install -e .[dev]
@@ -183,7 +178,7 @@ workflows:
      jobs:
        - tests:
            name: "Python 3.8 tests"
-           tag: "3.8.7"
+           tag: "3.8.12"
            coverage: 1
            ytdev: 1
 
@@ -198,5 +193,5 @@ workflows:
      jobs:
        - tests:
            name: "Python 3.8 tests"
-           tag: "3.8.7"
+           tag: "3.8.12"
            ytdev: 1
