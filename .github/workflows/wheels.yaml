@@ -1,0 +1,41 @@
+# Based on the example from cibuildwheel
+#  https://cibuildwheel.readthedocs.io/en/stable/setup/#github-actions
+# and yt's build wheels workflow
+#  https://github.com/yt-project/yt/blob/main/.github/workflows/wheels.yaml
+
+name: Build CI Wheels
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - '*'
+  workflow_dispatch:
+
+jobs:
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, windows-2019, macos-10.15]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.3.0
+        env:
+          CIBW_BUILD: "cp37-* cp38-* cp39-* cp310-*"
+          CIBW_SKIP: "*-musllinux_*"  # these fail due to side effects from previous builds
+          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_ARCHS_MACOS: "x86_64"
+          CIBW_ARCHS_WINDOWS: "auto"
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: ./wheelhouse/*.whl
