@@ -136,12 +136,23 @@ class GeoManager:
             fkey = f"{fprefix}_{resolution}"
 
         fmap = self.field_map
+
+        # get the path used as key by yaml file if available
+        try:
+            paths_in_yaml = list(fmap.keys())
+            if not(fullpath in paths_in_yaml):
+                # assumes field_map:file is 1:1
+                path_from_yaml = paths_in_yaml[0]
+            else:
+                path_from_yaml = fullpath
+        except AttributeError:
+            path_from_yaml = fullpath
+
         for i in range(1, count + 1):
             fname = fkey
             if count > 1 or fname == "band":
                 fname += f"_{i}"
-
-            entry = fmap.get(ftype, {}).get(fname)
+            entry = fmap.get(path_from_yaml, {}).get(fname)
             if entry is not None:
                 field = (entry["field_type"], entry["field_name"])
                 units = entry.get("units", "")
