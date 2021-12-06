@@ -14,7 +14,7 @@ poly_multi = "example_multi-feature_polygon/multi_feature_polygon.shp"
 
 
 class GeoRasterPlotTest(TempDirTest):
-    @requires_file(os.path.join(S2_dir, "T36MVE_20210315T075701_B01.jp2"))
+    @requires_file(os.path.join(S2_dir, "S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE_20210315T092856_B01.jp2"))
     @requires_file(
         os.path.join(LS_dir, "LC08_L2SP_171060_20210227_20210304_02_T1_SR_B1.TIF")
     )
@@ -27,8 +27,8 @@ class GeoRasterPlotTest(TempDirTest):
 
         fields = [
             ("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B1_30m"),
-            ("T36MVE_20210315T075701", "S2_B06_20m"),
-            ("T36MVE_20210315T075701", "NDWI"),
+            ("S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE", "S2_B06_20m"),
+            ("S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE", "NDWI"),
             ("LC08_L2SP_171060_20210227_20210304_02_T1", "LS_temperature"),
         ]
 
@@ -36,7 +36,7 @@ class GeoRasterPlotTest(TempDirTest):
             p = ds.plot(field)
             p.save()
 
-    @requires_file(os.path.join(S2_dir, "T36MVE_20210315T075701_B01.jp2"))
+    @requires_file(os.path.join(S2_dir, "S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE_20210315T092856_B01.jp2"))
     @requires_file(
         os.path.join(LS_dir, "LC08_L2SP_171060_20210227_20210304_02_T1_SR_B1.TIF")
     )
@@ -49,8 +49,8 @@ class GeoRasterPlotTest(TempDirTest):
 
         fields = [
             ("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B1_30m"),
-            ("T36MVE_20210315T075701", "S2_B06_20m"),
-            ("T36MVE_20210315T075701", "NDWI"),
+            ("S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE", "S2_B06_20m"),
+            ("S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE", "NDWI"),
             ("LC08_L2SP_171060_20210227_20210304_02_T1", "LS_temperature"),
         ]
 
@@ -60,7 +60,7 @@ class GeoRasterPlotTest(TempDirTest):
             p.save()
 
     @requires_file(poly_multi)
-    @requires_file(os.path.join(S2_dir, "T36MVE_20210315T075701_B01.jp2"))
+    @requires_file(os.path.join(S2_dir, "S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE_20210315T092856_B01.jp2"))
     @requires_file(
         os.path.join(LS_dir, "LC08_L2SP_171060_20210227_20210304_02_T1_SR_B1.TIF")
     )
