@@ -13,7 +13,7 @@ from yt.utilities.logger import ytLogger
 
 
 def save_as_geotiff(ds, filename, fields=None, data_source=None,
-    dtype=None, nodata=None, crs=None):
+    dtype=None, nodata=None):
     r"""
     Export georeferenced data to a reloadable geotiff.
 
@@ -49,9 +49,6 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
     nodata : optional, int/float
         The nodata value to use when applying mask before saving and also to
         save to output geotiff metadata.
-    crs : optional, str or :class: `~rasterio.crs.CRS`
-        The coordinate reference system to output your geotiff in. If none is
-        provided the CRS of the dataset is used.
 
     Returns
     -------
