@@ -24,7 +24,13 @@ class SatGeoImage(GeoImage):
 
         search = self._regex.search(prefix)
         if search is None:
-            return None
+            # perform alternative regex search if it exists
+            if not (self._alt_regex is None):
+                search = self._alt_regex.search(prefix)
+                if search is None:
+                    return None
+            else:
+                return None
 
         groups = search.groups()
         ftype = groups[0]
@@ -34,11 +40,28 @@ class SatGeoImage(GeoImage):
 
 
 class Sentinel2(SatGeoImage):
-    _regex = re.compile(
-        r'^[A-Za-z0-9]+_[A-Za-z0-9]+_([A-Za-z0-9]+)_[A-Za-z0-9]+_'
-        r'[A-Za-z0-9]+_[A-Za-z0-9]+_[A-Za-z0-9]+_'
-        r'([A-Za-z0-9]+)(?:_\\d+m)?$'
+    """
+    MMM_MSIXXX_YYYYMMDDTHHMMSS_Nxxyy_ROOO_Txxxxx_yyyymmddThhmmss_PPP
+    MMM = the mission ID(S2A/S2B)
+    MSIXXX = denotes the product level (
+        MSIL1C denotes the Level-1C product level/
+        MSIL2A denotes the Level-2A product level
     )
+    YYYYMMDDTHHMMSS = acquisition datetime
+    Nxxyy = the PDGS Processing Baseline number (e.g. N0204)
+    ROOO = Relative Orbit number (R001 - R143)
+    Txxxxx = Tile Number field
+    yyyymmddThhmmss = processing datetime
+    PPP = product type (e.g. TCI)
+    """
+    _regex = re.compile(
+        r'^([A-Za-z0-9]+_[A-Za-z0-9]+_[A-Za-z0-9]+_[A-Za-z0-9]+_'
+        r'[A-Za-z0-9]+_[A-Za-z0-9]+)_[A-Za-z0-9]+_'
+        r'([A-Za-z0-9]+)(?:_\\d+m)?$'
+    ) # skip processing datetime
+    _alt_regex = re.compile(
+        r"([A-Za-z0-9]+_[A-Za-z0-9]+)_([A-Za-z0-9]+)(?:_\d+m)?$"
+    ) # alternative regex to use
     _suffix = "jp2"
     _field_prefix = "S2"
     _band_aliases = (
@@ -76,12 +99,13 @@ class Landsat8(SatGeoImage):
     _regex = re.compile(
         r"(^L[COTEM]08_L\w{3}_\d{6}_\d{8}_\d{8}_\d{2}_\w{2})\w+_([A-Za-z0-9]+)$"
     )
+    _alt_regex = None
     _suffix = "tif"
     _field_prefix = "L8"
     _band_aliases = (
-        ("B1", ("visible_1",)),
-        ("B2", ("visible_2",)),
-        ("B3", ("visible_3",)),
+        ("B1", ("coastal_aerosol",)),
+        ("B2", ("blue",)),
+        ("B3", ("green",)),
         ("B4", ("red",)),
         ("B5", ("nir",)),
         ("B6", ("swir_1",)),
@@ -136,12 +160,22 @@ class GeoManager:
             fkey = f"{fprefix}_{resolution}"
 
         fmap = self.field_map
+        # get the path used as key by yaml file if available
+        try:
+            paths_in_yaml = list(fmap.keys())
+            if len(paths_in_yaml) > 0 and not (fullpath in paths_in_yaml):
+                # assumes field_map:file is 1:1
+                path_from_yaml = paths_in_yaml[0]
+            else:
+                path_from_yaml = fullpath
+        except AttributeError:
+            path_from_yaml = fullpath
+
         for i in range(1, count + 1):
             fname = fkey
             if count > 1 or fname == "band":
                 fname += f"_{i}"
-
-            entry = fmap.get(ftype, {}).get(fname)
+            entry = fmap.get(path_from_yaml, {}).get(fname)
             if entry is not None:
                 field = (entry["field_type"], entry["field_name"])
                 units = entry.get("units", "")

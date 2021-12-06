@@ -15,7 +15,7 @@ poly_multi = "example_multi-feature_polygon/multi_feature_polygon.shp"
 
 
 class GeoRasterSaveTest(TempDirTest):
-    @requires_file(os.path.join(S2_dir, "T36MVE_20210315T075701_B01.jp2"))
+    @requires_file(os.path.join(S2_dir, "S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE_20210315T092856_B01.jp2"))
     @requires_file(
         os.path.join(LS_dir, "LC08_L2SP_171060_20210227_20210304_02_T1_SR_B1.TIF")
     )
@@ -28,8 +28,8 @@ class GeoRasterSaveTest(TempDirTest):
 
         fields = [
             ("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B1"),
-            ("T36MVE_20210315T075701", "S2_B06"),
-            ("T36MVE_20210315T075701", "NDWI"),
+            ("S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE", "S2_B06"),
+            ("S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE", "NDWI"),
             ("LC08_L2SP_171060_20210227_20210304_02_T1", "LS_temperature"),
         ]
 
@@ -45,7 +45,7 @@ class GeoRasterSaveTest(TempDirTest):
                 err_msg=f"Saved data mismatch for field {field}.",
             )
 
-    @requires_file(os.path.join(S2_dir, "T36MVE_20210315T075701_B01.jp2"))
+    @requires_file(os.path.join(S2_dir, "S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE_20210315T092856_B01.jp2"))
     @requires_file(
         os.path.join(LS_dir, "LC08_L2SP_171060_20210227_20210304_02_T1_SR_B1.TIF")
     )
@@ -59,8 +59,8 @@ class GeoRasterSaveTest(TempDirTest):
         circle = ds.circle(ds.domain_center, (10, "km"))
         fields = [
             ("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B1"),
-            ("T36MVE_20210315T075701", "S2_B06"),
-            ("T36MVE_20210315T075701", "NDWI"),
+            ("S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE", "S2_B06"),
+            ("S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE", "NDWI"),
             ("LC08_L2SP_171060_20210227_20210304_02_T1", "LS_temperature"),
         ]
         ds_fn, fm_fn = save_as_geotiff(
@@ -78,7 +78,7 @@ class GeoRasterSaveTest(TempDirTest):
             )
 
     @requires_file(poly_multi)
-    @requires_file(os.path.join(S2_dir, "T36MVE_20210315T075701_B01.jp2"))
+    @requires_file(os.path.join(S2_dir, "S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE_20210315T092856_B01.jp2"))
     @requires_file(
         os.path.join(LS_dir, "LC08_L2SP_171060_20210227_20210304_02_T1_SR_B1.TIF")
     )
@@ -92,7 +92,7 @@ class GeoRasterSaveTest(TempDirTest):
         polygon = ds.polygon(os.path.join(test_data_dir, poly_multi))
         fields = [
             ("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B1"),
-            ("T36MVE_20210315T075701", "S2_B06"),
+            ("S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE", "S2_B06"),
             ("LC08_L2SP_171060_20210227_20210304_02_T1", "LS_temperature"),
         ]
         ds_fn, fm_fn = save_as_geotiff(
