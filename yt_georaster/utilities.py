@@ -223,7 +223,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
         )
         dst_profile = src_profile.copy()
         dst_profile.update({
-            'crs': dst_crs,
+            'crs': crs,
             'transform': transform,
             'width': width,
             'height': height
