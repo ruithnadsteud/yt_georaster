@@ -6,14 +6,80 @@ Utility functions for yt_georaster.
 """
 import numpy as np
 import rasterio
+from rasterio.warp import calculate_default_transform, reproject, Resampling
 from unyt import unyt_array, unyt_quantity, uconcatenate
 import yaml
 
 from yt.utilities.logger import ytLogger
 
 
+def get_field_as_raster_array(ds, data_source, field, nodata=None):
+    r"""
+    Return field within data_source as 2d raster image array and its transform.
+
+    Parameters
+    ----------
+    ds : dataset
+        The georeferenced dataset to be saved.
+    field : tuple
+        field to be queried.
+    data_source : :class:`~yt.data_objects.data_containers.YTDataContainer`
+        The data container from which data will be selected. All data contained
+        within the rectangular bounding box (for example, if the data container
+        is a sphere) will be selected.
+    nodata : optional, int/float
+        If a nodata value is provided the data inside the data_source bounding
+        box but not selected by data_source will be masked out and replaced by
+        the nodata value.
+    """
+    wgrid = ds.index.grids[0]._get_window_grid(data_source.selector)
+    width, height = wgrid.ActiveDimensions[:2]
+    ytLogger.info(f"Selecting {field}.")
+    ytLogger.info(
+        f"Bounding box: {wgrid.LeftEdge[:2]} - "
+        f"{wgrid.RightEdge[:2]} with shape {width, height}."
+    )
+    data = wgrid[field].d[..., 0]
+    if not (nodata is None):
+        mask = data_source.selector.fill_mask(wgrid)[..., 0]
+        data[~mask] = nodata
+    if ds._flip_axes:
+        data = np.flip(data, axis=ds._flip_axes)
+    transform = ds._update_transform(
+        ds.parameters["transform"], wgrid.LeftEdge, wgrid.RightEdge
+    )
+    bounds = (*wgrid.LeftEdge[:2], *wgrid.RightEdge[:2])
+
+    return data.T, transform, width, height, bounds
+    
+
+def get_raster_arrays_and_transform(
+    ds, fields, data_source=None, dtype=None, nodata=None
+):
+    """Get fields data as list of 2d arrays in format expected by rasterio.
+    
+    Updated transform, width, height, bounds are also provided as these
+    will change with selection.
+    
+    """
+    if data_source is None:
+        data_source = ds.all_data()
+    
+    if dtype is None:
+        dtype = ds.parameters['dtype']
+
+    arrays = []
+    for field in fields:
+        data, transform, width, height, bounds = get_field_as_raster_array(
+            ds, data_source, field, nodata=nodata
+        )
+        arrays.append(data.astype(dtype))
+    
+    return arrays, transform, width, height, bounds
+
+
 def save_as_geotiff(ds, filename, fields=None, data_source=None,
-    dtype=None, nodata=None):
+    dtype=None, nodata=None, crs=None, resampling=Resampling.nearest):
     r"""
     Export georeferenced data to a reloadable geotiff.
 
@@ -49,6 +115,12 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
     nodata : optional, int/float
         The nodata value to use when applying mask before saving and also to
         save to output geotiff metadata.
+    crs : optional, str/ :class:`~rasterio.crs.CRS`
+        The coordinate reference system to reproject data to when saving. If no
+        CRS is provided the data will not be reprojected and will remain in the
+        CRS of the primary input raster.
+    resampling : optional, :class: `~rasterio.warp.Resampling` method
+        The resampling method to be used during reprojection to new CRS.
 
     Returns
     -------
@@ -114,18 +186,50 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
     mask = data_source.selector.fill_mask(wgrid)[..., 0]
 
     field_info = {}
-    with rasterio.open(
-        filename,
-        "w",
-        driver="GTiff",
-        height=height,
-        width=width,
-        count=len(fields),
-        dtype=dtype,
-        nodata=nodata,
-        crs=ds.parameters["crs"],
-        transform=transform,
-    ) as dst:
+
+    # raster profile used depends on whether we need to reproject
+    if crs is None:
+        dst_profile = ds.parameters['profile'].copy()
+        dst_profile.update(
+            driver="GTiff",
+            height=height,
+            width=width,
+            count=len(fields),
+            dtype=dtype,
+            nodata=nodata,
+            crs=ds.parameters['crs'],
+            transform=transform
+        )
+    else:
+        # need to update the profile if we are to reproject
+        src_profile = ds.parameters['profile'].copy()
+        src_profile.update(
+            driver="GTiff",
+            height=height,
+            width=width,
+            count=len(fields),
+            dtype=dtype,
+            nodata=nodata,
+            crs=ds.parameters['crs'],
+            transform=transform
+        )
+        transform, width, height = calculate_default_transform(
+            src_profile['crs'],
+            crs,
+            src_profile['width'],
+            src_profile['height'],
+            *wgrid.LeftEdge[:2],
+            *wgrid.RightEdge[:2]
+        )
+        dst_profile = src_profile.copy()
+        dst_profile.update({
+            'crs': dst_crs,
+            'transform': transform,
+            'width': width,
+            'height': height
+        })
+
+    with rasterio.open(filename, "w", **dst_profile) as dst:
         for i, field in enumerate(fields):
             band = i + 1
             fname = f"band_{band}"
@@ -134,11 +238,25 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
             for attr in ["take_log", "units"]:
                 field_info[fname][attr] = getattr(ds.field_info[field], attr)
             data = wgrid[field].d[..., 0]
-            data[~mask] = 0
+            if not (nodata is None):
+                data[~mask] = nodata
             if ds._flip_axes:
                 data = np.flip(data, axis=ds._flip_axes)
             data = data.T.astype(dtype)
-            dst.write(data, band)
+            if crs is None:
+                # no reprojection is needed, save array to raster
+                dst.write(data, band)
+            else:
+                # save reprojected array to raster
+                reproject(
+                    source=data,
+                    destination=rasterio.band(dst, band),
+                    src_transform=src_profile['transform'],
+                    src_crs=src_profile['crs'],
+                    dst_transform=transform,
+                    dst_crs=crs,
+                    resampling=resampling
+                )
 
     yfn = f"{filename[:filename.rfind('.')]}_fields.yaml"
     with open(yfn, mode="w") as f:
