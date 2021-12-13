@@ -79,7 +79,8 @@ def get_raster_arrays_and_transform(
 
 
 def save_as_geotiff(ds, filename, fields=None, data_source=None,
-    dtype=None, nodata=None, crs=None, resampling=Resampling.nearest):
+    save_fmap=True, dtype=None, nodata=None, crs=None,
+    resampling=Resampling.nearest):
     r"""
     Export georeferenced data to a reloadable geotiff.
 
@@ -108,6 +109,9 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
         All data contained within the rectangular bounding box (for
         example, if the data container is a sphere) will be saved. If
         none provided, all data within the dataset's domain will be saved.
+    save_fmap : optional, Boolean
+        Whether to write the field mapping to yaml file for the purpose of
+        preserving field names when reloaded as a dataset with `~yt.load`.
     dtype : optional, str or recognised dtype object
         The desired data type to output the data in. The data will be naively 
         converted into this type and an attempt will be made to save using this
@@ -148,12 +152,22 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
     """
 
     exts = ("tif", "tiff")
-    prefix, suffix = filename.rsplit(".", 1)
-    if suffix.lower() not in exts:
-        raise ValueError(
-            f"Invalid filename extension ({filename}), must be one of {exts}."
-        )
+    try:
+        prefix, suffix = filename.rsplit(".", 1)
+    except ValueError:
+        prefix = filename
+        suffix = ""
 
+    if suffix.lower() not in exts:
+        ytLogger.warning(
+            f"Unexpected filename extension ({filename}),"
+            f" expected one of {exts}."
+        )
+        ytLogger.warning(
+            "To avoid writing unexpect file locations,"
+            " no field map will be saved."
+        )
+        save_fmap = False
     if nodata is None:
         nodata = ds.parameters['profile']['nodata']
 
@@ -258,14 +272,22 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
                     resampling=resampling
                 )
 
-    yfn = f"{filename[:filename.rfind('.')]}_fields.yaml"
-    with open(yfn, mode="w") as f:
-        yaml.dump({prefix: field_info}, stream=f)
-    ytLogger.info(f"Field map saved to {yfn}.")
-    ytLogger.info(
-        f"Save complete. Reload data with:\n"
-        f'ds = yt.load("{filename}", field_map="{yfn}")'
-    )
+    if save_fmap:
+        yfn = f"{filename[:filename.rfind('.')]}_fields.yaml"
+        with open(yfn, mode="w") as f:
+            yaml.dump({prefix: field_info}, stream=f)
+        ytLogger.info(f"Field map saved to {yfn}.")
+        ytLogger.info(
+            f"Save complete. Reload data with:\n"
+            f'ds = yt.load("{filename}", field_map="{yfn}")'
+        )
+    else:
+        yfn = None
+        ytLogger.info(
+            f"Save complete without field map. Reload data with:\n"
+            f'ds = yt.load("{filename}")\n'
+            f"Field names will not be preserved."
+        )
 
     return (filename, yfn)
 
