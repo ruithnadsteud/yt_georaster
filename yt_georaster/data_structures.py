@@ -220,8 +220,8 @@ class GeoRasterGrid(YTGrid):
         left_edge = np.floor((left_edge - dle) / dds) * dds + dle
         right_edge = np.ceil((right_edge - dle) / dds) * dds + dle
 
-        left_edge.clip(min=dle, max=dre, out=left_edge)
-        right_edge.clip(min=dle, max=dre, out=right_edge)
+        # left_edge.clip(min=dle, max=dre, out=left_edge)
+        # right_edge.clip(min=dle, max=dre, out=right_edge)
         return left_edge, right_edge
 
     def _get_rasterio_window(self, selector, dst_crs, transform):
