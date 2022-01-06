@@ -33,7 +33,9 @@ class GeoRasterSaveTest(TempDirTest):
             ("LC08_L2SP_171060_20210227_20210304_02_T1", "LS_temperature"),
         ]
 
-        ds_fn, fm_fn = save_as_geotiff(ds, "my_data.tiff", fields=fields)
+        ds_fn, fm_fn = save_as_geotiff(
+            ds, "my_data.tiff", fields=fields, dtype='float64'
+        )
         ds_new = yt.load(ds_fn, field_map=fm_fn)
 
         for field in fields:
@@ -64,7 +66,7 @@ class GeoRasterSaveTest(TempDirTest):
             ("LC08_L2SP_171060_20210227_20210304_02_T1", "LS_temperature"),
         ]
         ds_fn, fm_fn = save_as_geotiff(
-            ds, "my_data.tiff", fields=fields, data_source=circle
+            ds, "my_data.tiff", fields=fields, data_source=circle, dtype='float64'
         )
         ds_new = yt.load(ds_fn, field_map=fm_fn)
 
@@ -96,7 +98,7 @@ class GeoRasterSaveTest(TempDirTest):
             ("LC08_L2SP_171060_20210227_20210304_02_T1", "LS_temperature"),
         ]
         ds_fn, fm_fn = save_as_geotiff(
-            ds, "my_data.tiff", fields=fields, data_source=polygon
+            ds, "my_data.tiff", fields=fields, data_source=polygon, dtype='float64'
         )
         ds_new = yt.load(ds_fn, field_map=fm_fn)
 
