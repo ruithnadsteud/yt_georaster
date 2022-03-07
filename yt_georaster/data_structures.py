@@ -91,6 +91,30 @@ class GeoRasterWindowGrid(YTGrid):
         )
 
         return window
+    
+    def _get_rasterio_window_transform(self, selector, width, height, crs):
+        """
+        Calculate default transform, width, and height for a rasterio window read.
+        """
+
+        left_edge = self.LeftEdge
+        right_edge = self.RightEdge
+        
+        # width = rasterio_window.width
+        # height = rasterio_window.height
+    
+        out_transform, out_width, out_height =  warp.calculate_default_transform(
+                crs,
+                self.ds.parameters["crs"],
+                width,
+                height,
+                left=left_edge[0],
+                bottom=left_edge[1],
+                right=right_edge[0],
+                top=right_edge[1]
+            )
+        
+        return out_transform, out_width, out_height
 
 
 class GeoRasterGrid(YTGrid):
@@ -243,6 +267,29 @@ class GeoRasterGrid(YTGrid):
         )
 
         return window
+    
+    def _get_rasterio_window_transform(self, selector, width, height, crs):
+        """
+        Calculate default transform, width, and height for a rasterio window read.
+        """
+        
+        left_edge, right_edge = self._get_selection_window(selector)
+        
+        # width = rasterio_window.width
+        # height = rasterio_window.height
+    
+        out_transform, out_width, out_height =  warp.calculate_default_transform(
+                crs,
+                self.ds.parameters["crs"],
+                width,
+                height,
+                left=left_edge[0],
+                bottom=left_edge[1],
+                right=right_edge[0],
+                top=right_edge[1]
+            )
+        
+        return out_transform, out_width, out_height
 
     def __repr__(self):
         ad = self.ActiveDimensions
