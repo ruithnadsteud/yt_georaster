@@ -1,7 +1,6 @@
 import numpy as np
 import rasterio
 from rasterio.warp import reproject, Resampling
-from scipy.ndimage import zoom
 
 from yt.frontends.ytdata.io import IOHandlerYTGridHDF5
 from yt.funcs import mylog
