@@ -45,9 +45,15 @@ def get_field_as_raster_array(ds, data_source, field, nodata=None):
         data[~mask] = nodata
     if ds._flip_axes:
         data = np.flip(data, axis=ds._flip_axes)
-    transform = ds._update_transform(
-        ds.parameters["transform"], wgrid.LeftEdge, wgrid.RightEdge
+    transform, _width, _height = wgrid._get_rasterio_window_transform(
+        data_source.selector, width, height, ds.parameters['crs']
     )
+    if (_width != width) or (_height != height):
+        yt.Logger.warning(
+            f"Error in generating transform: unexpected width/height"
+            f"difference. Width {width} -> {_width}, "
+            f"Height {height} -> {_height}"
+        )
     bounds = (*wgrid.LeftEdge[:2], *wgrid.RightEdge[:2])
 
     return data.T, transform, width, height, bounds
@@ -192,10 +198,6 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
     if not (np.dtype(ds.index.io._field_dtype) is np.dtype(dtype)):
         ytLogger.info(f"{filename} dtype set to {dtype}.")
 
-    transform = ds._update_transform(
-        ds.parameters["transform"], wgrid.LeftEdge, wgrid.RightEdge
-    )
-
     # get the mask to remove data not in the container
     mask = data_source.selector.fill_mask(wgrid)[..., 0]
 
@@ -203,6 +205,16 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
 
     # raster profile used depends on whether we need to reproject
     if crs is None:
+        transform, _width, _height = wgrid._get_rasterio_window_transform(
+            data_source.selector, width, height, ds.parameters['crs']
+        )
+
+        if (_width != width) or (_height != height):
+            yt.Logger.warning(
+                f"Error in generating transform: unexpected width/height"
+                f"difference. Width {width} -> {_width}, "
+                f"Height {height} -> {_height}"
+            )
         dst_profile = ds.parameters['profile'].copy()
         dst_profile.update(
             driver="GTiff",
@@ -227,13 +239,9 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
             crs=ds.parameters['crs'],
             transform=transform
         )
-        transform, width, height = calculate_default_transform(
-            src_profile['crs'],
-            crs,
-            src_profile['width'],
-            src_profile['height'],
-            *wgrid.LeftEdge[:2],
-            *wgrid.RightEdge[:2]
+
+        transform, width, height = wgrid._get_rasterio_window_transform(
+            data_source.selector, width, height, crs
         )
         dst_profile = src_profile.copy()
         dst_profile.update({

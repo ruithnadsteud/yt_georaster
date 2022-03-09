@@ -99,9 +99,6 @@ class GeoRasterWindowGrid(YTGrid):
 
         left_edge = self.LeftEdge
         right_edge = self.RightEdge
-        
-        # width = rasterio_window.width
-        # height = rasterio_window.height
     
         out_transform, out_width, out_height =  warp.calculate_default_transform(
                 crs,

@@ -104,18 +104,23 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
             
             image_resolution = src.res[0]
             image_units = src.crs.linear_units
-        src_height, src_width = data.shape
+
+        src_height = rasterio_window.height
+        src_width = rasterio_window.width
         # Resample to base resolution if necessary.
         base_resolution = self.ds.resolution.d[0]
         base_units = self.ds.parameters["units"]
-        dst_transform, width, height = grid._get_rasterio_window_transform(
-            selector, src_height, src_width, src_crs
-        )
         dst_crs = self.ds.parameters["crs"]
         if (image_resolution != base_resolution) or (dst_crs != src_crs):
             mylog.info(
                 f"Resampling {field}: {image_resolution} {image_units} "
                 f"to {base_resolution} {base_units}."
+            )
+            scale_factor = image_resolution / base_resolution
+            base_height = int(src_height * scale_factor)
+            base_width = int(src_height * scale_factor)
+            dst_transform, width, height = grid._get_rasterio_window_transform(
+                selector, base_height, base_width, src_crs
             )
             reproj_data = np.zeros((height, width))
             reproject(
@@ -140,7 +145,6 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
             selector, self.ds.parameters["crs"], self.ds.parameters["transform"]
         )
         data = data[: int(base_window.width), : int(base_window.height)]
-
         if self._cache_on:
             self._cached_fields.setdefault(grid.id, {})
             self._cached_fields[grid.id][field] = data
