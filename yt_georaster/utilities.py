@@ -176,6 +176,10 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
         save_fmap = False
     if nodata is None:
         nodata = ds.parameters['profile']['nodata']
+        if nodata is None:
+            ytLogger.warning(
+                f"No nodata value set, limited masking will occur."
+            )
 
     if fields is None:
         fields = ds.field_list
@@ -241,7 +245,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
         )
 
         transform, width, height = wgrid._get_rasterio_window_transform(
-            data_source.selector, width, height, crs
+            data_source.selector, width, height, ds.parameters['crs'], base_crs=crs
         )
         dst_profile = src_profile.copy()
         dst_profile.update({
@@ -275,7 +279,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
                     destination=rasterio.band(dst, band),
                     src_transform=src_profile['transform'],
                     src_crs=src_profile['crs'],
-                    dst_transform=transform,
+                    dst_transform=dst_profile['transform'],
                     dst_crs=crs,
                     resampling=resampling
                 )

@@ -107,6 +107,7 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
 
         src_height = rasterio_window.height
         src_width = rasterio_window.width
+
         src_transform, width, height = grid._get_rasterio_window_transform(
             selector, src_height, src_width, src_crs, base_crs=src_crs
         )
@@ -127,7 +128,7 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
                 selector, base_height, base_width, src_crs
             )
 
-            reproj_data = np.zeros((height, width))
+            reproj_data = np.zeros((height, width), dtype=data.dtype)
             reproject(
                 data,
                 reproj_data,

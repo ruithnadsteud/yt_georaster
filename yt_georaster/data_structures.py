@@ -339,11 +339,12 @@ class GeoRasterDataset(Dataset):
     refine_by = 2
     _con_attrs = ()
 
-    def __init__(self, *args, field_map=None, crs=None):
+    def __init__(self, *args, field_map=None, crs=None, nodata=None):
         self.filename_list = args
         filename = args[0]
         self.field_map = field_map
         self.crs = crs
+        self.nodata = nodata
         super().__init__(filename, self._dataset_type, unit_system="mks")
         self.data = self.index.grids[0]
         self._added_fields = []
@@ -437,6 +438,17 @@ class GeoRasterDataset(Dataset):
                 f"Dataset CRS {self.parameters['crs']} "
                 f"units are '{self.parameters['units']}'. "
             )
+
+        # set nodata value
+        if not self.nodata is None:
+            if not self.parameters['nodata'] is None:
+                mylog.warning(
+                    f"Overwriting nodata value {self.parameters['nodata']}"
+                    f" with user defined value {self.nodata}."
+                )
+            self.parameters['nodata'] = self.nodata
+            self.parameters['profile']['nodata'] = self.nodata
+
         # set domain
         width = self.parameters["width"]
         height = self.parameters["height"]
