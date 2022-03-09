@@ -6,7 +6,7 @@ Utility functions for yt_georaster.
 """
 import numpy as np
 import rasterio
-from rasterio.warp import calculate_default_transform, reproject, Resampling
+from rasterio.warp import reproject, Resampling
 from unyt import unyt_array, unyt_quantity, uconcatenate
 import yaml
 
@@ -49,7 +49,7 @@ def get_field_as_raster_array(ds, data_source, field, nodata=None):
         data_source.selector, width, height, ds.parameters['crs']
     )
     if (_width != width) or (_height != height):
-        yt.Logger.warning(
+        ytLogger.warning(
             f"Error in generating transform: unexpected width/height"
             f"difference. Width {width} -> {_width}, "
             f"Height {height} -> {_height}"
@@ -210,7 +210,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
         )
 
         if (_width != width) or (_height != height):
-            yt.Logger.warning(
+            ytLogger.warning(
                 f"Error in generating transform: unexpected width/height"
                 f"difference. Width {width} -> {_width}, "
                 f"Height {height} -> {_height}"

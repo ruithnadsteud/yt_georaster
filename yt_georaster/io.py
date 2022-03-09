@@ -118,7 +118,7 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
             )
             scale_factor = image_resolution / base_resolution
             base_height = int(src_height * scale_factor)
-            base_width = int(src_height * scale_factor)
+            base_width = int(src_width * scale_factor)
             dst_transform, width, height = grid._get_rasterio_window_transform(
                 selector, base_height, base_width, src_crs
             )
