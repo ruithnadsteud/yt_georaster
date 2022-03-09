@@ -107,6 +107,9 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
 
         src_height = rasterio_window.height
         src_width = rasterio_window.width
+        src_transform, width, height = grid._get_rasterio_window_transform(
+            selector, src_height, src_width, src_crs, base_crs=src_crs
+        )
         # Resample to base resolution if necessary.
         base_resolution = self.ds.resolution.d[0]
         base_units = self.ds.parameters["units"]
@@ -119,9 +122,11 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
             scale_factor = image_resolution / base_resolution
             base_height = int(src_height * scale_factor)
             base_width = int(src_width * scale_factor)
+
             dst_transform, width, height = grid._get_rasterio_window_transform(
                 selector, base_height, base_width, src_crs
             )
+
             reproj_data = np.zeros((height, width))
             reproject(
                 data,
@@ -132,8 +137,8 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
                 dst_crs=dst_crs,
                 resampling=Resampling.nearest
             )
+
             data = reproj_data
-            
 
         # Transform data to correct shape.
         data = data.T
