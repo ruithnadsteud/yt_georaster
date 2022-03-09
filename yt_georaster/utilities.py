@@ -178,7 +178,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
         nodata = ds.parameters['profile']['nodata']
         if nodata is None:
             ytLogger.warning(
-                f"No nodata value set, limited masking will occur."
+                "No nodata value set, limited masking will occur."
             )
 
     if fields is None:

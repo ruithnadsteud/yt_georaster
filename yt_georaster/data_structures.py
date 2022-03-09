@@ -440,8 +440,8 @@ class GeoRasterDataset(Dataset):
             )
 
         # set nodata value
-        if not self.nodata is None:
-            if not self.parameters['nodata'] is None:
+        if self.nodata is not None:
+            if self.parameters['nodata'] is not None:
                 mylog.warning(
                     f"Overwriting nodata value {self.parameters['nodata']}"
                     f" with user defined value {self.nodata}."
