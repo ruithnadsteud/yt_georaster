@@ -3,7 +3,7 @@ import numpy as np
 import rasterio
 from rasterio import warp
 from rasterio.windows import from_bounds
-from rasterio.crs import CRS
+# from rasterio.crs import CRS
 import re
 import weakref
 
