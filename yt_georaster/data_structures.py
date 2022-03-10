@@ -339,11 +339,11 @@ class GeoRasterDataset(Dataset):
     refine_by = 2
     _con_attrs = ()
 
-    def __init__(self, *args, field_map=None, crs=None, nodata=None):
+    def __init__(self, *args, field_map=None, nodata=None):
         self.filename_list = args
         filename = args[0]
         self.field_map = field_map
-        self.crs = crs
+        # self.crs = crs
         self.nodata = nodata
         super().__init__(filename, self._dataset_type, unit_system="mks")
         self.data = self.index.grids[0]
@@ -377,52 +377,45 @@ class GeoRasterDataset(Dataset):
         self.current_time = 0
 
         # overwrite crs if one is provided by user
-        if not (self.crs is None):
-            # make sure user provided CRS is valid CRS object
-            if not isinstance(self.crs, CRS):
-                if isinstance(self.crs, int):
-                    # assume epsg number
-                    self.crs = CRS.from_epsg(self.crs)
-                elif isinstance(self.crs, dict):
-                    self.crs = CRS.from_dict(**self.crs)
-                else:
-                    self.crs = CRS.from_string(self.crs)
+#         if not (self.crs is None):
+#             # make sure user provided CRS is valid CRS object
+#             if not isinstance(self.crs, CRS):
+#                 if isinstance(self.crs, int):
+#                     # assume epsg number
+#                     self.crs = CRS.from_epsg(self.crs)
+#                 elif isinstance(self.crs, dict):
+#                     self.crs = CRS.from_dict(**self.crs)
+#                 else:
+#                     self.crs = CRS.from_string(self.crs)
 
-            # get reprojected transform
-            left_edge = self.parameters["transform"] * (0, 0)
-            right_edge = self.parameters["transform"] * (
-                self.parameters["width"],
-                self.parameters["height"]
-            )
-            transform, width, height = warp.calculate_default_transform(
-                self.parameters["crs"],
-                self.crs,
-                self.parameters["width"],
-                self.parameters["height"],
-                left=left_edge[0],
-                bottom=left_edge[1],
-                right=right_edge[0],
-                top=right_edge[1],
-                # resolution=self.parameters["transform"][0]
-                dst_width=self.parameters["width"],
-                dst_height=self.parameters["height"]
-            )  # current solution can create rectangular pixels
-            # xs, ys = warp.transform(
-            #     self.parameters["crs"],
-            #     dst_crs,
-            #     [left_edge[0], right_edge[0]],
-            #     [left_edge[1], right_edge[1]],
-            #     zs=None
-            # )
-            # update parameters
-            self.parameters["res"] = (transform[0], -transform[4])
-            self.parameters["crs"] = self.crs
-            self.parameters["transform"] = transform
-            self.parameters["width"] = width
-            self.parameters["height"] = height
-        else:
-            # if no crs has be provided replace None with base image CRS
-            self.crs = self.parameters["crs"]
+#             # get reprojected transform
+#             left_edge = self.parameters["transform"] * (0, 0)
+#             right_edge = self.parameters["transform"] * (
+#                 self.parameters["width"],
+#                 self.parameters["height"]
+#             )
+#             transform, width, height = warp.calculate_default_transform(
+#                 self.parameters["crs"],
+#                 self.crs,
+#                 self.parameters["width"],
+#                 self.parameters["height"],
+#                 left=left_edge[0],
+#                 bottom=left_edge[1],
+#                 right=right_edge[0],
+#                 top=right_edge[1]
+#                 # resolution=self.parameters["transform"][0]
+#                 # dst_width=self.parameters["width"],
+#                 # dst_height=self.parameters["height"]
+#             )  # current solution can create rectangular pixels
+#             # update parameters
+#             self.parameters["res"] = (transform[0], -transform[4])
+#             self.parameters["crs"] = self.crs
+#             self.parameters["transform"] = transform
+#             self.parameters["width"] = width
+#             self.parameters["height"] = height
+#         else:
+#             # if no crs has be provided replace None with base image CRS
+        self.crs = self.parameters["crs"]
 
         # get units and conversion factor to metres
         self.parameters["units"] = self.parameters["crs"].linear_units

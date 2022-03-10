@@ -151,6 +151,7 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
             selector, self.ds.parameters["crs"], self.ds.parameters["transform"]
         )
         data = data[: int(base_window.width), : int(base_window.height)]
+
         if self._cache_on:
             self._cached_fields.setdefault(grid.id, {})
             self._cached_fields[grid.id][field] = data
