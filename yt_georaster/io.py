@@ -100,15 +100,13 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
             data = src.read(
                 band, window=rasterio_window, out_dtype=self._field_dtype, boundless=True
             )
-            
-            image_resolution = src.res[0]
-            image_units = src.crs.linear_units
 
         # get target window
         base_window_transform, width, height = grid._get_rasterio_window_transform(
             selector, None
         )
-        
+
+        image_units = src_crs.linear_units
         base_units = self.ds.parameters["units"]
         dst_crs = self.ds.parameters["crs"]
         # reproject to base
