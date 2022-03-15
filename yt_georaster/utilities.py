@@ -6,7 +6,7 @@ Utility functions for yt_georaster.
 """
 import numpy as np
 import rasterio
-from rasterio.warp import reproject, Resampling
+from rasterio.warp import reproject, Resampling, calculate_default_transform
 from unyt import unyt_array, unyt_quantity, uconcatenate
 import yaml
 
@@ -46,7 +46,7 @@ def get_field_as_raster_array(ds, data_source, field, nodata=None):
     if ds._flip_axes:
         data = np.flip(data, axis=ds._flip_axes)
     transform, _width, _height = wgrid._get_rasterio_window_transform(
-        data_source.selector, width, height, ds.parameters['crs']
+        data_source.selector, None
     )
     if (_width != width) or (_height != height):
         ytLogger.warning(
@@ -207,7 +207,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
 
     field_info = {}
     transform, _width, _height = wgrid._get_rasterio_window_transform(
-        data_source.selector, width, height, ds.parameters['crs']
+        data_source.selector, None
     )
 
     if (_width != width) or (_height != height):
@@ -218,7 +218,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
         )
 
     # raster profile used depends on whether we need to reproject
-    if crs is None:
+    if crs is None or crs == ds.parameters['crs']:
         dst_profile = ds.parameters['profile'].copy()
         dst_profile.update(
             driver="GTiff",
@@ -243,10 +243,14 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
             crs=ds.parameters['crs'],
             transform=transform
         )
-
-        transform, width, height = wgrid._get_rasterio_window_transform(
-            data_source.selector, width, height, ds.parameters['crs'], base_crs=crs
-        )
+        bounds = (*wgrid.LeftEdge[:2], *wgrid.RightEdge[:2])
+        transform, width, height =  calculate_default_transform(
+                ds.parameters['crs'],
+                crs,
+                _width,
+                _height,
+                *bounds
+            )
         dst_profile = src_profile.copy()
         dst_profile.update({
             'crs': crs,
@@ -269,7 +273,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
             if ds._flip_axes:
                 data = np.flip(data, axis=ds._flip_axes)
             data = data.T.astype(dtype)
-            if crs is None:
+            if crs is None or crs == ds.parameters['crs']:
                 # no reprojection is needed, save array to raster
                 dst.write(data, band)
             else:

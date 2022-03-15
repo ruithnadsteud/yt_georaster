@@ -95,46 +95,41 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
             # Round up rasterio window width and height.
             rasterio_window = grid._get_rasterio_window(selector, src_crs, src_transform)
             rasterio_window = rasterio_window.round_shape(op="ceil", pixel_precision=None)
-
+            src_window_transform = src.window_transform(rasterio_window)
             # Read in the band/field.
             data = src.read(
                 band, window=rasterio_window, out_dtype=self._field_dtype, boundless=True
             )
             
-            
             image_resolution = src.res[0]
             image_units = src.crs.linear_units
 
-        src_height = rasterio_window.height
-        src_width = rasterio_window.width
-
-        src_transform, width, height = grid._get_rasterio_window_transform(
-            selector, src_height, src_width, src_crs, base_crs=src_crs
+        # get target window
+        base_window_transform, width, height = grid._get_rasterio_window_transform(
+            selector, None
         )
-        # Resample to base resolution if necessary.
-        base_resolution = self.ds.resolution.d[0]
+        
         base_units = self.ds.parameters["units"]
         dst_crs = self.ds.parameters["crs"]
-        if (image_resolution != base_resolution) or (dst_crs != src_crs):
+        # reproject to base
+        if (base_window_transform != src_window_transform) or (dst_crs != src_crs):
+            if dst_crs != src_crs:
+                mylog.info(
+                    f"Reprojecting {field}: {src_crs} "
+                    f"to {dst_crs}."
+                )
             mylog.info(
-                f"Resampling {field}: {image_resolution} {image_units} "
-                f"to {base_resolution} {base_units}."
-            )
-            scale_factor = image_resolution / base_resolution
-            base_height = int(src_height * scale_factor)
-            base_width = int(src_width * scale_factor)
-
-            dst_transform, width, height = grid._get_rasterio_window_transform(
-                selector, base_height, base_width, src_crs
+                f"Resampling {field}: {src_window_transform[0]} {image_units} "
+                f"to {base_window_transform[0]} {base_units}."
             )
 
             reproj_data = np.zeros((height, width), dtype=data.dtype)
             reproject(
                 data,
                 reproj_data,
-                src_transform=src_transform,
+                src_transform=src_window_transform,
                 src_crs=src_crs,
-                dst_transform=dst_transform,
+                dst_transform=base_window_transform,
                 dst_crs=dst_crs,
                 resampling=Resampling.nearest
             )
@@ -145,12 +140,6 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
         data = data.T
         if self.ds._flip_axes:
             data = np.flip(data, axis=self.ds._flip_axes)
-
-        # Now clip to the size of the window in the base resolution.
-        base_window = grid._get_rasterio_window(
-            selector, self.ds.parameters["crs"], self.ds.parameters["transform"]
-        )
-        data = data[: int(base_window.width), : int(base_window.height)]
 
         if self._cache_on:
             self._cached_fields.setdefault(grid.id, {})

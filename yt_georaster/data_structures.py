@@ -3,7 +3,7 @@ import numpy as np
 import rasterio
 from rasterio import warp
 from rasterio.windows import from_bounds
-# from rasterio.crs import CRS
+from rasterio.crs import CRS
 import re
 import weakref
 
@@ -74,46 +74,42 @@ class GeoRasterWindowGrid(YTGrid):
         ad = self.ActiveDimensions
         return f"GeoRasterWindowGrid ({ad[0]}x{ad[1]})"
 
-    def _get_rasterio_window(self, selector, dst_crs, transform):
-        left_edge = self.LeftEdge
-        right_edge = self.RightEdge
+    def _get_rasterio_window(self, selector, dst_crs, transform, src_crs=None):
+        if src_crs is None:
+            src_crs = self.ds.parameters["crs"]
+        left, bottom, _ = self.LeftEdge
+        right, top, _ = self.RightEdge
 
-        transform_x, transform_y = warp.transform(
-            self.ds.parameters["crs"],
+        new_bounds = warp.transform_bounds(
+            src_crs,
             dst_crs,
-            [left_edge[0], right_edge[0]],
-            [left_edge[1], right_edge[1]],
-            zs=None,
+            left,
+            bottom,
+            right,
+            top
         )
 
         window = from_bounds(
-            transform_x[0], transform_y[0], transform_x[1], transform_y[1], transform
+            *new_bounds, transform
         )
 
         return window
     
-    def _get_rasterio_window_transform(self, selector, width, height, crs, base_crs=None):
+    def _get_rasterio_window_transform(self, selector, crs, base_crs=None):
         """
         Calculate default transform, width, and height for a rasterio window read.
         """
 
-        left_edge = self.LeftEdge
-        right_edge = self.RightEdge
         if base_crs is None:
             base_crs = self.ds.parameters["crs"]
-    
-        out_transform, out_width, out_height =  warp.calculate_default_transform(
-                crs,
-                base_crs,
-                width,
-                height,
-                left=left_edge[0],
-                bottom=left_edge[1],
-                right=right_edge[0],
-                top=right_edge[1]
-            )
-        
-        return out_transform, out_width, out_height
+
+        base_window = self._get_rasterio_window(
+            selector, base_crs, self.ds.parameters["transform"], src_crs=crs
+        )
+        base_window = base_window.round_shape(op="ceil", pixel_precision=None)
+        base_window_transform = rasterio.windows.transform(base_window, self.ds.parameters["transform"])
+
+        return base_window_transform, base_window.width, base_window.height
 
 
 class GeoRasterGrid(YTGrid):
@@ -243,52 +239,51 @@ class GeoRasterGrid(YTGrid):
         left_edge = np.floor((left_edge - dle) / dds) * dds + dle
         right_edge = np.ceil((right_edge - dle) / dds) * dds + dle
 
-        # left_edge.clip(min=dle, max=dre, out=left_edge)
-        # right_edge.clip(min=dle, max=dre, out=right_edge)
         return left_edge, right_edge
 
-    def _get_rasterio_window(self, selector, dst_crs, transform):
+    def _get_rasterio_window(self, selector, dst_crs, transform, src_crs=None):
         """
         Calculate position, width, and height for a rasterio window read.
         """
+
+        if src_crs is None:
+            src_crs = self.ds.parameters["crs"]
+
         left_edge, right_edge = self._get_selection_window(selector)
 
-        transform_x, transform_y = warp.transform(
-            self.ds.parameters["crs"],
+        left, bottom, _ = left_edge
+        right, top, _ = right_edge
+
+        new_bounds = warp.transform_bounds(
+            src_crs,
             dst_crs,
-            [left_edge[0], right_edge[0]],
-            [left_edge[1], right_edge[1]],
-            zs=None,
+            left,
+            bottom,
+            right,
+            top
         )
 
         window = from_bounds(
-            transform_x[0], transform_y[0], transform_x[1], transform_y[1], transform
+            *new_bounds, transform
         )
 
         return window
     
-    def _get_rasterio_window_transform(self, selector, width, height, crs, base_crs=None):
+    def _get_rasterio_window_transform(self, selector, crs, base_crs=None):
         """
         Calculate default transform, width, and height for a rasterio window read.
         """
-        
-        left_edge, right_edge = self._get_selection_window(selector)
-        
+
         if base_crs is None:
             base_crs = self.ds.parameters["crs"]
-    
-        out_transform, out_width, out_height =  warp.calculate_default_transform(
-                crs,
-                base_crs,
-                width,
-                height,
-                left=left_edge[0],
-                bottom=left_edge[1],
-                right=right_edge[0],
-                top=right_edge[1]
-            )
-        
-        return out_transform, out_width, out_height
+
+        base_window = self._get_rasterio_window(
+            selector, base_crs, self.ds.parameters["transform"], src_crs=crs
+        )
+        base_window = base_window.round_shape(op="ceil", pixel_precision=None)
+        base_window_transform = rasterio.windows.transform(base_window, self.ds.parameters["transform"])
+
+        return base_window_transform, base_window.width, base_window.height
 
     def __repr__(self):
         ad = self.ActiveDimensions
@@ -377,16 +372,9 @@ class GeoRasterDataset(Dataset):
         self.current_time = 0
 
         # overwrite crs if one is provided by user
-#         if not (self.crs is None):
+#         if self.crs is not None:
 #             # make sure user provided CRS is valid CRS object
-#             if not isinstance(self.crs, CRS):
-#                 if isinstance(self.crs, int):
-#                     # assume epsg number
-#                     self.crs = CRS.from_epsg(self.crs)
-#                 elif isinstance(self.crs, dict):
-#                     self.crs = CRS.from_dict(**self.crs)
-#                 else:
-#                     self.crs = CRS.from_string(self.crs)
+#             self.crs = self._parse_crs(self.crs)
 
 #             # get reprojected transform
 #             left_edge = self.parameters["transform"] * (0, 0)
@@ -408,11 +396,15 @@ class GeoRasterDataset(Dataset):
 #                 # dst_height=self.parameters["height"]
 #             )  # current solution can create rectangular pixels
 #             # update parameters
-#             self.parameters["res"] = (transform[0], -transform[4])
-#             self.parameters["crs"] = self.crs
-#             self.parameters["transform"] = transform
-#             self.parameters["width"] = width
-#             self.parameters["height"] = height
+#             _profile = {
+#                 "res": (transform[0], -transform[4]),
+#                 "crs": self.crs,
+#                 "transform": transform,
+#                 "width": width,
+#                 "height": height
+#             }
+#             self.parameters.update(_profile)
+#             self.parameters["profile"].update(_profile)
 #         else:
 #             # if no crs has be provided replace None with base image CRS
         self.crs = self.parameters["crs"]
@@ -502,8 +494,21 @@ class GeoRasterDataset(Dataset):
                 break
         return fn
 
+
     def __str__(self):
         return self.__repr__()
+
+    def _parse_crs(self, crs):
+        """Return rasterio CRS object."""
+        if not isinstance(crs, CRS):
+            if isinstance(crs, int):
+                # assume epsg number
+                crs = CRS.from_epsg(crs)
+            elif isinstance(crs, dict):
+                crs = CRS.from_dict(**crs)
+            else:
+                crs = CRS.from_string(crs)
+        return crs
 
     def _update_transform(self, transform, left_edge, right_edge):
         """
