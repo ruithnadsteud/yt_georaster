@@ -116,10 +116,11 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
                     f"Reprojecting {field}: {src_crs} "
                     f"to {dst_crs}."
                 )
-            mylog.info(
-                f"Resampling {field}: {src_window_transform[0]} {image_units} "
-                f"to {base_window_transform[0]} {base_units}."
-            )
+            if src_window_transform[0] != base_window_transform[0]:
+                mylog.info(
+                    f"Resampling {field}: {src_window_transform[0]} {image_units} "
+                    f"to {base_window_transform[0]} {base_units}."
+                )
 
             reproj_data = np.zeros((height, width), dtype=data.dtype)
             reproject(

@@ -231,6 +231,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
             transform=transform
         )
     else:
+        crs = ds._parse_crs(crs)
         # need to update the profile if we are to reproject
         src_profile = ds.parameters['profile'].copy()
         src_profile.update(
@@ -277,6 +278,10 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
                 # no reprojection is needed, save array to raster
                 dst.write(data, band)
             else:
+                ytLogger.info(
+                    f"Reprojecting {field}: {src_profile['crs']} "
+                    f"to {crs}."
+                )
                 # save reprojected array to raster
                 reproject(
                     source=data,
