@@ -334,11 +334,11 @@ class GeoRasterDataset(Dataset):
     refine_by = 2
     _con_attrs = ()
 
-    def __init__(self, *args, field_map=None, nodata=None):
+    def __init__(self, *args, field_map=None, crs=None, nodata=None):
         self.filename_list = args
         filename = args[0]
         self.field_map = field_map
-        # self.crs = crs
+        self.crs = crs
         self.nodata = nodata
         super().__init__(filename, self._dataset_type, unit_system="mks")
         self.data = self.index.grids[0]
@@ -369,45 +369,41 @@ class GeoRasterDataset(Dataset):
                 self.parameters[key] = v
             self.parameters["res"] = f.res
             self.parameters["profile"] = f.profile
+            self.parameters["bounds"] = f.bounds
         self.current_time = 0
 
         # overwrite crs if one is provided by user
-#         if self.crs is not None:
-#             # make sure user provided CRS is valid CRS object
-#             self.crs = self._parse_crs(self.crs)
+        if self.crs is not None:
+            # make sure user provided CRS is valid CRS object
+            self.crs = self._parse_crs(self.crs)
 
-#             # get reprojected transform
-#             left_edge = self.parameters["transform"] * (0, 0)
-#             right_edge = self.parameters["transform"] * (
-#                 self.parameters["width"],
-#                 self.parameters["height"]
-#             )
-#             transform, width, height = warp.calculate_default_transform(
-#                 self.parameters["crs"],
-#                 self.crs,
-#                 self.parameters["width"],
-#                 self.parameters["height"],
-#                 left=left_edge[0],
-#                 bottom=left_edge[1],
-#                 right=right_edge[0],
-#                 top=right_edge[1]
-#                 # resolution=self.parameters["transform"][0]
-#                 # dst_width=self.parameters["width"],
-#                 # dst_height=self.parameters["height"]
-#             )  # current solution can create rectangular pixels
-#             # update parameters
-#             _profile = {
-#                 "res": (transform[0], -transform[4]),
-#                 "crs": self.crs,
-#                 "transform": transform,
-#                 "width": width,
-#                 "height": height
-#             }
-#             self.parameters.update(_profile)
-#             self.parameters["profile"].update(_profile)
-#         else:
-#             # if no crs has be provided replace None with base image CRS
-        self.crs = self.parameters["crs"]
+            # get reprojected transform
+            transform, width, height = warp.calculate_default_transform(
+                self.parameters["crs"],
+                self.crs,
+                self.parameters["width"],
+                self.parameters["height"],
+                *self.parameters["bounds"],
+                resolution=self.parameters["res"] # the resolution remains fixed
+            )
+            # update parameters
+            _profile = {
+                "crs": self.crs,
+                "transform": transform,
+                "width": width,
+                "height": height
+            }
+            self.parameters.update(_profile)
+            self.parameters["profile"].update(_profile)
+            # updated bounds
+            self.parameters["bounds"] = warp.transform_bounds(
+                self.parameters["crs"],
+                self.crs,
+                *self.parameters["bounds"]
+            )
+        else:
+            # if no crs has be provided replace None with base image CRS
+            self.crs = self.parameters["crs"]
 
         # get units and conversion factor to metres
         self.parameters["units"] = self.parameters["crs"].linear_units

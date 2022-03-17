@@ -73,6 +73,7 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
                     data = self._read_rasterio_data(selector, g, field)
                     for dim in range(len(data.shape), 3):
                         data = np.expand_dims(data, dim)
+
                     nd = g.select(selector, data, rv[field], ind)
                 ind += nd
 
