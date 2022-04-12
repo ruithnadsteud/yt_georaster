@@ -62,11 +62,11 @@ class GeoRasterWindowGrid(YTGrid):
         # Make sure z dimension edges are the same as parent grid.
         self.LeftEdge[2] = gridobj.LeftEdge[2]
         self.RightEdge[2] = gridobj.RightEdge[2]
-        self.ActiveDimensions = (
+        self.ActiveDimensions = np.ceil((
             gridobj.ActiveDimensions
             * (self.RightEdge - self.LeftEdge)
             / (gridobj.RightEdge - gridobj.LeftEdge)
-        ).d.astype(np.int32)
+        ).d).astype(np.int32)
         # Inherit dx values from parent.
         self.dds = gridobj.dds
 
