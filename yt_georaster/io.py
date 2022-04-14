@@ -73,7 +73,6 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
                     data = self._read_rasterio_data(selector, g, field)
                     for dim in range(len(data.shape), 3):
                         data = np.expand_dims(data, dim)
-
                     nd = g.select(selector, data, rv[field], ind)
                 ind += nd
 
@@ -95,7 +94,6 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
 
             # Round up rasterio window width and height.
             rasterio_window = grid._get_rasterio_window(selector, src_crs, src_transform)
-            rasterio_window = rasterio_window.round_shape(op="ceil", pixel_precision=None)
             src_window_transform = src.window_transform(rasterio_window)
             # Read in the band/field.
             data = src.read(

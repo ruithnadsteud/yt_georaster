@@ -74,13 +74,14 @@ class GeoRasterWindowGrid(YTGrid):
         ad = self.ActiveDimensions
         return f"GeoRasterWindowGrid ({ad[0]}x{ad[1]})"
 
-    def _get_rasterio_window(self, selector, dst_crs, transform, src_crs=None):
+    def _get_rasterio_window(
+        self, selector, dst_crs, transform, src_crs=None, eps=0.1
+    ):
         if src_crs is None:
             src_crs = self.ds.parameters["crs"]
         left, bottom, _ = self.LeftEdge
         right, top, _ = self.RightEdge
-
-        new_bounds = warp.transform_bounds(
+        left, bottom, right, top = warp.transform_bounds(
             src_crs,
             dst_crs,
             left,
@@ -88,13 +89,19 @@ class GeoRasterWindowGrid(YTGrid):
             right,
             top
         )
-
+        dds = self.dds.d
+        dx = eps * dds[0]
+        dy = eps * dds[1]
+        left = left + dx
+        bottom = bottom + dy
+        right = right - dx
+        top = top - dy
         window = from_bounds(
-            *new_bounds, transform
-        )
+            left, bottom, right, top, transform
+        ).round_offsets('floor').round_lengths('ceil')
 
         return window
-    
+
     def _get_rasterio_window_transform(self, selector, crs, base_crs=None):
         """
         Calculate default transform, width, and height for a rasterio window read.
@@ -106,7 +113,6 @@ class GeoRasterWindowGrid(YTGrid):
         base_window = self._get_rasterio_window(
             selector, base_crs, self.ds.parameters["transform"], src_crs=crs
         )
-        base_window = base_window.round_shape(op="ceil", pixel_precision=None)
         base_window_transform = rasterio.windows.transform(base_window, self.ds.parameters["transform"])
 
         return base_window_transform, base_window.width, base_window.height
@@ -234,14 +240,11 @@ class GeoRasterGrid(YTGrid):
             left_edge = dle
             right_edge = dre
 
-        # round to enclosing pixel edges
-        dds = self.dds.d
-        left_edge = np.floor((left_edge - dle) / dds) * dds + dle
-        right_edge = np.ceil((right_edge - dle) / dds) * dds + dle
-
         return left_edge, right_edge
 
-    def _get_rasterio_window(self, selector, dst_crs, transform, src_crs=None):
+    def _get_rasterio_window(
+        self, selector, dst_crs, transform, src_crs=None, eps=0.1
+    ):
         """
         Calculate position, width, and height for a rasterio window read.
         """
@@ -250,11 +253,10 @@ class GeoRasterGrid(YTGrid):
             src_crs = self.ds.parameters["crs"]
 
         left_edge, right_edge = self._get_selection_window(selector)
-
         left, bottom, _ = left_edge
         right, top, _ = right_edge
 
-        new_bounds = warp.transform_bounds(
+        left, bottom, right, top = warp.transform_bounds(
             src_crs,
             dst_crs,
             left,
@@ -262,10 +264,17 @@ class GeoRasterGrid(YTGrid):
             right,
             top
         )
+        dds = self.dds.d
+        dx = eps * dds[0]
+        dy = eps * dds[1]
+        left = left + dx
+        bottom = bottom + dy
+        right = right - dx
+        top = top - dy
 
         window = from_bounds(
-            *new_bounds, transform
-        )
+            left, bottom, right, top, transform
+        ).round_offsets('floor').round_lengths('ceil')
 
         return window
     
@@ -280,7 +289,6 @@ class GeoRasterGrid(YTGrid):
         base_window = self._get_rasterio_window(
             selector, base_crs, self.ds.parameters["transform"], src_crs=crs
         )
-        base_window = base_window.round_shape(op="ceil", pixel_precision=None)
         base_window_transform = rasterio.windows.transform(base_window, self.ds.parameters["transform"])
 
         return base_window_transform, base_window.width, base_window.height
@@ -777,11 +785,11 @@ class GeoRasterWindowDataset(GeoRasterDataset):
         self._dataset_type = parent_ds._dataset_type
         self.domain_left_edge = parent_ds.arr(left_edge, parent_ds.parameters["units"])
         self.domain_right_edge = parent_ds.arr(right_edge, parent_ds.parameters["units"])
-        self.domain_dimensions = (
+        self.domain_dimensions = np.ceil((
             parent_ds.domain_dimensions
             * (self.domain_right_edge - self.domain_left_edge)
             / (parent_ds.domain_right_edge - parent_ds.domain_left_edge)
-        ).d.astype(np.int32)
+        ).d).astype(np.int32)
 
         super().__init__(parent_ds.parameter_filename, field_map=parent_ds.field_map)
 
