@@ -40,7 +40,7 @@ class GeoRasterWindowGrid(YTGrid):
     area.
     """
 
-    def __init__(self, gridobj, left_edge, right_edge):
+    def __init__(self, gridobj, left_edge, right_edge, window):
 
         YTSelectionContainer.__init__(self, gridobj._index.dataset, None)
 
@@ -62,11 +62,11 @@ class GeoRasterWindowGrid(YTGrid):
         # Make sure z dimension edges are the same as parent grid.
         self.LeftEdge[2] = gridobj.LeftEdge[2]
         self.RightEdge[2] = gridobj.RightEdge[2]
-        self.ActiveDimensions = np.ceil((
-            gridobj.ActiveDimensions
-            * (self.RightEdge - self.LeftEdge)
-            / (gridobj.RightEdge - gridobj.LeftEdge)
-        ).d).astype(np.int32)
+        ad_z = int((self.RightEdge[2] - self.LeftEdge[2])/gridobj.dds[2])
+        self.ActiveDimensions = np.array(
+            [window.width, window.height, ad_z],
+            dtype=np.int32
+        )
         # Inherit dx values from parent.
         self.dds = gridobj.dds
 
@@ -75,13 +75,13 @@ class GeoRasterWindowGrid(YTGrid):
         return f"GeoRasterWindowGrid ({ad[0]}x{ad[1]})"
 
     def _get_rasterio_window(
-        self, selector, dst_crs, transform, src_crs=None, eps=0.1
+        self, selector, dst_crs, transform, src_crs=None
     ):
         if src_crs is None:
             src_crs = self.ds.parameters["crs"]
         left, bottom, _ = self.LeftEdge
         right, top, _ = self.RightEdge
-        left, bottom, right, top = warp.transform_bounds(
+        new_bounds = warp.transform_bounds(
             src_crs,
             dst_crs,
             left,
@@ -89,15 +89,8 @@ class GeoRasterWindowGrid(YTGrid):
             right,
             top
         )
-        dds = self.dds.d
-        dx = eps * dds[0]
-        dy = eps * dds[1]
-        left = left + dx
-        bottom = bottom + dy
-        right = right - dx
-        top = top - dy
         window = from_bounds(
-            left, bottom, right, top, transform
+            *new_bounds, transform
         ).round_offsets('floor').round_lengths('ceil')
 
         return window
@@ -205,7 +198,8 @@ class GeoRasterGrid(YTGrid):
             return self._last_wgrid
 
         left_edge, right_edge = self._get_selection_window(selector)
-        wgrid = GeoRasterWindowGrid(self, left_edge, right_edge)
+        w = self._get_rasterio_window(selector, self.ds.parameters['crs'], self.ds.parameters['transform'])
+        wgrid = GeoRasterWindowGrid(self, left_edge, right_edge, w)
         self._last_wgrid = wgrid
         self._last_wgrid_id = hash(selector)
         return wgrid
@@ -243,37 +237,30 @@ class GeoRasterGrid(YTGrid):
         return left_edge, right_edge
 
     def _get_rasterio_window(
-        self, selector, dst_crs, transform, src_crs=None, eps=0.1
+        self, selector, image_crs, image_transform, bounds_crs=None
     ):
         """
         Calculate position, width, and height for a rasterio window read.
         """
 
-        if src_crs is None:
-            src_crs = self.ds.parameters["crs"]
+        if bounds_crs is None:
+            bounds_crs = self.ds.parameters["crs"]
 
         left_edge, right_edge = self._get_selection_window(selector)
         left, bottom, _ = left_edge
         right, top, _ = right_edge
 
-        left, bottom, right, top = warp.transform_bounds(
-            src_crs,
-            dst_crs,
+        new_bounds = warp.transform_bounds(
+            bounds_crs,
+            image_crs,
             left,
             bottom,
             right,
             top
         )
-        dds = self.dds.d
-        dx = eps * dds[0]
-        dy = eps * dds[1]
-        left = left + dx
-        bottom = bottom + dy
-        right = right - dx
-        top = top - dy
 
         window = from_bounds(
-            left, bottom, right, top, transform
+            *new_bounds, image_transform
         ).round_offsets('floor').round_lengths('ceil')
 
         return window
@@ -287,7 +274,7 @@ class GeoRasterGrid(YTGrid):
             base_crs = self.ds.parameters["crs"]
 
         base_window = self._get_rasterio_window(
-            selector, base_crs, self.ds.parameters["transform"], src_crs=crs
+            selector, base_crs, self.ds.parameters["transform"], bounds_crs=crs
         )
         base_window_transform = rasterio.windows.transform(base_window, self.ds.parameters["transform"])
 
@@ -728,8 +715,11 @@ class GeoRasterDataset(Dataset):
         my_selector = my_source.selector
 
         wleft, wright = self.data._get_selection_window(my_selector)
+        w = self.data._get_rasterio_window(
+            my_selector, self.parameters['crs'], self.parameters['transform']
+        )
         with log_level(40):
-            wds = GeoRasterWindowDataset(self, wleft, wright)
+            wds = GeoRasterWindowDataset(self, wleft, wright, w)
 
         w_data_source = wds._get_window_container(data_source)
 
@@ -779,17 +769,16 @@ class GeoRasterWindowDataset(GeoRasterDataset):
     def _is_valid(self, *args, **kwargs):
         return False
 
-    def __init__(self, parent_ds, left_edge, right_edge):
+    def __init__(self, parent_ds, left_edge, right_edge, window):
         self._parent_ds = parent_ds
         self._index_class = parent_ds._index_class
         self._dataset_type = parent_ds._dataset_type
         self.domain_left_edge = parent_ds.arr(left_edge, parent_ds.parameters["units"])
         self.domain_right_edge = parent_ds.arr(right_edge, parent_ds.parameters["units"])
-        self.domain_dimensions = np.ceil((
-            parent_ds.domain_dimensions
-            * (self.domain_right_edge - self.domain_left_edge)
-            / (parent_ds.domain_right_edge - parent_ds.domain_left_edge)
-        ).d).astype(np.int32)
+        self.domain_dimensions = np.array(
+            [window.width, window.height, parent_ds.domain_dimensions[2]],
+            dtype=np.int32
+        )
 
         super().__init__(parent_ds.parameter_filename, field_map=parent_ds.field_map)
 
