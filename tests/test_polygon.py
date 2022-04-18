@@ -41,6 +41,6 @@ def test_polygon_multi():
 
     polygon = ds.polygon(os.path.join(test_data_dir, poly_multi))
     assert_equal(
-        polygon["LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B10"].size, 551624
+        polygon["LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B10"].size, 551609
     )
-    assert_equal(polygon["S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE", "S2_B10"].size, 551624)
+    assert_equal(polygon["S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE", "S2_B10"].size, 551609)
