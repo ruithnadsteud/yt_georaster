@@ -91,7 +91,7 @@ class GeoRasterWindowGrid(YTGrid):
         )
         window = from_bounds(
             *new_bounds, transform
-        ).round_offsets('floor').round_lengths('ceil')
+        ).round_offsets().round_lengths()
 
         return window
 
@@ -261,7 +261,7 @@ class GeoRasterGrid(YTGrid):
 
         window = from_bounds(
             *new_bounds, image_transform
-        ).round_offsets('floor').round_lengths('ceil')
+        ).round_offsets().round_lengths()
 
         return window
     
