@@ -2,7 +2,7 @@ import functools
 import numpy as np
 import rasterio
 from rasterio import warp
-from rasterio.windows import from_bounds
+from rasterio.windows import from_bounds, Window
 from rasterio.crs import CRS
 import re
 import weakref
@@ -91,7 +91,16 @@ class GeoRasterWindowGrid(YTGrid):
         )
         window = from_bounds(
             *new_bounds, transform
-        ).round_offsets().round_lengths()
+        )
+        print(window.flatten())
+        col_off, row_off, wwidth, wheight = window.flatten()
+        wwidth = round(col_off + wwidth) - round(col_off)
+        wheight = round(row_off + wheight) - round(row_off)
+        col_off = round(col_off)
+        row_off = round(row_off)
+        print(col_off, row_off, wwidth, wheight)
+        window = Window(col_off, row_off, wwidth, wheight)
+        print(window.flatten())
 
         return window
 
@@ -234,6 +243,9 @@ class GeoRasterGrid(YTGrid):
             left_edge = dle
             right_edge = dre
 
+        left_edge = np.floor((left_edge - dle)/self.dds) * self.dds + dle
+        right_edge = np.ceil((right_edge - dle)/self.dds) * self.dds + dle
+        
         return left_edge, right_edge
 
     def _get_rasterio_window(
@@ -261,7 +273,16 @@ class GeoRasterGrid(YTGrid):
 
         window = from_bounds(
             *new_bounds, image_transform
-        ).round_offsets().round_lengths()
+        )
+        print(window.flatten())
+        col_off, row_off, wwidth, wheight = window.flatten()
+        wwidth = round(col_off + wwidth) - round(col_off)
+        wheight = round(row_off + wheight) - round(row_off)
+        col_off = round(col_off)
+        row_off = round(row_off)
+        print(col_off, row_off, wwidth, wheight)
+        window = Window(col_off, row_off, wwidth, wheight)
+        print(window.flatten())
 
         return window
     
