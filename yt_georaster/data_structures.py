@@ -92,15 +92,15 @@ class GeoRasterWindowGrid(YTGrid):
         window = from_bounds(
             *new_bounds, transform
         )
-        print(window.flatten())
+
+        # left and right edges are already rounded to enclosing pixels
+        # only need to round to nearest whole pixel
         col_off, row_off, wwidth, wheight = window.flatten()
-        wwidth = round(col_off + wwidth) - round(col_off)
-        wheight = round(row_off + wheight) - round(row_off)
-        col_off = round(col_off)
-        row_off = round(row_off)
-        print(col_off, row_off, wwidth, wheight)
-        window = Window(col_off, row_off, wwidth, wheight)
-        print(window.flatten())
+        rnd_col_off = round(col_off)
+        rnd_row_off = round(row_off)
+        wwidth = round(col_off + wwidth) - rnd_col_off
+        wheight = round(row_off + wheight) - rnd_row_off
+        window = Window(rnd_col_off, rnd_row_off, wwidth, wheight)
 
         return window
 
@@ -274,15 +274,15 @@ class GeoRasterGrid(YTGrid):
         window = from_bounds(
             *new_bounds, image_transform
         )
-        print(window.flatten())
+
+        # left and right edges are already rounded to enclosing pixels
+        # only need to round to nearest whole pixel
         col_off, row_off, wwidth, wheight = window.flatten()
-        wwidth = round(col_off + wwidth) - round(col_off)
-        wheight = round(row_off + wheight) - round(row_off)
-        col_off = round(col_off)
-        row_off = round(row_off)
-        print(col_off, row_off, wwidth, wheight)
-        window = Window(col_off, row_off, wwidth, wheight)
-        print(window.flatten())
+        rnd_col_off = round(col_off)
+        rnd_row_off = round(row_off)
+        wwidth = round(col_off + wwidth) - rnd_col_off
+        wheight = round(row_off + wheight) - rnd_row_off
+        window = Window(rnd_col_off, rnd_row_off, wwidth, wheight)
 
         return window
     
