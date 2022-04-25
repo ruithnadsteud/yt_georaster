@@ -1,4 +1,5 @@
 import functools
+import math
 import numpy as np
 import rasterio
 from rasterio import warp
@@ -75,20 +76,23 @@ class GeoRasterWindowGrid(YTGrid):
         return f"GeoRasterWindowGrid ({ad[0]}x{ad[1]})"
 
     def _get_rasterio_window(
-        self, selector, dst_crs, transform, src_crs=None
+        self, selector, image_crs, transform, bounds_crs=None
     ):
-        if src_crs is None:
-            src_crs = self.ds.parameters["crs"]
+        if bounds_crs is None:
+            bounds_crs = self.ds.parameters["crs"]
         left, bottom, _ = self.LeftEdge
         right, top, _ = self.RightEdge
-        new_bounds = warp.transform_bounds(
-            src_crs,
-            dst_crs,
-            left,
-            bottom,
-            right,
-            top
-        )
+        if self.ds._parse_crs(bounds_crs) != self.ds._parse_crs(image_crs):
+            new_bounds = warp.transform_bounds(
+                bounds_crs,
+                image_crs,
+                left,
+                bottom,
+                right,
+                top
+            )
+        else:
+            new_bounds = (left.d, bottom.d, right.d, top.d)
         window = from_bounds(
             *new_bounds, transform
         )
@@ -96,10 +100,10 @@ class GeoRasterWindowGrid(YTGrid):
         # left and right edges are already rounded to enclosing pixels
         # only need to round to nearest whole pixel
         col_off, row_off, wwidth, wheight = window.flatten()
-        rnd_col_off = round(col_off)
-        rnd_row_off = round(row_off)
-        wwidth = round(col_off + wwidth) - rnd_col_off
-        wheight = round(row_off + wheight) - rnd_row_off
+        rnd_col_off = math.floor(col_off + 0.5)
+        rnd_row_off = math.floor(row_off + 0.5)
+        wwidth = math.floor(col_off + wwidth + 0.5) - rnd_col_off
+        wheight = math.floor(row_off + wheight + 0.5) - rnd_row_off
         window = Window(rnd_col_off, rnd_row_off, wwidth, wheight)
 
         return window
@@ -113,7 +117,7 @@ class GeoRasterWindowGrid(YTGrid):
             base_crs = self.ds.parameters["crs"]
 
         base_window = self._get_rasterio_window(
-            selector, base_crs, self.ds.parameters["transform"], src_crs=crs
+            selector, base_crs, self.ds.parameters["transform"], bounds_crs=crs
         )
         base_window_transform = rasterio.windows.transform(base_window, self.ds.parameters["transform"])
 
@@ -262,14 +266,17 @@ class GeoRasterGrid(YTGrid):
         left, bottom, _ = left_edge
         right, top, _ = right_edge
 
-        new_bounds = warp.transform_bounds(
-            bounds_crs,
-            image_crs,
-            left,
-            bottom,
-            right,
-            top
-        )
+        if self.ds._parse_crs(bounds_crs) != self.ds._parse_crs(image_crs):
+            new_bounds = warp.transform_bounds(
+                bounds_crs,
+                image_crs,
+                left,
+                bottom,
+                right,
+                top
+            )
+        else:
+            new_bounds = (left.d, bottom.d, right.d, top.d)
 
         window = from_bounds(
             *new_bounds, image_transform
@@ -278,10 +285,10 @@ class GeoRasterGrid(YTGrid):
         # left and right edges are already rounded to enclosing pixels
         # only need to round to nearest whole pixel
         col_off, row_off, wwidth, wheight = window.flatten()
-        rnd_col_off = round(col_off)
-        rnd_row_off = round(row_off)
-        wwidth = round(col_off + wwidth) - rnd_col_off
-        wheight = round(row_off + wheight) - rnd_row_off
+        rnd_col_off = math.floor(col_off + 0.5)
+        rnd_row_off = math.floor(row_off + 0.5)
+        wwidth = math.floor(col_off + wwidth + 0.5) - rnd_col_off
+        wheight = math.floor(row_off + wheight + 0.5) - rnd_row_off
         window = Window(rnd_col_off, rnd_row_off, wwidth, wheight)
 
         return window
