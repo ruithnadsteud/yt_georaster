@@ -357,9 +357,10 @@ class GeoRasterDataset(Dataset):
     refine_by = 2
     _con_attrs = ()
 
-    def __init__(self, *args, field_map=None, crs=None, nodata=None):
+    def __init__(self, *args, field_map=None, crs=None, nodata=None, scale_factor=None):
         self.filename_list = args
         filename = args[0]
+        self.scale_factor = scale_factor
         self.field_map = field_map
         self.crs = crs
         self.nodata = nodata
@@ -453,6 +454,9 @@ class GeoRasterDataset(Dataset):
             self.parameters['nodata'] = self.nodata
             self.parameters['profile']['nodata'] = self.nodata
 
+        if self.scale_factor is not None:
+            self._scale_parameters()
+
         # set domain
         width = self.parameters["width"]
         height = self.parameters["height"]
@@ -476,6 +480,28 @@ class GeoRasterDataset(Dataset):
             self.parameters["res"],
             self.parameters["units"]
         )
+
+    def _scale_parameters(self):
+        """Update transform and other parameters to take any scale_factor into account."""
+        transform = self.parameters['transform']
+        width = int(self.parameters['width'] * self.scale_factor)
+        height = int(self.parameters['height'] * self.scale_factor)
+        # scale in two dimensions separately
+        scale = (
+                width / self.parameters['width'],
+                height / self.parameters['height']
+        )
+        mylog.info(f"Scaling dimensions: width by {scale[0]} and height by {scale[1]}.")
+        self.parameters['width'] = width
+        self.parameters['height'] = height
+        self.parameters['transform'] = transform * transform.scale(scale)
+        self.parameters['res'] = self.parameters['res'] * scale
+        self.parameters['profile'].update({
+            "transform": self.parameters['transform'],
+            "width": width,
+            "height": height
+        })
+        
 
     def _setup_classes(self):
         super()._setup_classes()
