@@ -488,14 +488,17 @@ class GeoRasterDataset(Dataset):
         height = int(self.parameters['height'] * self.scale_factor)
         # scale in two dimensions separately
         scale = (
-                width / self.parameters['width'],
-                height / self.parameters['height']
+                self.parameters['width'] / width,
+                self.parameters['height'] / height
         )
-        mylog.info(f"Scaling dimensions: width by {scale[0]} and height by {scale[1]}.")
+        mylog.info(f"Scaling dimensions: width by {1/scale[0]} and height by {1/scale[1]}.")
         self.parameters['width'] = width
         self.parameters['height'] = height
-        self.parameters['transform'] = transform * transform.scale(scale)
-        self.parameters['res'] = self.parameters['res'] * scale
+        self.parameters['transform'] = transform * transform.scale(*scale)
+        self.parameters['res'] = (
+            self.parameters['res'][0] * scale[0],
+            self.parameters['res'][1] * scale[1]
+        )
         self.parameters['profile'].update({
             "transform": self.parameters['transform'],
             "width": width,
