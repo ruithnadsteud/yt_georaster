@@ -1,6 +1,6 @@
 import numpy as np
 import rasterio
-from rasterio.warp import reproject, Resampling
+from rasterio.warp import reproject
 
 from yt.frontends.ytdata.io import IOHandlerYTGridHDF5
 from yt.funcs import mylog
@@ -87,27 +87,30 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
         read_info = self.ds.index.geo_manager.fields[field]
         filename = read_info["filename"]
         band = read_info["band"]
+        resample_method = self.ds.resample_method
 
         with rasterio.open(filename, "r") as src:
             src_crs = src.crs
             src_transform = src.transform
-
             # Round up rasterio window width and height.
-            rasterio_window = grid._get_rasterio_window(selector, src_crs, src_transform)
+            rasterio_window = grid._get_full_rasterio_window(selector, src_crs, src_transform)
             src_window_transform = src.window_transform(rasterio_window)
             # Read in the band/field.
             data = src.read(
-                band, window=rasterio_window, out_dtype=self._field_dtype, boundless=True
+                band,
+                window=rasterio_window,
+                out_dtype=self._field_dtype,
+                boundless=True
             )
 
         # get target window
         base_window_transform, width, height = grid._get_rasterio_window_transform(
-            selector, None
+            selector, None, full=True
         )
-
         image_units = src_crs.linear_units
         base_units = self.ds.parameters["units"]
         dst_crs = self.ds.parameters["crs"]
+
         # reproject to base
         if (base_window_transform != src_window_transform) or (dst_crs != src_crs):
             if dst_crs != src_crs:
@@ -129,11 +132,28 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
                 src_crs=src_crs,
                 dst_transform=base_window_transform,
                 dst_crs=dst_crs,
-                resampling=Resampling.nearest
+                resampling=resample_method
             )
 
             data = reproj_data
 
+        # trim data to encompase pixels only overlapped by selector
+        full_window = grid._get_full_rasterio_window(
+            selector,
+            dst_crs,
+            self.ds.parameters['transform']
+        ).flatten()
+        trimmed_window = grid._get_trimmed_rasterio_window(
+            selector,
+            dst_crs,
+            self.ds.parameters['transform']
+        ).flatten()
+        col_off = trimmed_window[0] - full_window[0]
+        row_off = trimmed_window[1] - full_window[1]
+        data = data[
+            row_off: row_off + trimmed_window[3],
+            col_off: col_off + trimmed_window[2]
+        ]
         # Transform data to correct shape.
         data = data.T
         if self.ds._flip_axes:

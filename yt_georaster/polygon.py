@@ -39,7 +39,7 @@ class YTPolygon(YTSelectionContainer3D):
 
     # What parameters are used to define a polygon?
     # For example, a sphere is center and radius.
-    _con_args = ("filename",)
+    _con_args = ("polygon",)
 
     # add more arguments, like path to a shape file or a shapely Polygon object
     def __init__(self, filename, ds=None, field_parameters=None, crs=None):
