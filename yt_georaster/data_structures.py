@@ -620,6 +620,14 @@ class GeoRasterDataset(Dataset):
         super()._setup_classes()
         self.polygon = functools.partial(YTPolygon, ds=weakref.proxy(self))
 
+    def polygons(self, filenames, **kwargs):
+        if kwargs:
+            pfunc = functools.partial(YTPolygon, ds=weakref.proxy(self), **kwargs)
+        else:
+            pfunc = functools.partial(YTPolygon, ds=weakref.proxy(self))
+        map_results = map(pfunc, filenames)
+        return tuple(map_results)
+
     def _set_code_unit_attributes(self):
         attrs = (
             "length_unit",
