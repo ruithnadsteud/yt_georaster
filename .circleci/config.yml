@@ -115,7 +115,7 @@ executors:
         type: string
         default: latest
     docker:
-      - image: circleci/python:<< parameters.tag >>
+      - image: cimg/python:<< parameters.tag >>
 
 jobs:
   tests:
@@ -178,7 +178,7 @@ workflows:
      jobs:
        - tests:
            name: "Python 3.8 tests"
-           tag: "3.8.12"
+           tag: "3.8.13"
            coverage: 1
            ytdev: 1
 
@@ -193,5 +193,5 @@ workflows:
      jobs:
        - tests:
            name: "Python 3.8 tests"
-           tag: "3.8.12"
+           tag: "3.8.13"
            ytdev: 1
