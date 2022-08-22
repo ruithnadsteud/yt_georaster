@@ -15,6 +15,7 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 import glob
+import os
 
 # -- Project information -----------------------------------------------------
 
@@ -43,7 +44,6 @@ language = 'en'
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.imgmath",
-    "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
 ]
@@ -52,7 +52,9 @@ intersphinx_mapping = {
     "yt": ("http://yt-project.org/docs/dev/", None),
 }
 
-autosummary_generate = glob.glob("api_reference.rst")
+if not os.environ.get('READTHEDOCS') == 'True':
+    autosummary_generate = glob.glob("api_reference.rst")
+    extensions.append("sphinx.ext.autosummary")
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
