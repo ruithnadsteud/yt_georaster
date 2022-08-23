@@ -100,7 +100,8 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
                 band,
                 window=rasterio_window,
                 out_dtype=self._field_dtype,
-                boundless=True
+                boundless=True,
+                fill_value=self.ds.nodata
             )
 
         # get target window
