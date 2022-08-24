@@ -39,7 +39,7 @@ class YTPolygon(YTSelectionContainer3D):
 
     # What parameters are used to define a polygon?
     # For example, a sphere is center and radius.
-    _con_args = ("filename",)
+    _con_args = ("polygon",)
 
     # add more arguments, like path to a shape file or a shapely Polygon object
     def __init__(self, filename, ds=None, field_parameters=None, crs=None):
@@ -78,14 +78,14 @@ class YTPolygon(YTSelectionContainer3D):
             # only one polygon
             self._number_features = 1
             self.polygon = filename
-            if not (self.src_crs is None):
+            if self.src_crs is not None:
                 self._reproject_polygon(ds.parameters['crs'])
 
         elif isinstance(filename, MultiPolygon):
             # only one polygon
             self._number_features = len(filename.geoms)
             self.polygon = unary_union(filename)
-            if not (self.src_crs is None):
+            if self.src_crs is not None:
                 self._reproject_polygon(ds.parameters['crs'])
 
         elif isinstance(filename, list):
@@ -95,7 +95,7 @@ class YTPolygon(YTSelectionContainer3D):
             m = MultiPolygon(filename)
             # join all shapely polygons to a single layer
             self.polygon = unary_union(m)
-            if not (self.src_crs is None):
+            if self.src_crs is not None:
                 self._reproject_polygon(ds.parameters['crs'])
 
         mylog.info(

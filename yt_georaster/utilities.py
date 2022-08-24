@@ -6,7 +6,7 @@ Utility functions for yt_georaster.
 """
 import numpy as np
 import rasterio
-from rasterio.warp import calculate_default_transform, reproject, Resampling
+from rasterio.warp import reproject, Resampling, calculate_default_transform
 from unyt import unyt_array, unyt_quantity, uconcatenate
 import yaml
 
@@ -45,9 +45,15 @@ def get_field_as_raster_array(ds, data_source, field, nodata=None):
         data[~mask] = nodata
     if ds._flip_axes:
         data = np.flip(data, axis=ds._flip_axes)
-    transform = ds._update_transform(
-        ds.parameters["transform"], wgrid.LeftEdge, wgrid.RightEdge
+    transform, _width, _height = wgrid._get_rasterio_window_transform(
+        data_source.selector, None
     )
+    if (_width != width) or (_height != height):
+        ytLogger.warning(
+            f"Error in generating transform: unexpected width/height"
+            f"difference. Width {width} -> {_width}, "
+            f"Height {height} -> {_height}"
+        )
     bounds = (*wgrid.LeftEdge[:2], *wgrid.RightEdge[:2])
 
     return data.T, transform, width, height, bounds
@@ -170,6 +176,10 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
         save_fmap = False
     if nodata is None:
         nodata = ds.parameters['profile']['nodata']
+        if nodata is None:
+            ytLogger.warning(
+                "No nodata value set, limited masking will occur."
+            )
 
     if fields is None:
         fields = ds.field_list
@@ -192,17 +202,23 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
     if not (np.dtype(ds.index.io._field_dtype) is np.dtype(dtype)):
         ytLogger.info(f"{filename} dtype set to {dtype}.")
 
-    transform = ds._update_transform(
-        ds.parameters["transform"], wgrid.LeftEdge, wgrid.RightEdge
-    )
-
     # get the mask to remove data not in the container
     mask = data_source.selector.fill_mask(wgrid)[..., 0]
 
     field_info = {}
+    transform, _width, _height = wgrid._get_rasterio_window_transform(
+        data_source.selector, None
+    )
+
+    if (_width != width) or (_height != height):
+        ytLogger.warning(
+            f"Error in generating transform: unexpected width/height"
+            f"difference. Width {width} -> {_width}, "
+            f"Height {height} -> {_height}"
+        )
 
     # raster profile used depends on whether we need to reproject
-    if crs is None:
+    if crs is None or crs == ds.parameters['crs']:
         dst_profile = ds.parameters['profile'].copy()
         dst_profile.update(
             driver="GTiff",
@@ -215,6 +231,7 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
             transform=transform
         )
     else:
+        crs = ds._parse_crs(crs)
         # need to update the profile if we are to reproject
         src_profile = ds.parameters['profile'].copy()
         src_profile.update(
@@ -227,14 +244,14 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
             crs=ds.parameters['crs'],
             transform=transform
         )
-        transform, width, height = calculate_default_transform(
-            src_profile['crs'],
-            crs,
-            src_profile['width'],
-            src_profile['height'],
-            *wgrid.LeftEdge[:2],
-            *wgrid.RightEdge[:2]
-        )
+        bounds = (*wgrid.LeftEdge[:2], *wgrid.RightEdge[:2])
+        transform, width, height =  calculate_default_transform(
+                ds.parameters['crs'],
+                crs,
+                _width,
+                _height,
+                *bounds
+            )
         dst_profile = src_profile.copy()
         dst_profile.update({
             'crs': crs,
@@ -257,17 +274,21 @@ def save_as_geotiff(ds, filename, fields=None, data_source=None,
             if ds._flip_axes:
                 data = np.flip(data, axis=ds._flip_axes)
             data = data.T.astype(dtype)
-            if crs is None:
+            if crs is None or crs == ds.parameters['crs']:
                 # no reprojection is needed, save array to raster
                 dst.write(data, band)
             else:
+                ytLogger.info(
+                    f"Reprojecting {field}: {src_profile['crs']} "
+                    f"to {crs}."
+                )
                 # save reprojected array to raster
                 reproject(
                     source=data,
                     destination=rasterio.band(dst, band),
                     src_transform=src_profile['transform'],
                     src_crs=src_profile['crs'],
-                    dst_transform=transform,
+                    dst_transform=dst_profile['transform'],
                     dst_crs=crs,
                     resampling=resampling
                 )

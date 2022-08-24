@@ -108,9 +108,7 @@ cdef class PolygonSelector(SelectorObject):
         shape_file = self.dobj.polygon
         ds = grid.ds
 
-        new_transform = ds._update_transform(
-            ds.parameters["transform"],
-            grid.LeftEdge, grid.RightEdge)
+        new_transform, _, _ = grid._get_rasterio_window_transform(self, None)
 
         dims = np.flip(grid.ActiveDimensions[:2])
         if self.dobj._number_features > 1:

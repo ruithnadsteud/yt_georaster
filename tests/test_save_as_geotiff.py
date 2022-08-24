@@ -27,8 +27,6 @@ class GeoRasterSaveTest(TempDirTest):
         ds = yt.load(*fns)
 
         fields = [
-            ("LC08_L2SP_171060_20210227_20210304_02_T1", "L8_B1"),
-            ("S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE", "S2_B06"),
             ("S2A_MSIL1C_20210315T075701_N0209_R035_T36MVE", "NDWI"),
             ("LC08_L2SP_171060_20210227_20210304_02_T1", "LS_temperature"),
         ]
