@@ -1,8 +1,9 @@
 import functools
+import math
 import numpy as np
 import rasterio
 from rasterio import warp
-from rasterio.windows import from_bounds
+from rasterio.windows import from_bounds, Window
 from rasterio.crs import CRS
 import re
 import weakref
@@ -40,7 +41,7 @@ class GeoRasterWindowGrid(YTGrid):
     area.
     """
 
-    def __init__(self, gridobj, left_edge, right_edge):
+    def __init__(self, gridobj, left_edge, right_edge, window):
 
         YTSelectionContainer.__init__(self, gridobj._index.dataset, None)
 
@@ -62,11 +63,11 @@ class GeoRasterWindowGrid(YTGrid):
         # Make sure z dimension edges are the same as parent grid.
         self.LeftEdge[2] = gridobj.LeftEdge[2]
         self.RightEdge[2] = gridobj.RightEdge[2]
-        self.ActiveDimensions = (
-            gridobj.ActiveDimensions
-            * (self.RightEdge - self.LeftEdge)
-            / (gridobj.RightEdge - gridobj.LeftEdge)
-        ).d.astype(np.int32)
+        ad_z = int((self.RightEdge[2] - self.LeftEdge[2])/gridobj.dds[2])
+        self.ActiveDimensions = np.array(
+            [window.width, window.height, ad_z],
+            dtype=np.int32
+        )
         # Inherit dx values from parent.
         self.dds = gridobj.dds
 
@@ -74,23 +75,91 @@ class GeoRasterWindowGrid(YTGrid):
         ad = self.ActiveDimensions
         return f"GeoRasterWindowGrid ({ad[0]}x{ad[1]})"
 
-    def _get_rasterio_window(self, selector, dst_crs, transform):
-        left_edge = self.LeftEdge
-        right_edge = self.RightEdge
-
-        transform_x, transform_y = warp.transform(
-            self.ds.parameters["crs"],
-            dst_crs,
-            [left_edge[0], right_edge[0]],
-            [left_edge[1], right_edge[1]],
-            zs=None,
-        )
-
+    def _get_rasterio_window(
+        self, selector, image_crs, transform, bounds_crs=None
+    ):
+        if bounds_crs is None:
+            bounds_crs = self.ds.parameters["crs"]
+        left, bottom, _ = self.LeftEdge
+        right, top, _ = self.RightEdge
+        if self.ds._parse_crs(bounds_crs) != self.ds._parse_crs(image_crs):
+            new_bounds = warp.transform_bounds(
+                bounds_crs,
+                image_crs,
+                left,
+                bottom,
+                right,
+                top
+            )
+        else:
+            new_bounds = (left.d, bottom.d, right.d, top.d)
         window = from_bounds(
-            transform_x[0], transform_y[0], transform_x[1], transform_y[1], transform
+            *new_bounds, transform
         )
+
 
         return window
+
+    def _get_trimmed_rasterio_window(
+            self, selector, image_crs, image_transform, bounds_crs=None
+    ):
+        """
+        Create rasterio window which fully encompases our selector
+        """
+        window = self._get_rasterio_window(selector, image_crs, image_transform, bounds_crs=None)
+
+        col_off, row_off, wwidth, wheight = window.flatten()
+        # left and right edges are already rounded to enclosing pixels
+        # only need to round to nearest whole pixel
+        rnd_col_off = math.floor(col_off + 0.5)
+        rnd_row_off = math.floor(row_off + 0.5)
+        wwidth = math.floor(col_off + wwidth + 0.5) - rnd_col_off
+        wheight = math.floor(row_off + wheight + 0.5) - rnd_row_off
+
+        window = Window(rnd_col_off, rnd_row_off, wwidth, wheight)
+
+        return window
+
+    def _get_full_rasterio_window(
+            self, selector, image_crs, image_transform, bounds_crs=None
+    ):
+        """
+        Create rasterio window which fully encompases our selector
+        """
+        window = self._get_rasterio_window(selector, image_crs, image_transform, bounds_crs=None)
+        
+        col_off, row_off, wwidth, wheight = window.flatten()
+        # need to ensure we capture all pixels that overlap selector
+        # floor offsets and ceil lengths
+        rnd_col_off = math.floor(col_off)
+        rnd_row_off = math.floor(row_off)
+        wwidth = math.ceil(col_off + wwidth) - rnd_col_off
+        wheight = math.ceil(row_off + wheight) - rnd_row_off
+
+        window = Window(rnd_col_off, rnd_row_off, wwidth, wheight)
+
+        return window
+
+    def _get_rasterio_window_transform(self, selector, crs, base_crs=None, full=False):
+        """
+        Calculate default transform, width, and height for a rasterio window read.
+        """
+
+        if base_crs is None:
+            base_crs = self.ds.parameters["crs"]
+        
+        if full:
+            base_window = self._get_full_rasterio_window(
+                selector, base_crs, self.ds.parameters["transform"], bounds_crs=crs
+            )
+        else:
+            base_window = self._get_trimmed_rasterio_window(
+                selector, base_crs, self.ds.parameters["transform"], bounds_crs=crs
+            )
+
+        base_window_transform = rasterio.windows.transform(base_window, self.ds.parameters["transform"])
+
+        return base_window_transform, base_window.width, base_window.height
 
 
 class GeoRasterGrid(YTGrid):
@@ -180,7 +249,8 @@ class GeoRasterGrid(YTGrid):
             return self._last_wgrid
 
         left_edge, right_edge = self._get_selection_window(selector)
-        wgrid = GeoRasterWindowGrid(self, left_edge, right_edge)
+        w = self._get_trimmed_rasterio_window(selector, self.ds.parameters['crs'], self.ds.parameters['transform'])
+        wgrid = GeoRasterWindowGrid(self, left_edge, right_edge, w)
         self._last_wgrid = wgrid
         self._last_wgrid_id = hash(selector)
         return wgrid
@@ -214,35 +284,103 @@ class GeoRasterGrid(YTGrid):
         else:
             left_edge = dle
             right_edge = dre
-
-        # round to enclosing pixel edges
-        dds = self.dds.d
-        left_edge = np.floor((left_edge - dle) / dds) * dds + dle
-        right_edge = np.ceil((right_edge - dle) / dds) * dds + dle
-
-        # left_edge.clip(min=dle, max=dre, out=left_edge)
-        # right_edge.clip(min=dle, max=dre, out=right_edge)
+        left_edge = np.floor((left_edge - dle)/self.dds) * self.dds + dle
+        right_edge = np.ceil((right_edge - dle)/self.dds) * self.dds + dle
+        
         return left_edge, right_edge
 
-    def _get_rasterio_window(self, selector, dst_crs, transform):
+    def _get_rasterio_window(
+        self, selector, image_crs, image_transform, bounds_crs=None
+    ):
         """
         Calculate position, width, and height for a rasterio window read.
         """
-        left_edge, right_edge = self._get_selection_window(selector)
 
-        transform_x, transform_y = warp.transform(
-            self.ds.parameters["crs"],
-            dst_crs,
-            [left_edge[0], right_edge[0]],
-            [left_edge[1], right_edge[1]],
-            zs=None,
-        )
+        if bounds_crs is None:
+            bounds_crs = self.ds.parameters["crs"]
+
+        left_edge, right_edge = self._get_selection_window(selector)
+        left, bottom, _ = left_edge
+        right, top, _ = right_edge
+
+        if self.ds._parse_crs(bounds_crs) != self.ds._parse_crs(image_crs):
+            new_bounds = warp.transform_bounds(
+                bounds_crs,
+                image_crs,
+                left,
+                bottom,
+                right,
+                top
+            )
+        else:
+            new_bounds = (left.d, bottom.d, right.d, top.d)
 
         window = from_bounds(
-            transform_x[0], transform_y[0], transform_x[1], transform_y[1], transform
+            *new_bounds, image_transform
         )
 
         return window
+
+    def _get_trimmed_rasterio_window(
+            self, selector, image_crs, image_transform, bounds_crs=None
+    ):
+        """
+        Create rasterio window which fully encompases our selector
+        """
+        window = self._get_rasterio_window(selector, image_crs, image_transform, bounds_crs=None)
+
+        col_off, row_off, wwidth, wheight = window.flatten()
+        # left and right edges are already rounded to enclosing pixels
+        # only need to round to nearest whole pixel
+        rnd_col_off = math.floor(col_off + 0.5)
+        rnd_row_off = math.floor(row_off + 0.5)
+        wwidth = math.floor(col_off + wwidth + 0.5) - rnd_col_off
+        wheight = math.floor(row_off + wheight + 0.5) - rnd_row_off
+
+        window = Window(rnd_col_off, rnd_row_off, wwidth, wheight)
+
+        return window
+
+    def _get_full_rasterio_window(
+            self, selector, image_crs, image_transform, bounds_crs=None
+    ):
+        """
+        Create rasterio window which fully encompases our selector
+        """
+        window = self._get_rasterio_window(selector, image_crs, image_transform, bounds_crs=None)
+        
+        col_off, row_off, wwidth, wheight = window.flatten()
+        # need to ensure we capture all pixels that overlap selector
+        # floor offsets and ceil lengths
+        rnd_col_off = math.floor(col_off)
+        rnd_row_off = math.floor(row_off)
+        wwidth = math.ceil(col_off + wwidth) - rnd_col_off
+        wheight = math.ceil(row_off + wheight) - rnd_row_off
+
+        window = Window(rnd_col_off, rnd_row_off, wwidth, wheight)
+
+        return window
+
+    def _get_rasterio_window_transform(self, selector, crs, base_crs=None, full=False):
+        """
+        Calculate default transform, width, and height for a rasterio window read.
+        """
+
+        if base_crs is None:
+            base_crs = self.ds.parameters["crs"]
+        
+        if full:
+            base_window = self._get_full_rasterio_window(
+                selector, base_crs, self.ds.parameters["transform"], bounds_crs=crs
+            )
+        else:
+            base_window = self._get_trimmed_rasterio_window(
+                selector, base_crs, self.ds.parameters["transform"], bounds_crs=crs
+            )
+
+        base_window_transform = rasterio.windows.transform(base_window, self.ds.parameters["transform"])
+
+        return base_window_transform, base_window.width, base_window.height
 
     def __repr__(self):
         ad = self.ActiveDimensions
@@ -293,11 +431,17 @@ class GeoRasterDataset(Dataset):
     refine_by = 2
     _con_attrs = ()
 
-    def __init__(self, *args, field_map=None, crs=None):
+    def __init__(self, *args, field_map=None, crs=None, nodata=None,
+                 scale_factor=None, resample_method=warp.Resampling.nearest):
         self.filename_list = args
         filename = args[0]
+        self.scale_factor = scale_factor
         self.field_map = field_map
         self.crs = crs
+        self.nodata = nodata
+        self.resample_method = self._parse_resample_method(resample_method)
+        
+        
         super().__init__(filename, self._dataset_type, unit_system="mks")
         self.data = self.index.grids[0]
         self._added_fields = []
@@ -327,52 +471,38 @@ class GeoRasterDataset(Dataset):
                 self.parameters[key] = v
             self.parameters["res"] = f.res
             self.parameters["profile"] = f.profile
+            self.parameters["bounds"] = f.bounds
         self.current_time = 0
 
         # overwrite crs if one is provided by user
-        if not (self.crs is None):
+        if self.crs is not None:
             # make sure user provided CRS is valid CRS object
-            if not isinstance(self.crs, CRS):
-                if isinstance(self.crs, int):
-                    # assume epsg number
-                    self.crs = CRS.from_epsg(self.crs)
-                elif isinstance(self.crs, dict):
-                    self.crs = CRS.from_dict(**self.crs)
-                else:
-                    self.crs = CRS.from_string(self.crs)
+            self.crs = self._parse_crs(self.crs)
 
             # get reprojected transform
-            left_edge = self.parameters["transform"] * (0, 0)
-            right_edge = self.parameters["transform"] * (
-                self.parameters["width"],
-                self.parameters["height"]
-            )
             transform, width, height = warp.calculate_default_transform(
                 self.parameters["crs"],
                 self.crs,
                 self.parameters["width"],
                 self.parameters["height"],
-                left=left_edge[0],
-                bottom=left_edge[1],
-                right=right_edge[0],
-                top=right_edge[1],
-                # resolution=self.parameters["transform"][0]
-                dst_width=self.parameters["width"],
-                dst_height=self.parameters["height"]
-            )  # current solution can create rectangular pixels
-            # xs, ys = warp.transform(
-            #     self.parameters["crs"],
-            #     dst_crs,
-            #     [left_edge[0], right_edge[0]],
-            #     [left_edge[1], right_edge[1]],
-            #     zs=None
-            # )
+                *self.parameters["bounds"],
+                resolution=self.parameters["res"] # the resolution remains fixed
+            )
             # update parameters
-            self.parameters["res"] = (transform[0], -transform[4])
-            self.parameters["crs"] = self.crs
-            self.parameters["transform"] = transform
-            self.parameters["width"] = width
-            self.parameters["height"] = height
+            _profile = {
+                "crs": self.crs,
+                "transform": transform,
+                "width": width,
+                "height": height
+            }
+            self.parameters.update(_profile)
+            self.parameters["profile"].update(_profile)
+            # updated bounds
+            self.parameters["bounds"] = warp.transform_bounds(
+                self.parameters["crs"],
+                self.crs,
+                *self.parameters["bounds"]
+            )
         else:
             # if no crs has be provided replace None with base image CRS
             self.crs = self.parameters["crs"]
@@ -391,6 +521,20 @@ class GeoRasterDataset(Dataset):
                 f"Dataset CRS {self.parameters['crs']} "
                 f"units are '{self.parameters['units']}'. "
             )
+
+        # set nodata value
+        if self.nodata is not None:
+            if self.parameters['nodata'] is not None:
+                mylog.warning(
+                    f"Overwriting nodata value {self.parameters['nodata']}"
+                    f" with user defined value {self.nodata}."
+                )
+            self.parameters['nodata'] = self.nodata
+            self.parameters['profile']['nodata'] = self.nodata
+
+        if self.scale_factor is not None:
+            self._scale_parameters()
+
         # set domain
         width = self.parameters["width"]
         height = self.parameters["height"]
@@ -415,9 +559,74 @@ class GeoRasterDataset(Dataset):
             self.parameters["units"]
         )
 
+    def _parse_resample_method(self, method_key):
+
+        methods = {
+            "average": 5,
+            "bilinear": 1,
+            "cubic": 2,
+            "cubic_spline": 3,
+            "gauss": 7,
+            "lanczos": 4,
+            "max": 8,
+            "med": 10,
+            "min": 9,
+            "mode": 6,
+            "nearest": 0,
+            "q1": 11,
+            "q3": 12,
+            "rms": 14,
+            "sum": 13
+        }
+        if isinstance(method_key, warp.Resampling):
+            method = method_key
+        elif method_key in list(methods.values()):
+            method = warp.Resampling(method_key)
+        elif method_key in list(methods.keys()):
+            method = warp.Resampling(methods[method_key])
+        else:
+            mylog.warning("Resampling method not recognised.")
+            method = warp.Resampling.nearest
+        method_label = str(method).split('.')[-1]
+        mylog.info(f"Resampling using '{method_label}' method.")
+        return method
+
+    def _scale_parameters(self):
+        """Update transform and other parameters to take any scale_factor into account."""
+        transform = self.parameters['transform']
+        width = int(self.parameters['width'] * self.scale_factor)
+        height = int(self.parameters['height'] * self.scale_factor)
+        # scale in two dimensions separately
+        scale = (
+                self.parameters['width'] / width,
+                self.parameters['height'] / height
+        )
+        mylog.info(f"Scaling dimensions: width by {1/scale[0]} and height by {1/scale[1]}.")
+        self.parameters['width'] = width
+        self.parameters['height'] = height
+        self.parameters['transform'] = transform * transform.scale(*scale)
+        self.parameters['res'] = (
+            self.parameters['res'][0] * scale[0],
+            self.parameters['res'][1] * scale[1]
+        )
+        self.parameters['profile'].update({
+            "transform": self.parameters['transform'],
+            "width": width,
+            "height": height
+        })
+        
+
     def _setup_classes(self):
         super()._setup_classes()
         self.polygon = functools.partial(YTPolygon, ds=weakref.proxy(self))
+
+    def polygons(self, filenames, **kwargs):
+        if kwargs:
+            pfunc = functools.partial(YTPolygon, ds=weakref.proxy(self), **kwargs)
+        else:
+            pfunc = functools.partial(YTPolygon, ds=weakref.proxy(self))
+        map_results = map(pfunc, filenames)
+        return tuple(map_results)
 
     def _set_code_unit_attributes(self):
         attrs = (
@@ -451,8 +660,21 @@ class GeoRasterDataset(Dataset):
                 break
         return fn
 
+
     def __str__(self):
         return self.__repr__()
+
+    def _parse_crs(self, crs):
+        """Return rasterio CRS object."""
+        if not isinstance(crs, CRS):
+            if isinstance(crs, int):
+                # assume epsg number
+                crs = CRS.from_epsg(crs)
+            elif isinstance(crs, dict):
+                crs = CRS.from_dict(**crs)
+            else:
+                crs = CRS.from_string(crs)
+        return crs
 
     def _update_transform(self, transform, left_edge, right_edge):
         """
@@ -668,8 +890,11 @@ class GeoRasterDataset(Dataset):
         my_selector = my_source.selector
 
         wleft, wright = self.data._get_selection_window(my_selector)
+        w = self.data._get_trimmed_rasterio_window(
+            my_selector, self.parameters['crs'], self.parameters['transform']
+        )
         with log_level(40):
-            wds = GeoRasterWindowDataset(self, wleft, wright)
+            wds = GeoRasterWindowDataset(self, wleft, wright, w)
 
         w_data_source = wds._get_window_container(data_source)
 
@@ -719,17 +944,16 @@ class GeoRasterWindowDataset(GeoRasterDataset):
     def _is_valid(self, *args, **kwargs):
         return False
 
-    def __init__(self, parent_ds, left_edge, right_edge):
+    def __init__(self, parent_ds, left_edge, right_edge, window):
         self._parent_ds = parent_ds
         self._index_class = parent_ds._index_class
         self._dataset_type = parent_ds._dataset_type
         self.domain_left_edge = parent_ds.arr(left_edge, parent_ds.parameters["units"])
         self.domain_right_edge = parent_ds.arr(right_edge, parent_ds.parameters["units"])
-        self.domain_dimensions = (
-            parent_ds.domain_dimensions
-            * (self.domain_right_edge - self.domain_left_edge)
-            / (parent_ds.domain_right_edge - parent_ds.domain_left_edge)
-        ).d.astype(np.int32)
+        self.domain_dimensions = np.array(
+            [window.width, window.height, parent_ds.domain_dimensions[2]],
+            dtype=np.int32
+        )
 
         super().__init__(parent_ds.parameter_filename, field_map=parent_ds.field_map)
 

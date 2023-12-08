@@ -1,6 +1,6 @@
 import numpy as np
 import rasterio
-from scipy.ndimage import zoom
+from rasterio.warp import reproject
 
 from yt.frontends.ytdata.io import IOHandlerYTGridHDF5
 from yt.funcs import mylog
@@ -73,11 +73,11 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
                     data = self._read_rasterio_data(selector, g, field)
                     for dim in range(len(data.shape), 3):
                         data = np.expand_dims(data, dim)
-
                     nd = g.select(selector, data, rv[field], ind)
                 ind += nd
 
         return rv
+
 
     def _read_rasterio_data(self, selector, grid, field):
         """
@@ -87,41 +87,78 @@ class IOHandlerGeoRaster(IOHandlerYTGridHDF5):
         read_info = self.ds.index.geo_manager.fields[field]
         filename = read_info["filename"]
         band = read_info["band"]
+        resample_method = self.ds.resample_method
 
-        src = rasterio.open(filename, "r")
+        with rasterio.open(filename, "r") as src:
+            src_crs = src.crs
+            src_transform = src.transform
+            # Round up rasterio window width and height.
+            rasterio_window = grid._get_full_rasterio_window(selector, src_crs, src_transform)
+            src_window_transform = src.window_transform(rasterio_window)
+            # Read in the band/field.
+            data = src.read(
+                band,
+                window=rasterio_window,
+                out_dtype=self._field_dtype,
+                boundless=True,
+                fill_value=self.ds.nodata
+            )
 
-        # Round up rasterio window width and height.
-        rasterio_window = grid._get_rasterio_window(selector, src.crs, src.transform)
-        rasterio_window = rasterio_window.round_shape(op="ceil", pixel_precision=None)
-
-        # Read in the band/field.
-        data = src.read(
-            band, window=rasterio_window, out_dtype=self._field_dtype, boundless=True
+        # get target window
+        base_window_transform, width, height = grid._get_rasterio_window_transform(
+            selector, None, full=True
         )
+        image_units = src_crs.linear_units
+        base_units = self.ds.parameters["units"]
+        dst_crs = self.ds.parameters["crs"]
 
+        # reproject to base
+        if (base_window_transform != src_window_transform) or (dst_crs != src_crs):
+            if dst_crs != src_crs:
+                mylog.info(
+                    f"Reprojecting {field}: {src_crs} "
+                    f"to {dst_crs}."
+                )
+            if src_window_transform[0] != base_window_transform[0]:
+                mylog.info(
+                    f"Resampling {field}: {src_window_transform[0]} {image_units} "
+                    f"to {base_window_transform[0]} {base_units}."
+                )
+
+            reproj_data = np.zeros((height, width), dtype=data.dtype)
+            reproject(
+                data,
+                reproj_data,
+                src_transform=src_window_transform,
+                src_crs=src_crs,
+                dst_transform=base_window_transform,
+                dst_crs=dst_crs,
+                resampling=resample_method
+            )
+
+            data = reproj_data
+
+        # trim data to encompase pixels only overlapped by selector
+        full_window = grid._get_full_rasterio_window(
+            selector,
+            dst_crs,
+            self.ds.parameters['transform']
+        ).flatten()
+        trimmed_window = grid._get_trimmed_rasterio_window(
+            selector,
+            dst_crs,
+            self.ds.parameters['transform']
+        ).flatten()
+        col_off = trimmed_window[0] - full_window[0]
+        row_off = trimmed_window[1] - full_window[1]
+        data = data[
+            row_off: row_off + trimmed_window[3],
+            col_off: col_off + trimmed_window[2]
+        ]
         # Transform data to correct shape.
         data = data.T
         if self.ds._flip_axes:
             data = np.flip(data, axis=self.ds._flip_axes)
-
-        # Resample to base resolution if necessary.
-        image_resolution = src.res[0]
-        image_units = src.crs.linear_units
-        base_resolution = self.ds.resolution.d[0]
-        base_units = self.ds.parameters['units']
-        if image_resolution != base_resolution:
-            scale_factor = image_resolution / base_resolution
-            mylog.info(
-                f"Resampling {field}: {image_resolution} {image_units} "
-                f"to {base_resolution} {base_units}."
-            )
-            data = zoom(data, scale_factor, order=0)
-
-        # Now clip to the size of the window in the base resolution.
-        base_window = grid._get_rasterio_window(
-            selector, self.ds.parameters["crs"], self.ds.parameters["transform"]
-        )
-        data = data[: int(base_window.width), : int(base_window.height)]
 
         if self._cache_on:
             self._cached_fields.setdefault(grid.id, {})

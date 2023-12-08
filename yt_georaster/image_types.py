@@ -2,6 +2,7 @@ import os
 import rasterio
 import re
 import yaml
+from pathlib import Path
 
 
 class GeoImage:
@@ -127,13 +128,21 @@ class GeoManager:
 
         self.load_field_map(field_map)
 
-    def load_field_map(self, fn):
-        if fn is None:
+    def load_field_map(self, fns):
+        if fns is None:
             self.field_map = {}
             return
+        elif not isinstance(fns, list):
+            fns = [fns]
 
-        with open(fn, mode="r") as f:
-            self.field_map = yaml.load(f, Loader=yaml.FullLoader)
+        self.field_map = {}
+        for fn in fns:
+            with open(fn, mode="r") as f:
+                field_map = yaml.load(f, Loader=yaml.FullLoader)
+            self.field_map = {
+                **self.field_map,
+                **field_map
+            }
 
     def add_field_type(self, ftype):
         if ftype not in self.ftypes:
@@ -163,7 +172,12 @@ class GeoManager:
         # get the path used as key by yaml file if available
         try:
             paths_in_yaml = list(fmap.keys())
-            if len(paths_in_yaml) > 0 and not (fullpath in paths_in_yaml):
+            file_label = Path(fullpath).name.split(".")[0]
+            if len(paths_in_yaml) > 0 and (fullpath in paths_in_yaml):
+                path_from_yaml = fullpath
+            elif len(paths_in_yaml) > 0 and (file_label in paths_in_yaml):
+                path_from_yaml = file_label
+            elif len(paths_in_yaml) > 0:
                 # assumes field_map:file is 1:1
                 path_from_yaml = paths_in_yaml[0]
             else:
