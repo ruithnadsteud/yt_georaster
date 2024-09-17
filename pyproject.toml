@@ -1,0 +1,11 @@
+[build-system]
+
+# Based on https://cibuildwheel.readthedocs.io/en/stable/options/#examples_9
+requires = [
+    "setuptools>=42",
+    "wheel",
+    "Cython",
+    "numpy==1.13.3; python_version<'3.5'",
+    "oldest-supported-numpy; python_version>='3.5'",
+    "yt>=4.0.1",
+]
